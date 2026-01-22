@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Layout,
     Card,
@@ -12,6 +12,7 @@ import {
     Empty,
     Tooltip,
     message,
+    Spin,
 } from 'antd';
 import {
     PlusOutlined,
@@ -34,23 +35,33 @@ const { Title, Text, Paragraph } = Typography;
 const DashboardPage: React.FC = () => {
     const navigate = useNavigate();
     const { user, logout } = useAuthStore();
-    const { boards, createBoard, deleteBoard } = useBoardStore();
+    const { boards, createBoard, deleteBoard, loadBoards, isLoading } = useBoardStore();
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [form] = Form.useForm();
 
-    const userBoards = boards.filter((b) => b.ownerId === user?.id);
-    const filteredBoards = userBoards.filter((b) =>
+    // Load boards on mount
+    useEffect(() => {
+        if (user?.id) {
+            loadBoards(user.id);
+        }
+    }, [user?.id, loadBoards]);
+
+    const filteredBoards = boards.filter((b) =>
         b.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    const handleCreateBoard = (values: { name: string }) => {
+    const handleCreateBoard = async (values: { name: string }) => {
         if (!user) return;
-        const newBoard = createBoard(values.name, user.id);
-        message.success('白板创建成功！');
-        setIsCreateModalOpen(false);
-        form.resetFields();
-        navigate(`/board/${newBoard.id}`);
+        const newBoard = await createBoard(values.name, user.id);
+        if (newBoard) {
+            message.success('白板创建成功！');
+            setIsCreateModalOpen(false);
+            form.resetFields();
+            navigate(`/board/${newBoard.id}`);
+        } else {
+            message.error('创建失败，请重试');
+        }
     };
 
     const handleDeleteBoard = (boardId: string, e: React.MouseEvent) => {
@@ -129,7 +140,7 @@ const DashboardPage: React.FC = () => {
                             <AppstoreOutlined /> 我的白板
                         </Title>
                         <Text type="secondary">
-                            共 {userBoards.length} 个白板
+                            共 {boards.length} 个白板
                         </Text>
                     </div>
                     <Button

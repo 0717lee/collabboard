@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import ReactECharts from 'echarts-for-react';
-import { Tabs, Form, Input, Button, Select, InputNumber, Space, Card } from 'antd';
+import { Input, Button, Select, InputNumber } from 'antd';
 import { PlusOutlined, MinusCircleOutlined } from '@ant-design/icons';
 import styles from './ChartWidget.module.css';
 
 interface ChartWidgetProps {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onAdd: (chartData: any) => void;
 }
 

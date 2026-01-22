@@ -1,0 +1,17 @@
+
+> collabboard@1.0.0 lint
+> eslint .
+
+
+C:\Users\谦友Lee\Desktop\项目\c\src\components\Charts\ChartWidget.tsx
+  3:10  error  'Tabs' is defined but never used          @typescript-eslint/no-unused-vars
+  3:16  error  'Form' is defined but never used          @typescript-eslint/no-unused-vars
+  3:58  error  'Space' is defined but never used         @typescript-eslint/no-unused-vars
+  3:65  error  'Card' is defined but never used          @typescript-eslint/no-unused-vars
+  8:24  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\谦友Lee\Desktop\项目\c\src\features\auth\RegisterPage.tsx
+  2:58  error  'Divider' is defined but never used  @typescript-eslint/no-unused-vars
+
+✖ 6 problems (6 errors, 0 warnings)
+

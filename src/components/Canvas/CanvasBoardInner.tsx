@@ -246,7 +246,7 @@ const CanvasBoardInner: React.FC = () => {
                     fontFamily: 'Inter, sans-serif',
                 });
                 break;
-            case 'sticky':
+            case 'sticky': {
                 const stickyRect = new fabric.Rect({
                     width: 150,
                     height: 150,
@@ -272,6 +272,7 @@ const CanvasBoardInner: React.FC = () => {
                 });
                 object = group;
                 break;
+            }
         }
 
         if (object) {

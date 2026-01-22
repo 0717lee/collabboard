@@ -13,9 +13,7 @@ import {
 import {
     ArrowLeftOutlined,
     BulbOutlined,
-    SaveOutlined,
     ReloadOutlined,
-    BgColorsOutlined,
     LayoutOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';

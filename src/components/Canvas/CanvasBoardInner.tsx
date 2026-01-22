@@ -11,6 +11,8 @@ import {
     ColorPicker,
     Slider,
     Typography,
+    Input,
+    Space,
 } from 'antd';
 import {
     ArrowLeftOutlined,
@@ -27,6 +29,9 @@ import {
     ZoomOutOutlined,
     DeleteOutlined,
     BarChartOutlined,
+    ShareAltOutlined,
+    CopyOutlined,
+    CheckOutlined,
 } from '@ant-design/icons';
 import { useBoardStore } from '@/stores/boardStore';
 import { useSettingsStore } from '@/stores/settingsStore';
@@ -71,7 +76,22 @@ const CanvasBoardInner: React.FC = () => {
     const [zoom, setZoom] = useState(100);
     const [history, setHistory] = useState<HistoryState>({ past: [], future: [] });
     const [showChartModal, setShowChartModal] = useState(false);
+    const [showInviteModal, setShowInviteModal] = useState(false);
+    const [linkCopied, setLinkCopied] = useState(false);
     const [fabricLoaded, setFabricLoaded] = useState(false);
+
+    // Get share link
+    const shareLink = typeof window !== 'undefined'
+        ? `${window.location.origin}/board/${boardId}`
+        : '';
+
+    const handleCopyLink = () => {
+        navigator.clipboard.writeText(shareLink).then(() => {
+            setLinkCopied(true);
+            message.success('链接已复制到剪贴板！');
+            setTimeout(() => setLinkCopied(false), 2000);
+        });
+    };
 
     // Load fabric dynamically
     useEffect(() => {
@@ -493,6 +513,16 @@ const CanvasBoardInner: React.FC = () => {
                             </div>
                         )}
                     </div>
+                    <Tooltip title="邀请好友">
+                        <Button
+                            type="primary"
+                            icon={<ShareAltOutlined />}
+                            onClick={() => setShowInviteModal(true)}
+                            className={styles.inviteButton}
+                        >
+                            邀请
+                        </Button>
+                    </Tooltip>
                     <div className={styles.zoomControls}>
                         <Button
                             type="text"
@@ -586,6 +616,63 @@ const CanvasBoardInner: React.FC = () => {
                 width={800}
             >
                 <ChartWidget onAdd={addChart} />
+            </Modal>
+
+            <Modal
+                title="邀请好友协作"
+                open={showInviteModal}
+                onCancel={() => setShowInviteModal(false)}
+                footer={null}
+                centered
+                className={styles.inviteModal}
+            >
+                <div className={styles.inviteContent}>
+                    <p className={styles.inviteDescription}>
+                        分享以下链接，邀请好友一起协作编辑这个白板。
+                        打开链接的用户将能够实时看到彼此的光标和编辑内容。
+                    </p>
+
+                    <div className={styles.shareSection}>
+                        <label>分享链接</label>
+                        <Space.Compact style={{ width: '100%' }}>
+                            <Input
+                                value={shareLink}
+                                readOnly
+                                className={styles.shareInput}
+                            />
+                            <Button
+                                type="primary"
+                                icon={linkCopied ? <CheckOutlined /> : <CopyOutlined />}
+                                onClick={handleCopyLink}
+                            >
+                                {linkCopied ? '已复制' : '复制'}
+                            </Button>
+                        </Space.Compact>
+                    </div>
+
+                    <div className={styles.collaboratorsList}>
+                        <label>当前在线 ({others.length + 1} 人)</label>
+                        <div className={styles.onlineUsers}>
+                            <div className={styles.onlineUser}>
+                                <div className={styles.userAvatar} style={{ backgroundColor: '#667eea' }}>
+                                    我
+                                </div>
+                                <span>我 (你)</span>
+                            </div>
+                            {others.map(({ connectionId, info }) => (
+                                <div key={connectionId} className={styles.onlineUser}>
+                                    <div
+                                        className={styles.userAvatar}
+                                        style={{ backgroundColor: info?.color || '#ccc' }}
+                                    >
+                                        {(info?.name || 'A').charAt(0).toUpperCase()}
+                                    </div>
+                                    <span>{info?.name || 'Anonymous'}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
             </Modal>
         </Layout>
     );

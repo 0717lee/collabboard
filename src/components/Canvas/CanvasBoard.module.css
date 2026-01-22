@@ -252,3 +252,117 @@
         max-width: 120px;
     }
 }
+
+/* Invite Button */
+.inviteButton {
+    border-radius: 8px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+    transition: all 0.2s;
+}
+
+.inviteButton:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+/* Invite Modal */
+.inviteModal :global(.ant-modal-content) {
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+.inviteContent {
+    padding: 8px 0;
+}
+
+.inviteDescription {
+    color: #666;
+    font-size: 14px;
+    line-height: 1.6;
+    margin-bottom: 24px;
+}
+
+.shareSection {
+    margin-bottom: 24px;
+}
+
+.shareSection label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #333;
+}
+
+.shareInput {
+    font-family: 'Monaco', 'Consolas', monospace;
+    font-size: 13px;
+}
+
+.collaboratorsList {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 16px;
+}
+
+.collaboratorsList label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: #333;
+}
+
+.onlineUsers {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.onlineUser {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    background: #fff;
+    border-radius: 8px;
+}
+
+.userAvatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-weight: 600;
+    font-size: 12px;
+}
+
+.onlineUser span {
+    font-size: 14px;
+    color: #333;
+}
+
+/* Dark theme for invite modal */
+:global(.dark) .inviteDescription {
+    color: #aaa;
+}
+
+:global(.dark) .shareSection label,
+:global(.dark) .collaboratorsList label {
+    color: #fff;
+}
+
+:global(.dark) .collaboratorsList {
+    background: #2a2a4a;
+}
+
+:global(.dark) .onlineUser {
+    background: #1e1e3a;
+}
+
+:global(.dark) .onlineUser span {
+    color: #ddd;
+}

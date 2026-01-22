@@ -12,7 +12,6 @@ import {
     Empty,
     Tooltip,
     message,
-    Spin,
 } from 'antd';
 import {
     PlusOutlined,
@@ -35,7 +34,7 @@ const { Title, Text, Paragraph } = Typography;
 const DashboardPage: React.FC = () => {
     const navigate = useNavigate();
     const { user, logout } = useAuthStore();
-    const { boards, createBoard, deleteBoard, loadBoards, isLoading } = useBoardStore();
+    const { boards, createBoard, deleteBoard, loadBoards } = useBoardStore();
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [form] = Form.useForm();

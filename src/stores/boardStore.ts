@@ -59,7 +59,7 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
             }));
 
             return board;
-        } catch (err) {
+        } catch {
             set({ isLoading: false, error: '创建白板失败' });
             return null;
         }
@@ -155,7 +155,7 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
             }));
 
             set({ boards, isLoading: false });
-        } catch (err) {
+        } catch {
             set({ isLoading: false, error: '加载白板失败' });
         }
     },

@@ -65,7 +65,7 @@ export const useAuthStore = create<AuthState>()(
 
                     set({ isLoading: false, error: '登录失败' });
                     return false;
-                } catch (err) {
+                } catch {
                     set({ isLoading: false, error: '网络错误，请稍后重试' });
                     return false;
                 }
@@ -117,7 +117,7 @@ export const useAuthStore = create<AuthState>()(
 
                     set({ isLoading: false, error: '注册失败' });
                     return false;
-                } catch (err) {
+                } catch {
                     set({ isLoading: false, error: '网络错误，请稍后重试' });
                     return false;
                 }

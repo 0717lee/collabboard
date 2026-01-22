@@ -1,0 +1,19 @@
+
+> collabboard@1.0.0 lint
+> eslint .
+
+
+C:\Users\谦友Lee\Desktop\项目\Collabboard\src\features\board\DashboardPage.tsx
+  15:5   error  'Spin' is defined but never used                @typescript-eslint/no-unused-vars
+  38:59  error  'isLoading' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\谦友Lee\Desktop\项目\Collabboard\src\stores\authStore.ts
+   68:26  error  'err' is defined but never used  @typescript-eslint/no-unused-vars
+  120:26  error  'err' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\谦友Lee\Desktop\项目\Collabboard\src\stores\boardStore.ts
+   62:18  error  'err' is defined but never used  @typescript-eslint/no-unused-vars
+  158:18  error  'err' is defined but never used  @typescript-eslint/no-unused-vars
+
+✖ 6 problems (6 errors, 0 warnings)
+

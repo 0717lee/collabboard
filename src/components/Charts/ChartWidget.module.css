@@ -1,0 +1,79 @@
+.chartWidget {
+    display: grid;
+    grid-template-columns: 1fr 280px;
+    gap: 24px;
+}
+
+.preview {
+    background: #fafafa;
+    border-radius: 12px;
+    padding: 16px;
+    min-height: 320px;
+}
+
+.editor {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.formRow {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.formRow label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #666;
+}
+
+.dataSection {
+    flex: 1;
+}
+
+.dataHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.dataHeader span {
+    font-size: 13px;
+    font-weight: 500;
+    color: #666;
+}
+
+.dataList {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.dataItem {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.addButton {
+    margin-top: auto;
+    height: 40px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+}
+
+.addButton:hover {
+    background: linear-gradient(135deg, #5a6fd6 0%, #6a4190 100%);
+}
+
+@media (max-width: 600px) {
+    .chartWidget {
+        grid-template-columns: 1fr;
+    }
+}

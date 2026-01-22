@@ -1,0 +1,110 @@
+.settingsLayout {
+    min-height: 100vh;
+    background: linear-gradient(180deg, #f8f9fe 0%, #eef1f8 100%);
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    height: 56px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid #e8e8e8;
+}
+
+.headerTitle {
+    margin: 0 !important;
+}
+
+.content {
+    padding: 24px;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.settingsGrid {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.settingCard {
+    border-radius: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.cardHeader {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.cardHeader h5 {
+    margin: 0 !important;
+}
+
+.cardIcon {
+    font-size: 20px;
+    color: #667eea;
+}
+
+.settingItem {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.settingInfo {
+    flex: 1;
+}
+
+.settingDesc {
+    margin: 4px 0 0 0 !important;
+    font-size: 13px;
+}
+
+.colorDot {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+.resetButton {
+    margin-top: 12px;
+}
+
+/* Dark theme */
+:global(.dark) .settingsLayout {
+    background: linear-gradient(180deg, #1a1a2e 0%, #16162a 100%);
+}
+
+:global(.dark) .header {
+    background: rgba(26, 26, 46, 0.95);
+    border-color: #2a2a4a;
+}
+
+:global(.dark) .headerTitle {
+    color: #fff;
+}
+
+:global(.dark) .settingCard {
+    background: #252542;
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Mobile responsive */
+@media (max-width: 600px) {
+    .content {
+        padding: 16px;
+    }
+
+    .settingItem {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+}

@@ -2,6 +2,19 @@
   "name": "collabboard",
   "private": true,
   "version": "1.0.0",
+  "description": "A professional real-time collaboration whiteboard application built with React 19, Fabric.js, and Liveblocks.",
+  "keywords": [
+    "react",
+    "typescript",
+    "whiteboard",
+    "collaboration",
+    "canvas",
+    "fabricjs",
+    "liveblocks",
+    "real-time"
+  ],
+  "author": "CollabBoard Team",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "vite",

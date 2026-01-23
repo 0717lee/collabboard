@@ -12,6 +12,7 @@ interface BoardState {
     updateBoard: (id: string, updates: Partial<Board>) => Promise<void>;
     deleteBoard: (id: string) => Promise<void>;
     setCurrentBoard: (board: Board | null) => void;
+    fetchBoard: (boardId: string) => Promise<Board | null>;
     saveCanvasData: (boardId: string, data: string) => Promise<void>;
     loadBoards: (userId: string) => Promise<void>;
 }
@@ -137,6 +138,39 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
 
     setCurrentBoard: (board: Board | null) => {
         set({ currentBoard: board });
+    },
+
+    fetchBoard: async (boardId: string) => {
+        set({ isLoading: true, error: null });
+        try {
+            const { data, error } = await supabase
+                .from('boards')
+                .select('*')
+                .eq('id', boardId)
+                .single();
+
+            if (error) {
+                console.error('Fetch board error:', error);
+                set({ isLoading: false, error: '无法加载白板，可能已被删除或无权访问' });
+                return null;
+            }
+
+            const board: Board = {
+                id: data.id,
+                name: data.name,
+                ownerId: data.owner_id,
+                createdAt: data.created_at,
+                updatedAt: data.updated_at,
+                data: JSON.stringify(data.data),
+            };
+
+            set({ currentBoard: board, isLoading: false });
+            return board;
+        } catch (err) {
+            console.error('Fetch board failed:', err);
+            set({ isLoading: false, error: '加载白板失败' });
+            return null;
+        }
     },
 
     saveCanvasData: async (boardId: string, data: string) => {

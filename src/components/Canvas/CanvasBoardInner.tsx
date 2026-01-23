@@ -126,20 +126,34 @@ const CanvasBoardInner: React.FC = () => {
         canvas.freeDrawingBrush.width = 3;
 
         // Load board data
-        const board = boards.find((b) => b.id === boardId);
-        if (board) {
-            setCurrentBoard(board);
-            try {
-                const data = JSON.parse(board.data);
-                if (data.objects && data.objects.length > 0) {
-                    canvas.loadFromJSON(data).then(() => {
-                        canvas.renderAll();
-                    });
-                }
-            } catch {
-                console.log('Empty or invalid board data');
+        const loadBoardData = async () => {
+            if (!boardId) return;
+
+            let board = boards.find((b) => b.id === boardId);
+
+            // If board not in local list, fetch it
+            if (!board) {
+                const fetchedBoard = await useBoardStore.getState().fetchBoard(boardId);
+                if (fetchedBoard) board = fetchedBoard;
+            } else {
+                setCurrentBoard(board);
             }
-        }
+
+            if (board && canvas) {
+                try {
+                    const data = JSON.parse(board.data);
+                    if (data.objects && data.objects.length > 0) {
+                        canvas.loadFromJSON(data).then(() => {
+                            canvas.renderAll();
+                        });
+                    }
+                } catch {
+                    console.log('Empty or invalid board data');
+                }
+            }
+        };
+
+        loadBoardData();
 
         // Handle window resize
         const handleResize = () => {

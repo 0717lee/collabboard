@@ -57,7 +57,7 @@ const SettingsPage: React.FC = () => {
                     onClick={() => navigate('/dashboard')}
                 />
                 <Title level={4} className={styles.headerTitle}>
-                    设置
+                    {language === 'zh-CN' ? '设置' : 'Settings'}
                 </Title>
                 <div style={{ width: 32 }} />
             </Header>
@@ -68,14 +68,14 @@ const SettingsPage: React.FC = () => {
                     <Card className={styles.settingCard}>
                         <div className={styles.cardHeader}>
                             <BulbOutlined className={styles.cardIcon} />
-                            <Title level={5}>外观</Title>
+                            <Title level={5}>{language === 'zh-CN' ? '外观' : 'Appearance'}</Title>
                         </div>
 
                         <div className={styles.settingItem}>
                             <div className={styles.settingInfo}>
-                                <Text strong>深色模式</Text>
+                                <Text strong>{language === 'zh-CN' ? '深色模式' : 'Dark Mode'}</Text>
                                 <Paragraph type="secondary" className={styles.settingDesc}>
-                                    切换深色/浅色主题
+                                    {language === 'zh-CN' ? '切换深色/浅色主题' : 'Switch between dark/light theme'}
                                 </Paragraph>
                             </div>
                             <Switch
@@ -88,9 +88,9 @@ const SettingsPage: React.FC = () => {
 
                         <div className={styles.settingItem}>
                             <div className={styles.settingInfo}>
-                                <Text strong>主题色</Text>
+                                <Text strong>{language === 'zh-CN' ? '主题色' : 'Theme Color'}</Text>
                                 <Paragraph type="secondary" className={styles.settingDesc}>
-                                    选择应用主题颜色
+                                    {language === 'zh-CN' ? '选择应用主题颜色' : 'Choose app theme color'}
                                 </Paragraph>
                             </div>
                             <Select
@@ -150,9 +150,9 @@ const SettingsPage: React.FC = () => {
 
                         <div className={styles.settingItem}>
                             <div className={styles.settingInfo}>
-                                <Text strong>自动保存</Text>
+                                <Text strong>{language === 'zh-CN' ? '自动保存' : 'Auto Save'}</Text>
                                 <Paragraph type="secondary" className={styles.settingDesc}>
-                                    每5秒自动保存画布内容
+                                    {language === 'zh-CN' ? '每5秒自动保存画布内容' : 'Auto-save canvas every 5 seconds'}
                                 </Paragraph>
                             </div>
                             <Switch
@@ -165,9 +165,9 @@ const SettingsPage: React.FC = () => {
 
                         <div className={styles.settingItem}>
                             <div className={styles.settingInfo}>
-                                <Text strong>显示网格</Text>
+                                <Text strong>{language === 'zh-CN' ? '显示网格' : 'Show Grid'}</Text>
                                 <Paragraph type="secondary" className={styles.settingDesc}>
-                                    在画布上显示辅助网格
+                                    {language === 'zh-CN' ? '在画布上显示辅助网格' : 'Display helper grid on canvas'}
                                 </Paragraph>
                             </div>
                             <Switch
@@ -180,9 +180,9 @@ const SettingsPage: React.FC = () => {
 
                         <div className={styles.settingItem}>
                             <div className={styles.settingInfo}>
-                                <Text strong>吸附到网格</Text>
+                                <Text strong>{language === 'zh-CN' ? '吸附到网格' : 'Snap to Grid'}</Text>
                                 <Paragraph type="secondary" className={styles.settingDesc}>
-                                    对象自动对齐到网格
+                                    {language === 'zh-CN' ? '对象自动对齐到网格' : 'Auto-align objects to grid'}
                                 </Paragraph>
                             </div>
                             <Switch
@@ -196,11 +196,13 @@ const SettingsPage: React.FC = () => {
                     <Card className={styles.settingCard}>
                         <div className={styles.cardHeader}>
                             <ReloadOutlined className={styles.cardIcon} />
-                            <Title level={5}>重置</Title>
+                            <Title level={5}>{language === 'zh-CN' ? '重置' : 'Reset'}</Title>
                         </div>
 
                         <Paragraph type="secondary">
-                            将所有设置恢复为默认值。此操作不会影响您的白板数据。
+                            {language === 'zh-CN'
+                                ? '将所有设置恢复为默认值。此操作不会影响您的白板数据。'
+                                : 'Reset all settings to default. This will not affect your board data.'}
                         </Paragraph>
 
                         <Button
@@ -209,7 +211,7 @@ const SettingsPage: React.FC = () => {
                             onClick={handleReset}
                             className={styles.resetButton}
                         >
-                            重置所有设置
+                            {language === 'zh-CN' ? '重置所有设置' : 'Reset All Settings'}
                         </Button>
                     </Card>
                 </div>

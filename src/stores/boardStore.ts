@@ -149,6 +149,8 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
                 .eq('id', boardId)
                 .single();
 
+            console.log('fetchBoard result:', { boardId, data, error });
+
             if (error) {
                 console.error('Fetch board error:', error);
                 set({ isLoading: false, error: '无法加载白板，可能已被删除或无权访问' });

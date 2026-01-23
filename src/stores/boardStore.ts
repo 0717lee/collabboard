@@ -31,7 +31,11 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
 
             if (authError || !user) {
                 console.error('Auth error:', authError);
-                set({ isLoading: false, error: '未登录或登录已过期' });
+                // Force logout on auth error
+                import('./authStore').then(({ useAuthStore }) => {
+                    useAuthStore.getState().logout();
+                });
+                set({ isLoading: false, error: '未登录或登录已过期，请重新登录' });
                 return null;
             }
 

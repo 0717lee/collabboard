@@ -140,10 +140,10 @@ export const useAuthStore = create<AuthState>()(
                 set({ isLoading: true });
 
                 try {
-                    // Try to get the session from Supabase
-                    const { data: { session }, error } = await supabase.auth.getSession();
+                    // Start by checking if we have a valid user on the server (validates token)
+                    const { data: { user: authUser }, error } = await supabase.auth.getUser();
 
-                    if (error || !session) {
+                    if (error || !authUser) {
                         // If no session found, or error occurred, make sure we clear local state
                         if (get().isAuthenticated) {
                             console.warn('Session expired or missing, logging out');
@@ -158,26 +158,25 @@ export const useAuthStore = create<AuthState>()(
                         return;
                     }
 
-                    if (session?.user) {
-                        const { data: profile } = await supabase
-                            .from('profiles')
-                            .select('*')
-                            .eq('id', session.user.id)
-                            .single();
+                    // Get profile
+                    const { data: profile } = await supabase
+                        .from('profiles')
+                        .select('*')
+                        .eq('id', authUser.id)
+                        .single();
 
-                        const user: User = {
-                            id: session.user.id,
-                            email: session.user.email || '',
-                            name: profile?.name || session.user.email?.split('@')[0] || 'User',
-                            createdAt: session.user.created_at,
-                        };
+                    const user: User = {
+                        id: authUser.id,
+                        email: authUser.email || '',
+                        name: profile?.name || authUser.email?.split('@')[0] || 'User',
+                        createdAt: authUser.created_at,
+                    };
 
-                        set({
-                            user,
-                            isAuthenticated: true,
-                            isLoading: false,
-                        });
-                    }
+                    set({
+                        user,
+                        isAuthenticated: true,
+                        isLoading: false,
+                    });
                 } catch (e) {
                     console.error('Initialize auth error:', e);
                     set({

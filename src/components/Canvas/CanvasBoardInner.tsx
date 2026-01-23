@@ -35,6 +35,7 @@ import {
 } from '@ant-design/icons';
 import { useBoardStore } from '@/stores/boardStore';
 import { useSettingsStore } from '@/stores/settingsStore';
+import { useLanguageStore } from '@/stores/languageStore';
 import { useUpdateMyPresence, useOthers } from '@/liveblocks.config';
 import { LiveblocksCursors } from './LiveblocksCursors';
 import { ChartWidget } from '@/components/Charts/ChartWidget';
@@ -67,8 +68,11 @@ const CanvasBoardInner: React.FC = () => {
 
     const { boards, currentBoard, setCurrentBoard, saveCanvasData } = useBoardStore();
     const { settings } = useSettingsStore();
+    const { language } = useLanguageStore();
     const updateMyPresence = useUpdateMyPresence();
     const others = useOthers();
+
+    const isEn = language === 'en-US';
 
     const [activeTool, setActiveTool] = useState<ToolType>('select');
     const [brushColor, setBrushColor] = useState('#000000');
@@ -88,7 +92,7 @@ const CanvasBoardInner: React.FC = () => {
     const handleCopyLink = () => {
         navigator.clipboard.writeText(shareLink).then(() => {
             setLinkCopied(true);
-            message.success('链接已复制到剪贴板！');
+            message.success(isEn ? 'Link copied to clipboard!' : '链接已复制到剪贴板！');
             setTimeout(() => setLinkCopied(false), 2000);
         });
     };
@@ -427,23 +431,23 @@ const CanvasBoardInner: React.FC = () => {
             }
         }
         setShowChartModal(false);
-        message.success('图表已添加到画布');
+        message.success(isEn ? 'Chart added to canvas' : '图表已添加到画布');
     };
 
     const tools = [
-        { key: 'select', icon: <SelectOutlined />, title: '选择' },
-        { key: 'draw', icon: <EditOutlined />, title: '画笔' },
-        { key: 'rect', icon: <BorderOutlined />, title: '矩形' },
-        { key: 'circle', icon: <span style={{ fontSize: 18 }}>○</span>, title: '圆形' },
-        { key: 'line', icon: <MinusOutlined />, title: '直线' },
-        { key: 'text', icon: <FontSizeOutlined />, title: '文本' },
-        { key: 'sticky', icon: <FileImageOutlined />, title: '便签' },
+        { key: 'select', icon: <SelectOutlined />, title: isEn ? 'Select' : '选择' },
+        { key: 'draw', icon: <EditOutlined />, title: isEn ? 'Draw' : '画笔' },
+        { key: 'rect', icon: <BorderOutlined />, title: isEn ? 'Rectangle' : '矩形' },
+        { key: 'circle', icon: <span style={{ fontSize: 18 }}>○</span>, title: isEn ? 'Circle' : '圆形' },
+        { key: 'line', icon: <MinusOutlined />, title: isEn ? 'Line' : '直线' },
+        { key: 'text', icon: <FontSizeOutlined />, title: isEn ? 'Text' : '文本' },
+        { key: 'sticky', icon: <FileImageOutlined />, title: isEn ? 'Sticky Note' : '便签' },
     ];
 
     if (!fabricLoaded) {
         return (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-                加载中...
+                {isEn ? 'Loading...' : '加载中...'}
             </div>
         );
     }
@@ -458,12 +462,12 @@ const CanvasBoardInner: React.FC = () => {
                         onClick={() => navigate('/dashboard')}
                     />
                     <Text strong className={styles.boardName}>
-                        {currentBoard?.name || '未命名白板'}
+                        {currentBoard?.name || (isEn ? 'Untitled Board' : '未命名白板')}
                     </Text>
                 </div>
 
                 <div className={styles.headerCenter}>
-                    <Tooltip title="撤销">
+                    <Tooltip title={isEn ? 'Undo' : '撤销'}>
                         <Button
                             type="text"
                             icon={<UndoOutlined />}
@@ -471,7 +475,7 @@ const CanvasBoardInner: React.FC = () => {
                             disabled={history.past.length === 0}
                         />
                     </Tooltip>
-                    <Tooltip title="重做">
+                    <Tooltip title={isEn ? 'Redo' : '重做'}>
                         <Button
                             type="text"
                             icon={<RedoOutlined />}
@@ -480,7 +484,7 @@ const CanvasBoardInner: React.FC = () => {
                         />
                     </Tooltip>
                     <Divider type="vertical" />
-                    <Tooltip title="删除选中">
+                    <Tooltip title={isEn ? 'Delete Selected' : '删除选中'}>
                         <Button
                             type="text"
                             icon={<DeleteOutlined />}
@@ -490,7 +494,7 @@ const CanvasBoardInner: React.FC = () => {
                     <Divider type="vertical" />
                     <Dropdown menu={{ items: exportItems }}>
                         <Button type="text" icon={<DownloadOutlined />}>
-                            导出
+                            {isEn ? 'Export' : '导出'}
                         </Button>
                     </Dropdown>
                 </div>
@@ -513,14 +517,14 @@ const CanvasBoardInner: React.FC = () => {
                             </div>
                         )}
                     </div>
-                    <Tooltip title="邀请好友">
+                    <Tooltip title={isEn ? 'Invite Friends' : '邀请好友'}>
                         <Button
                             type="primary"
                             icon={<ShareAltOutlined />}
                             onClick={() => setShowInviteModal(true)}
                             className={styles.inviteButton}
                         >
-                            邀请
+                            {isEn ? 'Invite' : '邀请'}
                         </Button>
                     </Tooltip>
                     <div className={styles.zoomControls}>
@@ -609,7 +613,7 @@ const CanvasBoardInner: React.FC = () => {
             </Layout>
 
             <Modal
-                title="添加图表"
+                title={isEn ? 'Add Chart' : '添加图表'}
                 open={showChartModal}
                 onCancel={() => setShowChartModal(false)}
                 footer={null}
@@ -619,7 +623,7 @@ const CanvasBoardInner: React.FC = () => {
             </Modal>
 
             <Modal
-                title="邀请好友协作"
+                title={isEn ? 'Invite Friends' : '邀请好友协作'}
                 open={showInviteModal}
                 onCancel={() => setShowInviteModal(false)}
                 footer={null}
@@ -628,12 +632,13 @@ const CanvasBoardInner: React.FC = () => {
             >
                 <div className={styles.inviteContent}>
                     <p className={styles.inviteDescription}>
-                        分享以下链接，邀请好友一起协作编辑这个白板。
-                        打开链接的用户将能够实时看到彼此的光标和编辑内容。
+                        {isEn
+                            ? 'Share the link below to invite friends to collaborate on this board. Users who open the link will see each other\'s cursors and edits in real-time.'
+                            : '分享以下链接，邀请好友一起协作编辑这个白板。打开链接的用户将能够实时看到彼此的光标和编辑内容。'}
                     </p>
 
                     <div className={styles.shareSection}>
-                        <label>分享链接</label>
+                        <label>{isEn ? 'Share Link' : '分享链接'}</label>
                         <Space.Compact style={{ width: '100%' }}>
                             <Input
                                 value={shareLink}
@@ -645,19 +650,19 @@ const CanvasBoardInner: React.FC = () => {
                                 icon={linkCopied ? <CheckOutlined /> : <CopyOutlined />}
                                 onClick={handleCopyLink}
                             >
-                                {linkCopied ? '已复制' : '复制'}
+                                {linkCopied ? (isEn ? 'Copied' : '已复制') : (isEn ? 'Copy' : '复制')}
                             </Button>
                         </Space.Compact>
                     </div>
 
                     <div className={styles.collaboratorsList}>
-                        <label>当前在线 ({others.length + 1} 人)</label>
+                        <label>{isEn ? `Online Now (${others.length + 1})` : `当前在线 (${others.length + 1} 人)`}</label>
                         <div className={styles.onlineUsers}>
                             <div className={styles.onlineUser}>
                                 <div className={styles.userAvatar} style={{ backgroundColor: '#667eea' }}>
-                                    我
+                                    {isEn ? 'Me' : '我'}
                                 </div>
-                                <span>我 (你)</span>
+                                <span>{isEn ? 'Me (You)' : '我 (你)'}</span>
                             </div>
                             {others.map(({ connectionId, info }) => (
                                 <div key={connectionId} className={styles.onlineUser}>

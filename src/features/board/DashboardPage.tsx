@@ -26,6 +26,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { useBoardStore } from '@/stores/boardStore';
+import { useLanguageStore } from '@/stores/languageStore';
 import styles from './Dashboard.module.css';
 
 const { Header, Content } = Layout;
@@ -35,9 +36,12 @@ const DashboardPage: React.FC = () => {
     const navigate = useNavigate();
     const { user, logout } = useAuthStore();
     const { boards, createBoard, deleteBoard, loadBoards } = useBoardStore();
+    const { language } = useLanguageStore();
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [form] = Form.useForm();
+
+    const isEn = language === 'en-US';
 
     // Load boards on mount
     useEffect(() => {
@@ -54,26 +58,26 @@ const DashboardPage: React.FC = () => {
         if (!user) return;
         const newBoard = await createBoard(values.name, user.id);
         if (newBoard) {
-            message.success('白板创建成功！');
+            message.success(isEn ? 'Board created!' : '白板创建成功！');
             setIsCreateModalOpen(false);
             form.resetFields();
             navigate(`/board/${newBoard.id}`);
         } else {
-            message.error('创建失败，请重试');
+            message.error(isEn ? 'Failed to create, please retry' : '创建失败，请重试');
         }
     };
 
     const handleDeleteBoard = (boardId: string, e: React.MouseEvent) => {
         e.stopPropagation();
         Modal.confirm({
-            title: '确认删除',
-            content: '删除后无法恢复，确定要删除这个白板吗？',
-            okText: '删除',
+            title: isEn ? 'Confirm Delete' : '确认删除',
+            content: isEn ? 'This cannot be undone. Delete this board?' : '删除后无法恢复，确定要删除这个白板吗？',
+            okText: isEn ? 'Delete' : '删除',
             okType: 'danger',
-            cancelText: '取消',
+            cancelText: isEn ? 'Cancel' : '取消',
             onOk: () => {
                 deleteBoard(boardId);
-                message.success('已删除');
+                message.success(isEn ? 'Deleted' : '已删除');
             },
         });
     };
@@ -81,21 +85,21 @@ const DashboardPage: React.FC = () => {
     const handleLogout = () => {
         logout();
         navigate('/login');
-        message.info('已退出登录');
+        message.info(isEn ? 'Logged out' : '已退出登录');
     };
 
     const userMenuItems = [
         {
             key: 'settings',
             icon: <SettingOutlined />,
-            label: '设置',
+            label: isEn ? 'Settings' : '设置',
             onClick: () => navigate('/settings'),
         },
         { type: 'divider' as const },
         {
             key: 'logout',
             icon: <LogoutOutlined />,
-            label: '退出登录',
+            label: isEn ? 'Logout' : '退出登录',
             onClick: handleLogout,
             danger: true,
         },
@@ -113,7 +117,7 @@ const DashboardPage: React.FC = () => {
 
                 <div className={styles.headerCenter}>
                     <Input
-                        placeholder="搜索白板..."
+                        placeholder={isEn ? "Search boards..." : "搜索白板..."}
                         prefix={<SearchOutlined />}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
@@ -136,10 +140,10 @@ const DashboardPage: React.FC = () => {
                 <div className={styles.contentHeader}>
                     <div>
                         <Title level={2} className={styles.pageTitle}>
-                            <AppstoreOutlined /> 我的白板
+                            <AppstoreOutlined /> {isEn ? 'My Boards' : '我的白板'}
                         </Title>
                         <Text type="secondary">
-                            共 {boards.length} 个白板
+                            {isEn ? `${boards.length} boards` : `共 ${boards.length} 个白板`}
                         </Text>
                     </div>
                     <Button
@@ -149,7 +153,7 @@ const DashboardPage: React.FC = () => {
                         onClick={() => setIsCreateModalOpen(true)}
                         className={styles.createButton}
                     >
-                        新建白板
+                        {isEn ? 'New Board' : '新建白板'}
                     </Button>
                 </div>
 
@@ -159,8 +163,8 @@ const DashboardPage: React.FC = () => {
                             <Empty
                                 description={
                                     searchQuery
-                                        ? '没有找到匹配的白板'
-                                        : '还没有白板，点击上方按钮创建第一个'
+                                        ? (isEn ? 'No matching boards found' : '没有找到匹配的白板')
+                                        : (isEn ? 'No boards yet. Click the button above to create one.' : '还没有白板，点击上方按钮创建第一个')
                                 }
                             />
                         </div>
@@ -193,7 +197,7 @@ const DashboardPage: React.FC = () => {
                                     title={board.name}
                                     description={
                                         <Paragraph type="secondary" ellipsis className={styles.boardDate}>
-                                            更新于 {new Date(board.updatedAt).toLocaleDateString('zh-CN')}
+                                            {isEn ? 'Updated' : '更新于'} {new Date(board.updatedAt).toLocaleDateString(isEn ? 'en-US' : 'zh-CN')}
                                         </Paragraph>
                                     }
                                 />
@@ -204,7 +208,7 @@ const DashboardPage: React.FC = () => {
             </Content>
 
             <Modal
-                title="新建白板"
+                title={isEn ? 'New Board' : '新建白板'}
                 open={isCreateModalOpen}
                 onCancel={() => {
                     setIsCreateModalOpen(false);
@@ -217,18 +221,18 @@ const DashboardPage: React.FC = () => {
                 <Form form={form} onFinish={handleCreateBoard} layout="vertical">
                     <Form.Item
                         name="name"
-                        label="白板名称"
+                        label={isEn ? 'Board Name' : '白板名称'}
                         rules={[
-                            { required: true, message: '请输入白板名称' },
-                            { max: 50, message: '名称不能超过50个字符' },
+                            { required: true, message: isEn ? 'Please enter board name' : '请输入白板名称' },
+                            { max: 50, message: isEn ? 'Name cannot exceed 50 characters' : '名称不能超过50个字符' },
                         ]}
                     >
-                        <Input placeholder="输入白板名称" autoFocus />
+                        <Input placeholder={isEn ? 'Enter board name' : '输入白板名称'} autoFocus />
                     </Form.Item>
                     <Form.Item className={styles.modalFooter}>
-                        <Button onClick={() => setIsCreateModalOpen(false)}>取消</Button>
+                        <Button onClick={() => setIsCreateModalOpen(false)}>{isEn ? 'Cancel' : '取消'}</Button>
                         <Button type="primary" htmlType="submit">
-                            创建
+                            {isEn ? 'Create' : '创建'}
                         </Button>
                     </Form.Item>
                 </Form>

@@ -15,9 +15,11 @@ import {
     BulbOutlined,
     ReloadOutlined,
     LayoutOutlined,
+    GlobalOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useSettingsStore } from '@/stores/settingsStore';
+import { useLanguageStore, Language } from '@/stores/languageStore';
 import styles from './Settings.module.css';
 
 const { Header, Content } = Layout;
@@ -26,18 +28,24 @@ const { Title, Text, Paragraph } = Typography;
 const SettingsPage: React.FC = () => {
     const navigate = useNavigate();
     const { settings, updateSettings, toggleTheme, resetSettings } = useSettingsStore();
+    const { language, setLanguage } = useLanguageStore();
 
     const handleReset = () => {
         resetSettings();
-        message.success('设置已重置');
+        message.success(language === 'zh-CN' ? '设置已重置' : 'Settings reset');
     };
 
     const themeColors = [
-        { value: '#1890ff', label: '默认蓝' },
-        { value: '#667eea', label: '紫罗兰' },
-        { value: '#52c41a', label: '极光绿' },
-        { value: '#fa541c', label: '日落橙' },
-        { value: '#eb2f96', label: '法式洋红' },
+        { value: '#1890ff', label: language === 'zh-CN' ? '默认蓝' : 'Default Blue' },
+        { value: '#667eea', label: language === 'zh-CN' ? '紫罗兰' : 'Violet' },
+        { value: '#52c41a', label: language === 'zh-CN' ? '极光绿' : 'Aurora Green' },
+        { value: '#fa541c', label: language === 'zh-CN' ? '日落橙' : 'Sunset Orange' },
+        { value: '#eb2f96', label: language === 'zh-CN' ? '法式洋红' : 'Magenta' },
+    ];
+
+    const languageOptions = [
+        { value: 'zh-CN' as Language, label: '简体中文' },
+        { value: 'en-US' as Language, label: 'English' },
     ];
 
     return (
@@ -105,11 +113,39 @@ const SettingsPage: React.FC = () => {
                         </div>
                     </Card>
 
+                    {/* Language Settings */}
+                    <Card className={styles.settingCard}>
+                        <div className={styles.cardHeader}>
+                            <GlobalOutlined className={styles.cardIcon} />
+                            <Title level={5}>{language === 'zh-CN' ? '语言' : 'Language'}</Title>
+                        </div>
+
+                        <div className={styles.settingItem}>
+                            <div className={styles.settingInfo}>
+                                <Text strong>{language === 'zh-CN' ? '界面语言' : 'Interface Language'}</Text>
+                                <Paragraph type="secondary" className={styles.settingDesc}>
+                                    {language === 'zh-CN' ? '选择应用显示语言' : 'Choose display language'}
+                                </Paragraph>
+                            </div>
+                            <Select
+                                value={language}
+                                onChange={(value) => setLanguage(value)}
+                                style={{ width: 140 }}
+                            >
+                                {languageOptions.map((option) => (
+                                    <Select.Option key={option.value} value={option.value}>
+                                        {option.label}
+                                    </Select.Option>
+                                ))}
+                            </Select>
+                        </div>
+                    </Card>
+
                     {/* Canvas Settings */}
                     <Card className={styles.settingCard}>
                         <div className={styles.cardHeader}>
                             <LayoutOutlined className={styles.cardIcon} />
-                            <Title level={5}>画布</Title>
+                            <Title level={5}>{language === 'zh-CN' ? '画布' : 'Canvas'}</Title>
                         </div>
 
                         <div className={styles.settingItem}>

@@ -19,10 +19,14 @@ const LoginPage: React.FC = () => {
 
     const handleSubmit = async (values: LoginFormValues) => {
         clearError();
-        const success = await login(values.email, values.password);
-        if (success) {
-            message.success('登录成功！');
-            navigate('/dashboard');
+        try {
+            const success = await login(values.email, values.password);
+            if (success) {
+                message.success('登录成功！');
+                navigate('/dashboard');
+            }
+        } catch (err) {
+            console.error('Login exception:', err);
         }
     };
 

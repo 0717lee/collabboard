@@ -82,8 +82,8 @@ const DashboardPage: React.FC = () => {
         });
     };
 
-    const handleLogout = () => {
-        logout();
+    const handleLogout = async () => {
+        await logout();
         navigate('/login');
         message.info(isEn ? 'Logged out' : '已退出登录');
     };

@@ -39,12 +39,35 @@ export const useAuthStore = create<AuthState>()(
                     }
 
                     if (data.user) {
-                        // Fetch user profile from profiles table
-                        const { data: profile } = await supabase
+                        // Fetch or create user profile in profiles table
+                        let { data: profile } = await supabase
                             .from('profiles')
                             .select('*')
                             .eq('id', data.user.id)
                             .single();
+
+                        // If no profile exists, create one
+                        if (!profile) {
+                            try {
+                                const { data: newProfile, error: profileError } = await supabase
+                                    .from('profiles')
+                                    .insert({
+                                        id: data.user.id,
+                                        email: data.user.email,
+                                        name: data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'User',
+                                    })
+                                    .select()
+                                    .single();
+
+                                if (profileError) {
+                                    console.warn('Profile creation failed:', profileError);
+                                } else {
+                                    profile = newProfile;
+                                }
+                            } catch (err) {
+                                console.warn('Profile creation error:', err);
+                            }
+                        }
 
                         const user: User = {
                             id: data.user.id,
@@ -201,6 +224,12 @@ export const useAuthStore = create<AuthState>()(
                 user: state.user,
                 isAuthenticated: state.isAuthenticated,
             }),
+            onRehydrateStorage: () => (state) => {
+                // Ensure isLoading is always false after rehydration
+                if (state) {
+                    state.isLoading = false;
+                }
+            },
         }
     )
 );

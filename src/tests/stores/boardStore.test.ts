@@ -67,7 +67,7 @@ describe('boardStore', () => {
         it('should create a new board', async () => {
             const store = useBoardStore.getState();
 
-            const newBoard = await store.createBoard('Test Board', mockUserId);
+            const newBoard = await store.createBoard('Test Board');
 
             expect(newBoard).toBeDefined();
             expect(newBoard?.name).toBe('Test Board');

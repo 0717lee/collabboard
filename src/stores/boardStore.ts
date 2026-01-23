@@ -8,7 +8,7 @@ interface BoardState {
     isLoading: boolean;
     error: string | null;
 
-    createBoard: (name: string, ownerId: string) => Promise<Board | null>;
+    createBoard: (name: string) => Promise<Board | null>;
     updateBoard: (id: string, updates: Partial<Board>) => Promise<void>;
     deleteBoard: (id: string) => Promise<void>;
     setCurrentBoard: (board: Board | null) => void;
@@ -22,7 +22,7 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
     isLoading: false,
     error: null,
 
-    createBoard: async (name: string, _ownerId: string) => {
+    createBoard: async (name: string) => {
         set({ isLoading: true, error: null });
 
         try {

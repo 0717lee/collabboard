@@ -56,7 +56,7 @@ const DashboardPage: React.FC = () => {
 
     const handleCreateBoard = async (values: { name: string }) => {
         if (!user) return;
-        const newBoard = await createBoard(values.name, user.id);
+        const newBoard = await createBoard(values.name);
         if (newBoard) {
             message.success(isEn ? 'Board created!' : '白板创建成功！');
             setIsCreateModalOpen(false);

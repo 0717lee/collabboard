@@ -35,6 +35,18 @@ vi.mock('@/lib/supabaseClient', () => ({
                 eq: () => Promise.resolve({ error: null }),
             }),
         }),
+        auth: {
+            getUser: () => Promise.resolve({
+                data: {
+                    user: {
+                        id: 'test-user-id-123',
+                        email: 'test@example.com',
+                        created_at: new Date().toISOString(),
+                    },
+                },
+                error: null,
+            }),
+        },
     },
 }));
 

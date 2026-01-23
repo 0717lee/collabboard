@@ -1,7 +1,7 @@
 import React from 'react';
 import { Form, Input, Button, Card, Typography, message } from 'antd';
 import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import styles from './Auth.module.css';
 
@@ -16,15 +16,19 @@ interface RegisterFormValues {
 
 const RegisterPage: React.FC = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const { register, isLoading, error, clearError } = useAuthStore();
     const [form] = Form.useForm();
+
+    // Get the redirect target from location state (set by ProtectedRoute)
+    const from = (location.state as { from?: string })?.from || '/dashboard';
 
     const handleSubmit = async (values: RegisterFormValues) => {
         clearError();
         const success = await register(values.email, values.password, values.name);
         if (success) {
             message.success('注册成功！');
-            navigate('/dashboard');
+            navigate(from, { replace: true });
         }
     };
 

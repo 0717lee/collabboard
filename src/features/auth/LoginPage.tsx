@@ -1,7 +1,7 @@
 import React from 'react';
 import { Form, Input, Button, Card, Typography, message } from 'antd';
 import { LockOutlined, MailOutlined } from '@ant-design/icons';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import styles from './Auth.module.css';
 
@@ -14,8 +14,12 @@ interface LoginFormValues {
 
 const LoginPage: React.FC = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const { login, isLoading, error, clearError } = useAuthStore();
     const [form] = Form.useForm();
+
+    // Get the redirect target from location state (set by ProtectedRoute)
+    const from = (location.state as { from?: string })?.from || '/dashboard';
 
     const handleSubmit = async (values: LoginFormValues) => {
         clearError();
@@ -23,7 +27,7 @@ const LoginPage: React.FC = () => {
             const success = await login(values.email, values.password);
             if (success) {
                 message.success('登录成功！');
-                navigate('/dashboard');
+                navigate(from, { replace: true });
             }
         } catch (err) {
             console.error('Login exception:', err);

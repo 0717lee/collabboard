@@ -44,7 +44,13 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 const App: React.FC = () => {
   const { settings } = useSettingsStore();
+  const { initializeAuth } = useAuthStore();
   const isDark = settings.theme.mode === 'dark';
+
+  // Initialize auth on app startup to restore Supabase session
+  React.useEffect(() => {
+    initializeAuth();
+  }, [initializeAuth]);
 
   // Apply theme class to document
   React.useEffect(() => {

@@ -18,7 +18,7 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>()(
     persist(
-        (set) => ({
+        (set, get) => ({
             user: null,
             isAuthenticated: false,
             isLoading: false,
@@ -140,7 +140,23 @@ export const useAuthStore = create<AuthState>()(
                 set({ isLoading: true });
 
                 try {
-                    const { data: { session } } = await supabase.auth.getSession();
+                    // Try to get the session from Supabase
+                    const { data: { session }, error } = await supabase.auth.getSession();
+
+                    if (error || !session) {
+                        // If no session found, or error occurred, make sure we clear local state
+                        if (get().isAuthenticated) {
+                            console.warn('Session expired or missing, logging out');
+                            set({
+                                user: null,
+                                isAuthenticated: false,
+                                isLoading: false
+                            });
+                        } else {
+                            set({ isLoading: false });
+                        }
+                        return;
+                    }
 
                     if (session?.user) {
                         const { data: profile } = await supabase
@@ -161,11 +177,14 @@ export const useAuthStore = create<AuthState>()(
                             isAuthenticated: true,
                             isLoading: false,
                         });
-                    } else {
-                        set({ isLoading: false });
                     }
-                } catch {
-                    set({ isLoading: false });
+                } catch (e) {
+                    console.error('Initialize auth error:', e);
+                    set({
+                        user: null,
+                        isAuthenticated: false,
+                        isLoading: false
+                    });
                 }
             },
         }),

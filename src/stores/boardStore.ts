@@ -22,13 +22,22 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
     isLoading: false,
     error: null,
 
-    createBoard: async (name: string, ownerId: string) => {
+    createBoard: async (name: string, _ownerId: string) => {
         set({ isLoading: true, error: null });
 
         try {
+            // Get the current authenticated user from Supabase
+            const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+            if (authError || !user) {
+                console.error('Auth error:', authError);
+                set({ isLoading: false, error: '未登录或登录已过期' });
+                return null;
+            }
+
             const newBoard = {
                 name,
-                owner_id: ownerId,
+                owner_id: user.id, // Use Supabase auth user ID
                 data: { objects: [], version: '1.0' },
             };
 
@@ -39,6 +48,7 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
                 .single();
 
             if (error) {
+                console.error('Create board error:', error);
                 set({ isLoading: false, error: error.message });
                 return null;
             }

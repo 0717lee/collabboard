@@ -142,7 +142,7 @@ const RegisterPage: React.FC = () => {
 
                 <div className={styles.authFooter}>
                     <Text type="secondary">已有账号？</Text>
-                    <Link to="/login">立即登录</Link>
+                    <Link to="/login" state={location.state}>立即登录</Link>
                 </div>
             </Card>
         </div>

@@ -105,7 +105,7 @@ const LoginPage: React.FC = () => {
 
                 <div className={styles.authFooter}>
                     <Text type="secondary">还没有账号？</Text>
-                    <Link to="/register">立即注册</Link>
+                    <Link to="/register" state={location.state}>立即注册</Link>
                 </div>
             </Card>
         </div>

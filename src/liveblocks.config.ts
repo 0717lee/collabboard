@@ -21,7 +21,11 @@ export type Presence = {
 };
 
 export type Storage = {
-    canvasData: string; // JSON stringified canvas data
+    canvasData: string; // JSON stringified canvas data (Chunk 1)
+    canvasData_2?: string; // Chunk 2
+    canvasData_3?: string; // Chunk 3
+    canvasData_4?: string; // Chunk 4
+    canvasData_5?: string; // Chunk 5
     version: number;
 };
 

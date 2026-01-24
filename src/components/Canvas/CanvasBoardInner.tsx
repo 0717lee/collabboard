@@ -107,8 +107,15 @@ const CanvasBoardInner: React.FC = () => {
     const [fabricLoaded, setFabricLoaded] = useState(false);
     const [canvasReady, setCanvasReady] = useState(false);
 
-    // Liveblocks hooks - Sync Canvas Data
-    const canvasData = useStorage((root) => root.canvasData);
+    // Liveblocks hooks - Sync Canvas Data (Chunked)
+    const chunk1 = useStorage((root) => root.canvasData);
+    const chunk2 = useStorage((root) => root.canvasData_2);
+    const chunk3 = useStorage((root) => root.canvasData_3);
+    const chunk4 = useStorage((root) => root.canvasData_4);
+    const chunk5 = useStorage((root) => root.canvasData_5);
+
+    // Reassemble chunks
+    const canvasData = (chunk1 || '') + (chunk2 || '') + (chunk3 || '') + (chunk4 || '') + (chunk5 || '');
 
     // Use ref to access latest canvasData in closures/callbacks without triggering re-renders
     const canvasDataRef = useRef(canvasData);
@@ -116,8 +123,41 @@ const CanvasBoardInner: React.FC = () => {
         canvasDataRef.current = canvasData;
     }, [canvasData]);
 
-    const updateStorage = useMutation(({ storage }, json: string) => {
-        storage.set('canvasData', json);
+    const updateStorage = useMutation(({ storage }, compressedData: string) => {
+        // Chunk size limit: 80KB (safe margin below 128KB limit)
+        const CHUNK_SIZE = 80000;
+        const totalLength = compressedData.length;
+
+        // Chunk 1
+        storage.set('canvasData', compressedData.slice(0, CHUNK_SIZE));
+
+        // Chunk 2
+        if (totalLength > CHUNK_SIZE) {
+            storage.set('canvasData_2', compressedData.slice(CHUNK_SIZE, CHUNK_SIZE * 2));
+        } else if (storage.get('canvasData_2')) {
+            storage.set('canvasData_2', '');
+        }
+
+        // Chunk 3
+        if (totalLength > CHUNK_SIZE * 2) {
+            storage.set('canvasData_3', compressedData.slice(CHUNK_SIZE * 2, CHUNK_SIZE * 3));
+        } else if (storage.get('canvasData_3')) {
+            storage.set('canvasData_3', '');
+        }
+
+        // Chunk 4
+        if (totalLength > CHUNK_SIZE * 3) {
+            storage.set('canvasData_4', compressedData.slice(CHUNK_SIZE * 3, CHUNK_SIZE * 4));
+        } else if (storage.get('canvasData_4')) {
+            storage.set('canvasData_4', '');
+        }
+
+        // Chunk 5
+        if (totalLength > CHUNK_SIZE * 4) {
+            storage.set('canvasData_5', compressedData.slice(CHUNK_SIZE * 4, CHUNK_SIZE * 5));
+        } else if (storage.get('canvasData_5')) {
+            storage.set('canvasData_5', '');
+        }
     }, []);
 
     // Ref to track if update is coming from remote (to avoid loop)
@@ -245,8 +285,8 @@ const CanvasBoardInner: React.FC = () => {
                 const compressed = LZString.compressToBase64(json);
                 console.log('SYNC: Pushing. Original:', json.length, 'Compressed:', compressed.length);
 
-                // Limit check: Liveblocks WebSocket message limit is ~128KB
-                if (compressed.length > 100000) {
+                // Limit check: Total capacity 5 * 80KB = 400KB
+                if (compressed.length > 400000) {
                     console.error('SYNC ABORTED: Data too large (' + compressed.length + ' bytes).');
                     message.warning(isEn ? 'Canvas too complex. Please simplify.' : '画布内容过多无法同步，请简化内容。');
                     return;

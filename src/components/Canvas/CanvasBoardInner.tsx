@@ -32,6 +32,7 @@ import {
     ShareAltOutlined,
     CopyOutlined,
     CheckOutlined,
+    ClearOutlined,
 } from '@ant-design/icons';
 import { useBoardStore } from '@/stores/boardStore';
 import { useSettingsStore } from '@/stores/settingsStore';
@@ -51,7 +52,7 @@ import('fabric').then((mod) => {
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
 
-type ToolType = 'select' | 'draw' | 'rect' | 'circle' | 'line' | 'text' | 'sticky';
+type ToolType = 'select' | 'draw' | 'eraser' | 'rect' | 'circle' | 'line' | 'text' | 'sticky';
 
 interface HistoryState {
     past: string[];
@@ -308,23 +309,30 @@ const CanvasBoardInner: React.FC = () => {
         const canvas = fabricRef.current;
         if (!canvas || !fabric || !canvasReady) return;
 
-        canvas.isDrawingMode = activeTool === 'draw';
+        canvas.isDrawingMode = activeTool === 'draw' || activeTool === 'eraser';
         canvas.selection = activeTool === 'select';
 
         if (activeTool === 'draw') {
-            // Ensure brush exists
-            if (!canvas.freeDrawingBrush) {
-                canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
-            }
+            // Use PencilBrush for drawing
+            canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
             canvas.freeDrawingBrush.color = brushColor;
             canvas.freeDrawingBrush.width = brushWidth;
+        } else if (activeTool === 'eraser') {
+            // Use EraserBrush if available, otherwise fallback to white pencil (simple eraser)
+            if (fabric.EraserBrush) {
+                canvas.freeDrawingBrush = new fabric.EraserBrush(canvas);
+            } else {
+                // Fallback: White brush (visual eraser for white background)
+                canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+                canvas.freeDrawingBrush.color = '#ffffff';
+            }
+            canvas.freeDrawingBrush.width = brushWidth * 5; // Eraser should be larger
         }
     }, [activeTool, brushColor, brushWidth, canvasReady]);
 
-    // Handle canvas click for shape creation
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const handleCanvasMouseDown = useCallback((opt: any) => {
-        if (activeTool === 'select' || activeTool === 'draw' || !fabric) return;
+        if (activeTool === 'select' || activeTool === 'draw' || activeTool === 'eraser' || !fabric) return;
 
         const canvas = fabricRef.current;
         if (!canvas || !opt.pointer) return;
@@ -546,6 +554,7 @@ const CanvasBoardInner: React.FC = () => {
     const tools = [
         { key: 'select', icon: <SelectOutlined />, title: isEn ? 'Select' : '选择' },
         { key: 'draw', icon: <EditOutlined />, title: isEn ? 'Draw' : '画笔' },
+        { key: 'eraser', icon: <ClearOutlined />, title: isEn ? 'Eraser' : '橡皮擦' },
         { key: 'rect', icon: <BorderOutlined />, title: isEn ? 'Rectangle' : '矩形' },
         { key: 'circle', icon: <span style={{ fontSize: 18 }}>○</span>, title: isEn ? 'Circle' : '圆形' },
         { key: 'line', icon: <MinusOutlined />, title: isEn ? 'Line' : '直线' },

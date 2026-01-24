@@ -314,7 +314,7 @@ const CanvasBoardInner: React.FC = () => {
             canvas.freeDrawingBrush.color = brushColor;
             canvas.freeDrawingBrush.width = brushWidth;
         }
-    }, [activeTool, brushColor, brushWidth]);
+    }, [activeTool, brushColor, brushWidth, fabricLoaded]);
 
     // Handle canvas click for shape creation
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -413,7 +413,7 @@ const CanvasBoardInner: React.FC = () => {
         return () => {
             canvas.off('mouse:down', handleCanvasMouseDown);
         };
-    }, [handleCanvasMouseDown]);
+    }, [handleCanvasMouseDown, fabricLoaded]);
 
     // Undo/Redo
     const undo = useCallback(() => {

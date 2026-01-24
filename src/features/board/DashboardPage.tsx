@@ -59,31 +59,20 @@ const DashboardPage: React.FC = () => {
     );
 
     const handleCreateBoard = async (values: { name: string }) => {
-        if (!user) {
-            alert('DEBUG: User is missing in DashboardPage');
-            return;
-        }
-        console.log('Creating board with name:', values.name);
+        if (!user) return;
 
-        try {
-            const newBoard = await createBoard(values.name);
-            console.log('Create result:', newBoard);
+        // Show loading state implicitly via button loading or just UI response
+        // Better UX: add loading state to component if desired, but for now restore original logic
+        const newBoard = await createBoard(values.name);
 
-            if (newBoard) {
-                message.success(isEn ? 'Board created!' : '白板创建成功！');
-                setIsCreateModalOpen(false);
-                form.resetFields();
-                navigate(`/board/${newBoard.id}`);
-            } else {
-                const error = useBoardStore.getState().error;
-                console.error('Create failed, store error:', error);
-
-                // Show specific error using alert for visibility
-                alert(`CREATE ERROR: ${error || 'Unknown error'}`);
-            }
-        } catch (e: any) {
-            console.error('Create exception:', e);
-            alert('CREATE EXCEPTION: ' + e.message);
+        if (newBoard) {
+            message.success(isEn ? 'Board created!' : '白板创建成功！');
+            setIsCreateModalOpen(false);
+            form.resetFields();
+            navigate(`/board/${newBoard.id}`);
+        } else {
+            const error = useBoardStore.getState().error;
+            message.error(error || (isEn ? 'Failed to create, please retry' : '创建失败，请重试'));
         }
     };
 

@@ -152,7 +152,6 @@ const CanvasBoardInner: React.FC = () => {
         if (!canvasRef.current || !containerRef.current || !fabricLoaded || !fabric) return;
 
         const container = containerRef.current;
-        console.log('Canvas Init - Container Dimensions:', container.clientWidth, container.clientHeight);
 
         const canvas = new fabric.Canvas(canvasRef.current, {
             width: container.clientWidth,
@@ -161,10 +160,6 @@ const CanvasBoardInner: React.FC = () => {
             selection: true,
             preserveObjectStacking: true,
         });
-
-        // Debug
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (window as any).canvas = canvas;
 
         fabricRef.current = canvas;
         setCanvasReady(true);
@@ -239,7 +234,7 @@ const CanvasBoardInner: React.FC = () => {
             saveState();
 
             // Sync to Liveblocks only if not processing remote update
-            if (fabricRef.current && !isRemoteUpdate.current) {
+            if (fabricRef.current && !isRemoteUpdate.current && canvasData !== null) {
                 const json = JSON.stringify(fabricRef.current.toJSON());
                 updateStorage(json);
 
@@ -313,13 +308,10 @@ const CanvasBoardInner: React.FC = () => {
         const canvas = fabricRef.current;
         if (!canvas || !fabric || !canvasReady) return;
 
-        console.log('Switching Tool:', activeTool);
-
         canvas.isDrawingMode = activeTool === 'draw';
         canvas.selection = activeTool === 'select';
 
         if (activeTool === 'draw') {
-            console.log('Enabling Drawing Mode');
             // Ensure brush exists
             if (!canvas.freeDrawingBrush) {
                 canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
@@ -332,7 +324,6 @@ const CanvasBoardInner: React.FC = () => {
     // Handle canvas click for shape creation
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const handleCanvasMouseDown = useCallback((opt: any) => {
-        console.log('Mouse Down:', activeTool, opt); // DEBUG LOG
         if (activeTool === 'select' || activeTool === 'draw' || !fabric) return;
 
         const canvas = fabricRef.current;
@@ -414,10 +405,13 @@ const CanvasBoardInner: React.FC = () => {
         if (object) {
             canvas.add(object);
             canvas.setActiveObject(object);
-            canvas.renderAll();
+
+            // Fix: Fabric v6 renderAll might need requestRenderAll
+            canvas.requestRenderAll();
+
             setActiveTool('select');
         }
-    }, [activeTool, brushColor]);
+    }, [activeTool, brushColor, canvasReady]); // Removed brushWidth dependency as it's not used in this scope
 
     useEffect(() => {
         const canvas = fabricRef.current;

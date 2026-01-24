@@ -88,25 +88,35 @@ const DashboardPage: React.FC = () => {
         form.resetFields();
     };
 
-    const handleDeleteBoard = async (boardId: string, e: React.MouseEvent) => {
-        // 1. Alert immediately to prove handler is called
-        // alert('DEBUG: Delete Icon Clicked'); 
-        // (Commented out to be less annoying if it fixes, but user said it wasn't showing)
-
+    const handleDeleteBoard = async (boardId: string, boardOwnerId: string, e: React.MouseEvent) => {
         e.stopPropagation();
-        e.preventDefault(); // Also prevent default
+        e.preventDefault();
 
-        // 2. Use native confirm
+        // DEBUG: Permission Check
+        if (!user) {
+            alert('DEBUG: User not logged in');
+            return;
+        }
+
+        // Use '==' to be loose about string/number ID types just in case, but usually strict
+        if (String(user.id) !== String(boardOwnerId)) {
+            alert(`DEBUG PERMISSION DENIED:\nUser ID: ${user.id}\nOwner ID: ${boardOwnerId}\nYou can only delete your own boards.`);
+            return;
+        }
+
         if (!window.confirm(isEn ? 'Delete this board?' : '确定要删除这个白板吗？此操作无法撤销。')) {
             return;
         }
 
         try {
+            // alert(`DEBUG: Calling delete for ${boardId}...`);
             const result = await deleteBoard(boardId);
+            // alert(`DEBUG RESULT: ${JSON.stringify(result)}`);
+
             if (result.success) {
                 message.success(isEn ? 'Deleted' : '已删除');
             } else {
-                alert(`DELETE ERROR: ${result.error}`);
+                alert(`DELETE FAILURE: ${result.error}`);
             }
         } catch (err) {
             alert('DELETE EXCEPTION: ' + err);
@@ -252,7 +262,7 @@ const DashboardPage: React.FC = () => {
                                     </Tooltip>,
                                     <DeleteOutlined
                                         key="delete"
-                                        onClick={(e) => handleDeleteBoard(board.id, e)}
+                                        onClick={(e) => handleDeleteBoard(board.id, board.ownerId, e)}
                                         style={{ color: 'red' }}
                                     />,
                                 ]}

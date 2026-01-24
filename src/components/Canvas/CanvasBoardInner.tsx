@@ -160,8 +160,43 @@ const CanvasBoardInner: React.FC = () => {
         }
     }, []);
 
+    // Sync from Liveblocks to Canvas (Receive Updates)
+    useEffect(() => {
+        if (!fabricRef.current || !fabric || !canvasReady || !canvasData) return;
+
+        // Loop prevention: if data hasn't changed from what we last synced/sent, ignore
+        if (canvasData === lastSyncedData.current) return;
+
+        console.log('SYNC: Receiving update from remote');
+
+        const applyRemoteUpdate = async () => {
+            try {
+                const data = parseCanvasData(canvasData);
+                if (data && data.objects) {
+                    isRemoteUpdate.current = true;
+                    // Load data into canvas
+                    // We must wait for this to complete before unsetting isRemoteUpdate
+                    await fabricRef.current.loadFromJSON(data);
+
+                    // Update lastSyncedData to match the new remote state
+                    lastSyncedData.current = canvasData;
+
+                    fabricRef.current.requestRenderAll();
+                    isRemoteUpdate.current = false;
+                }
+            } catch (e) {
+                console.error('Error applying remote update:', e);
+                isRemoteUpdate.current = false;
+            }
+        };
+
+        applyRemoteUpdate();
+    }, [canvasData, canvasReady]); // Only re-run when data changes
+
     // Ref to track if update is coming from remote (to avoid loop)
     const isRemoteUpdate = useRef(false);
+    // Ref to track the last synced data to avoid re-applying our own changes or duplicate updates
+    const lastSyncedData = useRef<string | null>(null);
 
     // Get share link
     const shareLink = typeof window !== 'undefined'

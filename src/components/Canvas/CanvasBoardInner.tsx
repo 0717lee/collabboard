@@ -160,6 +160,9 @@ const CanvasBoardInner: React.FC = () => {
 
         const container = containerRef.current;
 
+        // Optimize JSON size by reducing precision
+        fabric.Object.NUM_FRACTION_DIGITS = 2;
+
         const canvas = new fabric.Canvas(canvasRef.current, {
             width: container.clientWidth,
             height: container.clientHeight,
@@ -776,15 +779,15 @@ const CanvasBoardInner: React.FC = () => {
                                 </div>
                                 <span>{isEn ? 'Me (You)' : '我 (你)'}</span>
                             </div>
-                            {others.map(({ connectionId, info }) => (
+                            {others.map(({ connectionId, info, presence }) => (
                                 <div key={connectionId} className={styles.onlineUser}>
                                     <div
                                         className={styles.userAvatar}
-                                        style={{ backgroundColor: info?.color || '#ccc' }}
+                                        style={{ backgroundColor: presence?.color || info?.color || '#ccc' }}
                                     >
-                                        {(info?.name || 'A').charAt(0).toUpperCase()}
+                                        {(presence?.name || info?.name || 'A').charAt(0).toUpperCase()}
                                     </div>
-                                    <span>{info?.name || 'Anonymous'}</span>
+                                    <span>{presence?.name || info?.name || 'Anonymous'}</span>
                                 </div>
                             ))}
                         </div>

@@ -83,6 +83,7 @@ const CanvasBoardInner: React.FC = () => {
     const [showInviteModal, setShowInviteModal] = useState(false);
     const [linkCopied, setLinkCopied] = useState(false);
     const [fabricLoaded, setFabricLoaded] = useState(false);
+    const [canvasReady, setCanvasReady] = useState(false);
 
     // Liveblocks hooks - Sync Canvas Data
     const canvasData = useStorage((root) => root.canvasData);
@@ -117,7 +118,7 @@ const CanvasBoardInner: React.FC = () => {
 
     // Sync from Liveblocks to local canvas
     useEffect(() => {
-        if (!fabricRef.current || !canvasData || !fabricLoaded) return;
+        if (!fabricRef.current || !canvasData || !canvasReady) return;
 
         // Skip if this update originated from local changes
         if (isRemoteUpdate.current) return;
@@ -144,7 +145,7 @@ const CanvasBoardInner: React.FC = () => {
         } catch (e) {
             console.error('Error syncing remote data', e);
         }
-    }, [canvasData, fabricLoaded]);
+    }, [canvasData, canvasReady]);
 
     // Initialize canvas
     useEffect(() => {
@@ -160,6 +161,7 @@ const CanvasBoardInner: React.FC = () => {
         });
 
         fabricRef.current = canvas;
+        setCanvasReady(true); // Trigger other effects
 
         // Initialize free drawing brush
         canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
@@ -264,8 +266,10 @@ const CanvasBoardInner: React.FC = () => {
         }, 100);
 
         return () => {
+            setCanvasReady(false); // Reset ready state
             window.removeEventListener('resize', handleResize);
             canvas.dispose();
+            fabricRef.current = null;
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [boardId, fabricLoaded]);
@@ -301,7 +305,7 @@ const CanvasBoardInner: React.FC = () => {
     // Tool handlers
     useEffect(() => {
         const canvas = fabricRef.current;
-        if (!canvas || !fabric) return;
+        if (!canvas || !fabric || !canvasReady) return;
 
         canvas.isDrawingMode = activeTool === 'draw';
         canvas.selection = activeTool === 'select';
@@ -314,7 +318,7 @@ const CanvasBoardInner: React.FC = () => {
             canvas.freeDrawingBrush.color = brushColor;
             canvas.freeDrawingBrush.width = brushWidth;
         }
-    }, [activeTool, brushColor, brushWidth, fabricLoaded]);
+    }, [activeTool, brushColor, brushWidth, canvasReady]);
 
     // Handle canvas click for shape creation
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

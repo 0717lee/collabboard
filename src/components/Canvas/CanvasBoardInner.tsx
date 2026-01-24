@@ -40,6 +40,7 @@ import { useUpdateMyPresence, useOthers, useStorage, useMutation } from '@/liveb
 import { LiveblocksCursors } from './LiveblocksCursors';
 import { ChartWidget } from '@/components/Charts/ChartWidget';
 import styles from './CanvasBoard.module.css';
+import LZString from 'lz-string';
 
 // Dynamic import for fabric to avoid TypeScript issues
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -57,6 +58,25 @@ interface HistoryState {
     past: string[];
     future: string[];
 }
+
+// Helper to parse canvas data (supports both raw JSON and LZ-compressed Base64)
+const parseCanvasData = (data: string | null) => {
+    if (!data) return null;
+    try {
+        // If it starts with '{', assume it's legacy raw JSON
+        if (data.trim().startsWith('{')) {
+            return JSON.parse(data);
+        }
+        // Otherwise try to decompress
+        const decompressed = LZString.decompressFromBase64(data);
+        if (decompressed) {
+            return JSON.parse(decompressed);
+        }
+    } catch (e) {
+        console.error('Failed to parse canvas data', e);
+    }
+    return null;
+};
 
 const CanvasBoardInner: React.FC = () => {
     const { boardId } = useParams<{ boardId: string }>();
@@ -122,37 +142,7 @@ const CanvasBoardInner: React.FC = () => {
         });
     }, []);
 
-    // Sync from Liveblocks to local canvas
-    useEffect(() => {
-        if (!fabricRef.current || !canvasData || !canvasReady) return;
 
-        // Skip if this update originated from local changes
-        if (isRemoteUpdate.current) return;
-
-        try {
-            const currentJson = JSON.stringify(fabricRef.current.toJSON());
-            if (currentJson === canvasData) return;
-
-            const data = JSON.parse(canvasData);
-            if (data.objects) {
-                console.log('SYNC: Received update from Liveblocks', data.objects.length, 'objects');
-                const canvas = fabricRef.current;
-
-                // Disable auto-save/sync during remote update
-                isRemoteUpdate.current = true;
-
-                canvas.loadFromJSON(data).then(() => {
-                    canvas.renderAll();
-                    // Re-enable sync after a short delay
-                    setTimeout(() => {
-                        isRemoteUpdate.current = false;
-                    }, 100);
-                });
-            }
-        } catch (e) {
-            console.error('Error syncing remote data', e);
-        }
-    }, [canvasData, canvasReady]);
 
     // Initialize canvas
     useEffect(() => {
@@ -199,10 +189,10 @@ const CanvasBoardInner: React.FC = () => {
 
             if (canvasData && canvasData !== '{}') {
                 try {
-                    const data = JSON.parse(canvasData);
-                    if (data.objects) {
+                    const data = parseCanvasData(canvasData);
+                    if (data && data.objects) {
                         await canvas.loadFromJSON(data);
-                        canvas.renderAll();
+                        canvas.requestRenderAll();
                     }
                 } catch (e) {
                     console.error('Error loading from Liveblocks:', e);
@@ -246,8 +236,9 @@ const CanvasBoardInner: React.FC = () => {
             // Sync to Liveblocks only if not processing remote update
             if (fabricRef.current && !isRemoteUpdate.current && canvasDataRef.current !== null) {
                 const json = JSON.stringify(fabricRef.current.toJSON());
-                console.log('SYNC: Pushing update to Liveblocks, length:', json.length);
-                updateStorage(json);
+                const compressed = LZString.compressToBase64(json);
+                console.log('SYNC: Pushing. Original:', json.length, 'Compressed:', compressed.length);
+                updateStorage(compressed);
 
                 // Also save to DB periodically (handled by auto-save effect), 
                 // but we trigger immediate save on important changes if needed

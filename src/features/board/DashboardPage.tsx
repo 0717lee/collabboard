@@ -97,12 +97,22 @@ const DashboardPage: React.FC = () => {
             okType: 'danger',
             cancelText: isEn ? 'Cancel' : '取消',
             onOk: async () => {
-                const success = await deleteBoard(boardId);
-                if (success) {
-                    message.success(isEn ? 'Deleted' : '已删除');
-                } else {
-                    const error = useBoardStore.getState().error;
-                    message.error(error || (isEn ? 'Delete failed' : '删除失败，请查看控制台'));
+                console.log('Attempting delete...');
+                try {
+                    const result = await deleteBoard(boardId);
+                    console.log('Delete result:', result);
+
+                    if (result.success) {
+                        message.success(isEn ? 'Deleted' : '已删除');
+                    } else {
+                        // Use window.alert if message fails, just to be sure user sees it
+                        const msg = result.error || (isEn ? 'Delete failed' : '删除失败，未知错误');
+                        message.error(msg);
+                        console.error(msg);
+                    }
+                } catch (e) {
+                    console.error('Delete handler crashed', e);
+                    message.error('Delete handler crashed');
                 }
             },
         });

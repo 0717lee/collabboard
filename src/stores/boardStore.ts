@@ -10,7 +10,7 @@ interface BoardState {
 
     createBoard: (name: string) => Promise<Board | null>;
     updateBoard: (id: string, updates: Partial<Board>) => Promise<void>;
-    deleteBoard: (id: string) => Promise<boolean>;
+    deleteBoard: (id: string) => Promise<{ success: boolean; error?: string }>;
     setCurrentBoard: (board: Board | null) => void;
     fetchBoard: (boardId: string) => Promise<Board | null>;
     saveCanvasData: (boardId: string, data: string) => Promise<void>;
@@ -118,7 +118,6 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
     deleteBoard: async (id: string) => {
         try {
             // Use select() to ensure we actually deleted a record
-            // If RLS denies deletion, no error is returned but data is empty
             const { data, error } = await supabase
                 .from('boards')
                 .delete()
@@ -127,25 +126,28 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
 
             if (error) {
                 console.error('Delete board error:', error);
-                set({ isLoading: false, error: '删除出错: ' + error.message });
-                return false;
+                const msg = '删除出错: ' + error.message;
+                set({ isLoading: false, error: msg });
+                return { success: false, error: msg };
             }
 
             if (!data || data.length === 0) {
                 console.error('Delete board failed: No rows deleted');
-                set({ isLoading: false, error: '删除失败：权限不足或白板不存在 (请检查 Supabase RLS 策略)' });
-                return false;
+                const msg = '删除失败：找不到白板或没有删除权限 (RLS拒绝)';
+                set({ isLoading: false, error: msg });
+                return { success: false, error: msg };
             }
 
             set((state) => ({
                 boards: state.boards.filter((board) => board.id !== id),
                 currentBoard: state.currentBoard?.id === id ? null : state.currentBoard,
             }));
-            return true;
+            return { success: true };
         } catch (err) {
             console.error('Delete board failed:', err);
-            set({ isLoading: false, error: '删除失败，发生意外错误' });
-            return false;
+            const msg = '删除失败，发生意外错误';
+            set({ isLoading: false, error: msg });
+            return { success: false, error: msg };
         }
     },
 

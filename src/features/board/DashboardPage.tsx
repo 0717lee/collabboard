@@ -89,37 +89,43 @@ const DashboardPage: React.FC = () => {
     };
 
     const handleDeleteBoard = async (boardId: string, boardOwnerId: string, e: React.MouseEvent) => {
+        // Prevent all propagation immediately
+        if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
         e.stopPropagation();
         e.preventDefault();
 
-        // DEBUG: Permission Check
-        if (!user) {
-            alert('DEBUG: User not logged in');
+        if (String(user?.id) !== String(boardOwnerId)) {
+            alert('Permission denied check failed');
             return;
         }
 
-        // Use '==' to be loose about string/number ID types just in case, but usually strict
-        if (String(user.id) !== String(boardOwnerId)) {
-            alert(`DEBUG PERMISSION DENIED:\nUser ID: ${user.id}\nOwner ID: ${boardOwnerId}\nYou can only delete your own boards.`);
+        if (!window.confirm(isEn ? 'Delete this board?' : '确定要删除这个白板吗？')) {
             return;
         }
 
-        if (!window.confirm(isEn ? 'Delete this board?' : '确定要删除这个白板吗？此操作无法撤销。')) {
-            return;
-        }
+        const hideLoading = message.loading(isEn ? 'Deleting...' : '正在删除...', 0);
 
         try {
-            // alert(`DEBUG: Calling delete for ${boardId}...`);
-            const result = await deleteBoard(boardId);
-            // alert(`DEBUG RESULT: ${JSON.stringify(result)}`);
+            // Race against a 10s timeout to detect hangs
+            const timeoutPromise = new Promise<{ success: boolean; error: string }>((_, reject) =>
+                setTimeout(() => reject(new Error('Request Timed Out')), 10000)
+            );
+
+            const deletePromise = deleteBoard(boardId);
+
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const result = await Promise.race([deletePromise, timeoutPromise]) as any;
+
+            hideLoading();
 
             if (result.success) {
                 message.success(isEn ? 'Deleted' : '已删除');
             } else {
                 alert(`DELETE FAILURE: ${result.error}`);
             }
-        } catch (err) {
-            alert('DELETE EXCEPTION: ' + err);
+        } catch (err: any) {
+            hideLoading();
+            alert('DELETE ERROR: ' + (err.message || err));
         }
     };
 

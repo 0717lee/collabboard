@@ -16,8 +16,8 @@ export const LiveblocksCursors: React.FC = () => {
             {others.map(({ connectionId, presence, info }) => {
                 if (!presence?.cursor) return null;
 
-                const color = info?.color || COLORS[connectionId % COLORS.length];
-                const name = info?.name || `User ${connectionId}`;
+                const color = presence.color || info?.color || COLORS[connectionId % COLORS.length];
+                const name = presence.name || info?.name || `User ${connectionId}`;
 
                 return (
                     <div

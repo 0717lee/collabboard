@@ -135,6 +135,7 @@ const CanvasBoardInner: React.FC = () => {
 
             const data = JSON.parse(canvasData);
             if (data.objects) {
+                console.log('SYNC: Received update from Liveblocks', data.objects.length, 'objects');
                 const canvas = fabricRef.current;
 
                 // Disable auto-save/sync during remote update
@@ -242,6 +243,7 @@ const CanvasBoardInner: React.FC = () => {
             // Sync to Liveblocks only if not processing remote update
             if (fabricRef.current && !isRemoteUpdate.current && canvasDataRef.current !== null) {
                 const json = JSON.stringify(fabricRef.current.toJSON());
+                console.log('SYNC: Pushing update to Liveblocks, length:', json.length);
                 updateStorage(json);
 
                 // Also save to DB periodically (handled by auto-save effect), 
@@ -611,13 +613,13 @@ const CanvasBoardInner: React.FC = () => {
 
                 <div className={styles.headerRight}>
                     <div className={styles.collaborators}>
-                        {others.slice(0, 3).map(({ connectionId, info }) => (
-                            <Tooltip key={connectionId} title={info?.name || 'Anonymous'}>
+                        {others.slice(0, 3).map(({ connectionId, info, presence }) => (
+                            <Tooltip key={connectionId} title={presence?.name || info?.name || 'Anonymous'}>
                                 <div
                                     className={styles.collaboratorAvatar}
-                                    style={{ backgroundColor: info?.color || '#ccc' }}
+                                    style={{ backgroundColor: presence?.color || info?.color || '#ccc' }}
                                 >
-                                    {(info?.name || 'A').charAt(0).toUpperCase()}
+                                    {(presence?.name || info?.name || 'A').charAt(0).toUpperCase()}
                                 </div>
                             </Tooltip>
                         ))}

@@ -36,7 +36,7 @@ import {
 import { useBoardStore } from '@/stores/boardStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useLanguageStore } from '@/stores/languageStore';
-import { useUpdateMyPresence, useOthers } from '@/liveblocks.config';
+import { useUpdateMyPresence, useOthers, useStorage, useMutation } from '@/liveblocks.config';
 import { LiveblocksCursors } from './LiveblocksCursors';
 import { ChartWidget } from '@/components/Charts/ChartWidget';
 import styles from './CanvasBoard.module.css';
@@ -84,6 +84,16 @@ const CanvasBoardInner: React.FC = () => {
     const [linkCopied, setLinkCopied] = useState(false);
     const [fabricLoaded, setFabricLoaded] = useState(false);
 
+    // Liveblocks hooks - Sync Canvas Data
+    const canvasData = useStorage((root) => root.canvasData);
+
+    const updateStorage = useMutation(({ storage }, json: string) => {
+        storage.set('canvasData', json);
+    }, []);
+
+    // Ref to track if update is coming from remote (to avoid loop)
+    const isRemoteUpdate = useRef(false);
+
     // Get share link
     const shareLink = typeof window !== 'undefined'
         ? `${window.location.origin}/board/${boardId}`
@@ -104,6 +114,37 @@ const CanvasBoardInner: React.FC = () => {
             setFabricLoaded(true);
         });
     }, []);
+
+    // Sync from Liveblocks to local canvas
+    useEffect(() => {
+        if (!fabricRef.current || !canvasData || !fabricLoaded) return;
+
+        // Skip if this update originated from local changes
+        if (isRemoteUpdate.current) return;
+
+        try {
+            const currentJson = JSON.stringify(fabricRef.current.toJSON());
+            if (currentJson === canvasData) return;
+
+            const data = JSON.parse(canvasData);
+            if (data.objects) {
+                const canvas = fabricRef.current;
+
+                // Disable auto-save/sync during remote update
+                isRemoteUpdate.current = true;
+
+                canvas.loadFromJSON(data).then(() => {
+                    canvas.renderAll();
+                    // Re-enable sync after a short delay
+                    setTimeout(() => {
+                        isRemoteUpdate.current = false;
+                    }, 100);
+                });
+            }
+        } catch (e) {
+            console.error('Error syncing remote data', e);
+        }
+    }, [canvasData, fabricLoaded]);
 
     // Initialize canvas
     useEffect(() => {
@@ -139,13 +180,31 @@ const CanvasBoardInner: React.FC = () => {
                 setCurrentBoard(board);
             }
 
-            if (board && canvas) {
+            // Sync Strategy:
+            // 1. If Liveblocks (canvasData) has data, use it (it's the real-time truth)
+            // 2. If Liveblocks is empty (new session), load from DB (persistence layer)
+
+            if (canvasData && canvasData !== '{}') {
+                try {
+                    const data = JSON.parse(canvasData);
+                    if (data.objects) {
+                        await canvas.loadFromJSON(data);
+                        canvas.renderAll();
+                    }
+                } catch (e) {
+                    console.error('Error loading from Liveblocks:', e);
+                }
+            } else if (board) {
+                // Fallback to DB
                 try {
                     const data = JSON.parse(board.data);
                     if (data.objects && data.objects.length > 0) {
-                        canvas.loadFromJSON(data).then(() => {
-                            canvas.renderAll();
-                        });
+                        await canvas.loadFromJSON(data);
+                        canvas.renderAll();
+
+                        // Initial push to Liveblocks if we are the first one
+                        const json = JSON.stringify(data);
+                        updateStorage(json);
                     }
                 } catch {
                     console.log('Empty or invalid board data');
@@ -167,10 +226,35 @@ const CanvasBoardInner: React.FC = () => {
         };
         window.addEventListener('resize', handleResize);
 
-        // Save state on object modifications
-        canvas.on('object:modified', () => saveState());
-        canvas.on('object:added', () => saveState());
-        canvas.on('object:removed', () => saveState());
+        // Sync to Liveblocks listener
+        const handleModification = () => {
+            saveState();
+
+            // Sync to Liveblocks only if not processing remote update
+            if (fabricRef.current && !isRemoteUpdate.current) {
+                const json = JSON.stringify(fabricRef.current.toJSON());
+                updateStorage(json);
+
+                // Also save to DB periodically (handled by auto-save effect), 
+                // but we trigger immediate save on important changes if needed
+            }
+        };
+
+        canvas.on('object:modified', handleModification);
+        canvas.on('object:added', handleModification);
+        canvas.on('object:removed', handleModification);
+
+        // Track cursor
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        canvas.on('mouse:move', (options: any) => {
+            if (options.pointer) {
+                updateMyPresence({ cursor: options.pointer });
+            }
+        });
+
+        canvas.on('mouse:out', () => {
+            updateMyPresence({ cursor: null });
+        });
 
         // Save initial empty state for full undo capability
         setTimeout(() => {

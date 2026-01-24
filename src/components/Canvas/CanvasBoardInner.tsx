@@ -409,11 +409,14 @@ const CanvasBoardInner: React.FC = () => {
         const canvas = fabricRef.current;
         if (!canvas) return;
 
+        // Ensure we don't bind multiple times by cleaning up first (though React usually handles this)
+        canvas.off('mouse:down', handleCanvasMouseDown);
         canvas.on('mouse:down', handleCanvasMouseDown);
+
         return () => {
             canvas.off('mouse:down', handleCanvasMouseDown);
         };
-    }, [handleCanvasMouseDown, fabricLoaded]);
+    }, [handleCanvasMouseDown, fabricLoaded, fabricRef.current]);
 
     // Undo/Redo
     const undo = useCallback(() => {

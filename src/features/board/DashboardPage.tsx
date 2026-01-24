@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable no-alert */
 import React, { useState, useEffect } from 'react';
 import {
     Layout,

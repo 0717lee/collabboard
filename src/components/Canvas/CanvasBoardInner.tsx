@@ -337,7 +337,7 @@ const CanvasBoardInner: React.FC = () => {
                 </svg>`;
                 const cursorUrl = `data:image/svg+xml;base64,${btoa(svg)}`;
                 canvas.freeDrawingCursor = `url(${cursorUrl}) ${size / 2} ${size / 2}, auto`;
-            } catch (e) {
+            } catch {
                 canvas.freeDrawingCursor = 'crosshair';
             }
         }
@@ -418,7 +418,7 @@ const CanvasBoardInner: React.FC = () => {
         return () => {
             canvas.off('mouse:down', handleCanvasMouseDown);
         };
-    }, [handleCanvasMouseDown, fabricLoaded, fabricRef.current]);
+    }, [handleCanvasMouseDown, fabricLoaded]);
 
     // Undo/Redo
     const undo = useCallback(() => {

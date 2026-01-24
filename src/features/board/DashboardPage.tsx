@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from 'react';
 import {
     Layout,
@@ -88,7 +89,7 @@ const DashboardPage: React.FC = () => {
         form.resetFields();
     };
 
-    const handleDeleteBoard = (boardId: string, boardOwnerId: string, e: React.MouseEvent) => {
+    const handleDeleteBoard = async (boardId: string, boardOwnerId: string, e: React.MouseEvent) => {
         // Critical: Prevent event bubbling to card click
         if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
         e.stopPropagation();
@@ -100,31 +101,37 @@ const DashboardPage: React.FC = () => {
             return;
         }
 
-        Modal.confirm({
-            title: isEn ? 'Confirm Delete' : '确认删除',
-            content: isEn ? 'This cannot be undone. Delete this board?' : '删除后无法恢复，确定要删除这个白板吗？',
-            okText: isEn ? 'Delete' : '删除',
-            okType: 'danger',
-            cancelText: isEn ? 'Cancel' : '取消',
-            centered: true,
-            onOk: async () => {
-                const hideHelper = message.loading(isEn ? 'Deleting...' : '正在删除...', 0);
-                try {
-                    const result = await deleteBoard(boardId);
-                    hideHelper();
+        // Use native window.confirm for maximum reliability
+        // AntD Modal can have z-index/propagation issues in this context
+        if (!window.confirm(isEn ? 'Are you sure you want to delete this board?' : '确定要删除这个白板吗？\n删除后无法恢复。')) {
+            return;
+        }
 
-                    if (result.success) {
-                        message.success(isEn ? 'Deleted successfully' : '白板已删除');
-                    } else {
-                        message.error(result.error || (isEn ? 'Delete failed' : '删除失败'));
-                    }
-                } catch (err) {
-                    hideHelper();
-                    console.error('Delete error:', err);
-                    message.error(isEn ? 'An error occurred' : '发生错误，请稍后重试');
-                }
-            },
-        });
+        const hideHelper = message.loading(isEn ? 'Deleting...' : '正在删除...', 0);
+
+        try {
+            // Race against a 10s timeout to detect hangs
+            const timeoutPromise = new Promise<{ success: boolean; error: string }>((_, reject) =>
+                setTimeout(() => reject(new Error('Timeout')), 10000)
+            );
+
+            const deletePromise = deleteBoard(boardId);
+
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const result = await Promise.race([deletePromise, timeoutPromise]) as any;
+
+            hideHelper();
+
+            if (result.success) {
+                message.success(isEn ? 'Deleted successfully' : '白板已删除');
+            } else {
+                message.error(result.error || (isEn ? 'Delete failed' : '删除失败'));
+            }
+        } catch (err) {
+            hideHelper();
+            console.error('Delete error:', err);
+            message.error(isEn ? 'An error occurred' : '操作超时或失败');
+        }
     };
 
     const handleLogout = async () => {

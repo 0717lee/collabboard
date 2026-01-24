@@ -105,14 +105,14 @@ const DashboardPage: React.FC = () => {
                     if (result.success) {
                         message.success(isEn ? 'Deleted' : '已删除');
                     } else {
-                        // Use window.alert if message fails, just to be sure user sees it
-                        const msg = result.error || (isEn ? 'Delete failed' : '删除失败，未知错误');
-                        message.error(msg);
-                        console.error(msg);
+                        // FORCE ALERT for debugging visibility
+                        const msg = result.error || 'Unknown error';
+                        alert(`DEBUG ERROR: ${msg}`);
+                        console.error('Delete failed:', msg);
                     }
                 } catch (e) {
+                    alert('DEBUG CRASH: Delete handler failed');
                     console.error('Delete handler crashed', e);
-                    message.error('Delete handler crashed');
                 }
             },
         });

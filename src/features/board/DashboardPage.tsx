@@ -88,34 +88,29 @@ const DashboardPage: React.FC = () => {
         form.resetFields();
     };
 
-    const handleDeleteBoard = (boardId: string, e: React.MouseEvent) => {
-        e.stopPropagation(); // Critical to prevent navigation
-        Modal.confirm({
-            title: isEn ? 'Confirm Delete' : '确认删除',
-            content: isEn ? 'This cannot be undone. Delete this board?' : '删除后无法恢复，确定要删除这个白板吗？',
-            okText: isEn ? 'Delete' : '删除',
-            okType: 'danger',
-            cancelText: isEn ? 'Cancel' : '取消',
-            onOk: async () => {
-                console.log('Attempting delete...');
-                try {
-                    const result = await deleteBoard(boardId);
-                    console.log('Delete result:', result);
+    const handleDeleteBoard = async (boardId: string, e: React.MouseEvent) => {
+        // 1. Alert immediately to prove handler is called
+        // alert('DEBUG: Delete Icon Clicked'); 
+        // (Commented out to be less annoying if it fixes, but user said it wasn't showing)
 
-                    if (result.success) {
-                        message.success(isEn ? 'Deleted' : '已删除');
-                    } else {
-                        // FORCE ALERT for debugging visibility
-                        const msg = result.error || 'Unknown error';
-                        alert(`DEBUG ERROR: ${msg}`);
-                        console.error('Delete failed:', msg);
-                    }
-                } catch (e) {
-                    alert('DEBUG CRASH: Delete handler failed');
-                    console.error('Delete handler crashed', e);
-                }
-            },
-        });
+        e.stopPropagation();
+        e.preventDefault(); // Also prevent default
+
+        // 2. Use native confirm
+        if (!window.confirm(isEn ? 'Delete this board?' : '确定要删除这个白板吗？此操作无法撤销。')) {
+            return;
+        }
+
+        try {
+            const result = await deleteBoard(boardId);
+            if (result.success) {
+                message.success(isEn ? 'Deleted' : '已删除');
+            } else {
+                alert(`DELETE ERROR: ${result.error}`);
+            }
+        } catch (err) {
+            alert('DELETE EXCEPTION: ' + err);
+        }
     };
 
     const handleLogout = async () => {
@@ -255,11 +250,11 @@ const DashboardPage: React.FC = () => {
                                     <Tooltip title={isEn ? "Rename" : "编辑名称"} key="edit">
                                         <EditOutlined onClick={(e) => handleEditStart(board, e)} />
                                     </Tooltip>,
-                                    <Tooltip title="删除" key="delete">
-                                        <DeleteOutlined
-                                            onClick={(e) => handleDeleteBoard(board.id, e)}
-                                        />
-                                    </Tooltip>,
+                                    <DeleteOutlined
+                                        key="delete"
+                                        onClick={(e) => handleDeleteBoard(board.id, e)}
+                                        style={{ color: 'red' }}
+                                    />,
                                 ]}
                             >
                                 <Card.Meta

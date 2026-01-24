@@ -10,7 +10,7 @@ interface BoardState {
 
     createBoard: (name: string) => Promise<Board | null>;
     updateBoard: (id: string, updates: Partial<Board>) => Promise<void>;
-    deleteBoard: (id: string) => Promise<void>;
+    deleteBoard: (id: string) => Promise<boolean>;
     setCurrentBoard: (board: Board | null) => void;
     fetchBoard: (boardId: string) => Promise<Board | null>;
     saveCanvasData: (boardId: string, data: string) => Promise<void>;
@@ -124,15 +124,19 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
 
             if (error) {
                 console.error('Delete board error:', error);
-                return;
+                set({ isLoading: false, error: error.message });
+                return false;
             }
 
             set((state) => ({
                 boards: state.boards.filter((board) => board.id !== id),
                 currentBoard: state.currentBoard?.id === id ? null : state.currentBoard,
             }));
+            return true;
         } catch (err) {
             console.error('Delete board failed:', err);
+            set({ isLoading: false, error: '删除失败，发生意外错误' });
+            return false;
         }
     },
 

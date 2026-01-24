@@ -97,8 +97,13 @@ const DashboardPage: React.FC = () => {
             okType: 'danger',
             cancelText: isEn ? 'Cancel' : '取消',
             onOk: async () => {
-                await deleteBoard(boardId);
-                message.success(isEn ? 'Deleted' : '已删除');
+                const success = await deleteBoard(boardId);
+                if (success) {
+                    message.success(isEn ? 'Deleted' : '已删除');
+                } else {
+                    const error = useBoardStore.getState().error;
+                    message.error(error || (isEn ? 'Delete failed' : '删除失败，请查看控制台'));
+                }
             },
         });
     };

@@ -135,6 +135,7 @@ e2e/                     # E2E tests
 
 ### Exception Handling
 - **Network Reconnection** - WebSocket auto-reconnect
+- **Real-time Sync** - Liveblocks Storage + Loop Prevention Mechanism
 - **Large File Export** - Chunked processing
 
 ## 📄 License

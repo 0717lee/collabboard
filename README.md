@@ -135,7 +135,8 @@ e2e/                     # E2E 测试
 
 ### 异常处理
 1. **网络断开重连** - WebSocket 自动重连机制
-2. **大文件导出** - 分块处理 + 进度提示
+3. **Real-time Sync** - Liveblocks Storage + Optimistic UI + Loop Prevention
+4. **Large File Export** - Chunked processing + Progress feedback
 
 ## 📄 License
 

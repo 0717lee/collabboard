@@ -152,6 +152,8 @@ const CanvasBoardInner: React.FC = () => {
         if (!canvasRef.current || !containerRef.current || !fabricLoaded || !fabric) return;
 
         const container = containerRef.current;
+        console.log('Canvas Init - Container Dimensions:', container.clientWidth, container.clientHeight);
+
         const canvas = new fabric.Canvas(canvasRef.current, {
             width: container.clientWidth,
             height: container.clientHeight,
@@ -160,8 +162,12 @@ const CanvasBoardInner: React.FC = () => {
             preserveObjectStacking: true,
         });
 
+        // Debug
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (window as any).canvas = canvas;
+
         fabricRef.current = canvas;
-        setCanvasReady(true); // Trigger other effects
+        setCanvasReady(true);
 
         // Initialize free drawing brush
         canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
@@ -307,10 +313,13 @@ const CanvasBoardInner: React.FC = () => {
         const canvas = fabricRef.current;
         if (!canvas || !fabric || !canvasReady) return;
 
+        console.log('Switching Tool:', activeTool);
+
         canvas.isDrawingMode = activeTool === 'draw';
         canvas.selection = activeTool === 'select';
 
         if (activeTool === 'draw') {
+            console.log('Enabling Drawing Mode');
             // Ensure brush exists
             if (!canvas.freeDrawingBrush) {
                 canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
@@ -323,6 +332,7 @@ const CanvasBoardInner: React.FC = () => {
     // Handle canvas click for shape creation
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const handleCanvasMouseDown = useCallback((opt: any) => {
+        console.log('Mouse Down:', activeTool, opt); // DEBUG LOG
         if (activeTool === 'select' || activeTool === 'draw' || !fabric) return;
 
         const canvas = fabricRef.current;

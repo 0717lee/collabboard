@@ -21,7 +21,6 @@ import {
     BorderOutlined,
     MinusOutlined,
     FontSizeOutlined,
-    FileImageOutlined,
     UndoOutlined,
     RedoOutlined,
     DownloadOutlined,
@@ -52,7 +51,7 @@ import('fabric').then((mod) => {
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
 
-type ToolType = 'select' | 'draw' | 'eraser' | 'rect' | 'circle' | 'line' | 'text' | 'sticky';
+type ToolType = 'select' | 'draw' | 'eraser' | 'rect' | 'circle' | 'line' | 'text';
 
 interface HistoryState {
     past: string[];
@@ -317,16 +316,30 @@ const CanvasBoardInner: React.FC = () => {
             canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
             canvas.freeDrawingBrush.color = brushColor;
             canvas.freeDrawingBrush.width = brushWidth;
+            canvas.freeDrawingCursor = 'default';
         } else if (activeTool === 'eraser') {
-            // Use EraserBrush if available, otherwise fallback to white pencil (simple eraser)
+            const eraserWidth = brushWidth * 5;
+
+            // Use EraserBrush if available, otherwise fallback to white pencil
             if (fabric.EraserBrush) {
                 canvas.freeDrawingBrush = new fabric.EraserBrush(canvas);
             } else {
-                // Fallback: White brush (visual eraser for white background)
                 canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
                 canvas.freeDrawingBrush.color = '#ffffff';
             }
-            canvas.freeDrawingBrush.width = brushWidth * 5; // Eraser should be larger
+            canvas.freeDrawingBrush.width = eraserWidth;
+
+            // Create custom cursor for eraser
+            try {
+                const size = eraserWidth;
+                const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+                    <circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 2}" fill="rgba(255, 255, 255, 0.5)" stroke="black" stroke-width="2"/>
+                </svg>`;
+                const cursorUrl = `data:image/svg+xml;base64,${btoa(svg)}`;
+                canvas.freeDrawingCursor = `url(${cursorUrl}) ${size / 2} ${size / 2}, auto`;
+            } catch (e) {
+                canvas.freeDrawingCursor = 'crosshair';
+            }
         }
     }, [activeTool, brushColor, brushWidth, canvasReady]);
 
@@ -381,33 +394,6 @@ const CanvasBoardInner: React.FC = () => {
                     fontFamily: 'Inter, sans-serif',
                 });
                 break;
-            case 'sticky': {
-                const stickyRect = new fabric.Rect({
-                    width: 150,
-                    height: 150,
-                    fill: '#fef3c7',
-                    rx: 4,
-                    ry: 4,
-                    shadow: new fabric.Shadow({
-                        color: 'rgba(0,0,0,0.1)',
-                        blur: 10,
-                        offsetX: 2,
-                        offsetY: 2,
-                    }),
-                });
-                const stickyText = new fabric.IText('便签', {
-                    fontSize: 16,
-                    fill: '#92400e',
-                    originX: 'center',
-                    originY: 'center',
-                });
-                const group = new fabric.Group([stickyRect, stickyText], {
-                    left: x,
-                    top: y,
-                });
-                object = group;
-                break;
-            }
         }
 
         if (object) {
@@ -559,7 +545,6 @@ const CanvasBoardInner: React.FC = () => {
         { key: 'circle', icon: <span style={{ fontSize: 18 }}>○</span>, title: isEn ? 'Circle' : '圆形' },
         { key: 'line', icon: <MinusOutlined />, title: isEn ? 'Line' : '直线' },
         { key: 'text', icon: <FontSizeOutlined />, title: isEn ? 'Text' : '文本' },
-        { key: 'sticky', icon: <FileImageOutlined />, title: isEn ? 'Sticky Note' : '便签' },
     ];
 
     if (!fabricLoaded) {

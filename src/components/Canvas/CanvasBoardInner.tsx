@@ -168,6 +168,7 @@ const CanvasBoardInner: React.FC = () => {
         canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
         canvas.freeDrawingBrush.color = '#000000';
         canvas.freeDrawingBrush.width = 3;
+        canvas.freeDrawingBrush.decimate = 5;
 
         // Load board data
         const loadBoardData = async () => {
@@ -238,6 +239,14 @@ const CanvasBoardInner: React.FC = () => {
                 const json = JSON.stringify(fabricRef.current.toJSON());
                 const compressed = LZString.compressToBase64(json);
                 console.log('SYNC: Pushing. Original:', json.length, 'Compressed:', compressed.length);
+
+                // Limit check: Liveblocks WebSocket message limit is ~128KB
+                if (compressed.length > 100000) {
+                    console.error('SYNC ABORTED: Data too large (' + compressed.length + ' bytes).');
+                    message.warning(isEn ? 'Canvas too complex to sync. Please simplify.' : '画布内容过多无法同步，请简化内容。');
+                    return;
+                }
+
                 updateStorage(compressed);
 
                 // Also save to DB periodically (handled by auto-save effect), 
@@ -319,6 +328,7 @@ const CanvasBoardInner: React.FC = () => {
             canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
             canvas.freeDrawingBrush.color = brushColor;
             canvas.freeDrawingBrush.width = brushWidth;
+            canvas.freeDrawingBrush.decimate = 5; // Optimize path density
             canvas.freeDrawingCursor = 'default';
         } else if (activeTool === 'eraser') {
             const eraserWidth = brushWidth * 5;
@@ -329,6 +339,7 @@ const CanvasBoardInner: React.FC = () => {
             } else {
                 canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
                 canvas.freeDrawingBrush.color = '#ffffff';
+                canvas.freeDrawingBrush.decimate = 5; // Optimize
             }
             canvas.freeDrawingBrush.width = eraserWidth;
 

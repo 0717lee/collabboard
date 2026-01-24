@@ -117,14 +117,23 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
 
     deleteBoard: async (id: string) => {
         try {
-            const { error } = await supabase
+            // Use select() to ensure we actually deleted a record
+            // If RLS denies deletion, no error is returned but data is empty
+            const { data, error } = await supabase
                 .from('boards')
                 .delete()
-                .eq('id', id);
+                .eq('id', id)
+                .select();
 
             if (error) {
                 console.error('Delete board error:', error);
-                set({ isLoading: false, error: error.message });
+                set({ isLoading: false, error: '删除出错: ' + error.message });
+                return false;
+            }
+
+            if (!data || data.length === 0) {
+                console.error('Delete board failed: No rows deleted');
+                set({ isLoading: false, error: '删除失败：权限不足或白板不存在 (请检查 Supabase RLS 策略)' });
                 return false;
             }
 

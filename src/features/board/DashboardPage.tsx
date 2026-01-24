@@ -37,7 +37,10 @@ const DashboardPage: React.FC = () => {
     const { user, logout } = useAuthStore();
     const { boards, createBoard, deleteBoard, loadBoards } = useBoardStore();
     const { language } = useLanguageStore();
+    const [editingBoard, setEditingBoard] = useState<{ id: string; name: string } | null>(null);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
     const [searchQuery, setSearchQuery] = useState('');
     const [form] = Form.useForm();
 
@@ -67,26 +70,77 @@ const DashboardPage: React.FC = () => {
         }
     };
 
-    const handleDeleteBoard = (boardId: string, e: React.MouseEvent) => {
+    const handleEditStart = (board: { id: string; name: string }, e: React.MouseEvent) => {
         e.stopPropagation();
+        setEditingBoard(board);
+        form.setFieldsValue({ name: board.name });
+        setIsEditModalOpen(true);
+    };
+
+    const handleUpdateBoard = async (values: { name: string }) => {
+        if (!editingBoard) return;
+        // Assume updateBoard is available from store (it is)
+        const { updateBoard } = useBoardStore.getState();
+        await updateBoard(editingBoard.id, { name: values.name });
+        message.success(isEn ? 'Board updated' : '白板已更新');
+        setIsEditModalOpen(false);
+        setEditingBoard(null);
+        form.resetFields();
+    };
+
+    const handleDeleteBoard = (boardId: string, e: React.MouseEvent) => {
+        e.stopPropagation(); // Critical to prevent navigation
         Modal.confirm({
             title: isEn ? 'Confirm Delete' : '确认删除',
             content: isEn ? 'This cannot be undone. Delete this board?' : '删除后无法恢复，确定要删除这个白板吗？',
             okText: isEn ? 'Delete' : '删除',
             okType: 'danger',
             cancelText: isEn ? 'Cancel' : '取消',
-            onOk: () => {
-                deleteBoard(boardId);
+            onOk: async () => {
+                await deleteBoard(boardId);
                 message.success(isEn ? 'Deleted' : '已删除');
             },
         });
     };
 
     const handleLogout = async () => {
-        await logout();
-        navigate('/login');
-        message.info(isEn ? 'Logged out' : '已退出登录');
+        try {
+            await logout();
+            navigate('/login');
+            message.info(isEn ? 'Logged out' : '已退出登录');
+        } catch (e) {
+            console.error('Logout failed', e);
+        }
     };
+
+    // ... userMenuItems ...
+
+    // And update the return JSX for Cards
+    // actions={[
+    //    <Tooltip title="编辑名称" key="edit">
+    //        <EditOutlined onClick={(e) => handleEditStart(board, e)} />
+    //    </Tooltip>,
+    //    ...
+    // ]}
+
+    // And add Edit Modal at the bottom
+    /*
+            <Modal
+                title={isEn ? 'Edit Board Name' : '编辑白板名称'}
+                open={isEditModalOpen}
+                onCancel={() => {
+                    setIsEditModalOpen(false);
+                    setEditingBoard(null);
+                    form.resetFields();
+                }}
+                footer={null}
+                centered
+            >
+                <Form form={form} onFinish={handleUpdateBoard} layout="vertical">
+                    ...
+                </Form>
+            </Modal>
+    */
 
     const userMenuItems = [
         {
@@ -183,8 +237,8 @@ const DashboardPage: React.FC = () => {
                                     </div>
                                 }
                                 actions={[
-                                    <Tooltip title="编辑名称" key="edit">
-                                        <EditOutlined />
+                                    <Tooltip title={isEn ? "Rename" : "编辑名称"} key="edit">
+                                        <EditOutlined onClick={(e) => handleEditStart(board, e)} />
                                     </Tooltip>,
                                     <Tooltip title="删除" key="delete">
                                         <DeleteOutlined
@@ -233,6 +287,39 @@ const DashboardPage: React.FC = () => {
                         <Button onClick={() => setIsCreateModalOpen(false)}>{isEn ? 'Cancel' : '取消'}</Button>
                         <Button type="primary" htmlType="submit">
                             {isEn ? 'Create' : '创建'}
+                        </Button>
+                    </Form.Item>
+                </Form>
+            </Modal>
+
+            <Modal
+                title={isEn ? 'Rename Board' : '重命名白板'}
+                open={isEditModalOpen}
+                onCancel={() => {
+                    setIsEditModalOpen(false);
+                    setEditingBoard(null);
+                    form.resetFields();
+                }}
+                footer={null}
+                centered
+            >
+                <Form form={form} onFinish={handleUpdateBoard} layout="vertical" initialValues={{ name: editingBoard?.name }}>
+                    <Form.Item
+                        name="name"
+                        label={isEn ? 'Board Name' : '白板名称'}
+                        rules={[
+                            { required: true, message: isEn ? 'Please enter board name' : '请输入白板名称' },
+                            { max: 50, message: isEn ? 'Name cannot exceed 50 characters' : '名称不能超过50个字符' },
+                        ]}
+                    >
+                        <Input placeholder={isEn ? 'Enter board name' : '输入白板名称'} autoFocus />
+                    </Form.Item>
+                    <Form.Item style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 0 }}>
+                        <Button onClick={() => setIsEditModalOpen(false)} style={{ marginRight: 8 }}>
+                            {isEn ? 'Cancel' : '取消'}
+                        </Button>
+                        <Button type="primary" htmlType="submit">
+                            {isEn ? 'Save' : '保存'}
                         </Button>
                     </Form.Item>
                 </Form>

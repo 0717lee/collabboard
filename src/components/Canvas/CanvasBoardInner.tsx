@@ -368,6 +368,22 @@ const CanvasBoardInner: React.FC = () => {
         canvas.isDrawingMode = activeTool === 'draw' || activeTool === 'eraser';
         canvas.selection = activeTool === 'select';
 
+        // Handle path creation for eraser properties
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const handlePathCreated = (e: any) => {
+            if (activeTool === 'eraser' && e.path) {
+                e.path.set({
+                    globalCompositeOperation: 'destination-out',
+                    stroke: 'white', // Opaque color required for destination-out to clear pixels
+                    selectable: false,
+                    evented: false,
+                    perPixelTargetFind: true // Improve selection interaction if needed
+                });
+                canvas.requestRenderAll();
+            }
+        };
+        canvas.on('path:created', handlePathCreated);
+
         if (activeTool === 'draw') {
             // Use PencilBrush for drawing
             canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
@@ -378,15 +394,11 @@ const CanvasBoardInner: React.FC = () => {
         } else if (activeTool === 'eraser') {
             const eraserWidth = brushWidth * 5;
 
-            // Use EraserBrush if available, otherwise fallback to white pencil
-            if (fabric.EraserBrush) {
-                canvas.freeDrawingBrush = new fabric.EraserBrush(canvas);
-            } else {
-                canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
-                canvas.freeDrawingBrush.color = '#ffffff';
-                canvas.freeDrawingBrush.decimate = 5; // Optimize
-            }
+            // Use standard PencilBrush configured for erasure (destination-out)
+            canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+            canvas.freeDrawingBrush.color = 'white'; // Visual feedback while drawing
             canvas.freeDrawingBrush.width = eraserWidth;
+            canvas.freeDrawingBrush.decimate = 5; // Optimize
 
             // Create custom cursor for eraser
             try {
@@ -400,6 +412,10 @@ const CanvasBoardInner: React.FC = () => {
                 canvas.freeDrawingCursor = 'crosshair';
             }
         }
+
+        return () => {
+            canvas.off('path:created', handlePathCreated);
+        };
     }, [activeTool, brushColor, brushWidth, canvasReady]);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

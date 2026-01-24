@@ -88,6 +88,12 @@ const CanvasBoardInner: React.FC = () => {
     // Liveblocks hooks - Sync Canvas Data
     const canvasData = useStorage((root) => root.canvasData);
 
+    // Use ref to access latest canvasData in closures/callbacks without triggering re-renders
+    const canvasDataRef = useRef(canvasData);
+    useEffect(() => {
+        canvasDataRef.current = canvasData;
+    }, [canvasData]);
+
     const updateStorage = useMutation(({ storage }, json: string) => {
         storage.set('canvasData', json);
     }, []);
@@ -234,7 +240,7 @@ const CanvasBoardInner: React.FC = () => {
             saveState();
 
             // Sync to Liveblocks only if not processing remote update
-            if (fabricRef.current && !isRemoteUpdate.current && canvasData !== null) {
+            if (fabricRef.current && !isRemoteUpdate.current && canvasDataRef.current !== null) {
                 const json = JSON.stringify(fabricRef.current.toJSON());
                 updateStorage(json);
 
@@ -246,6 +252,7 @@ const CanvasBoardInner: React.FC = () => {
         canvas.on('object:modified', handleModification);
         canvas.on('object:added', handleModification);
         canvas.on('object:removed', handleModification);
+
 
         // Track cursor
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

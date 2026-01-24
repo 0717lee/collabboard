@@ -41,6 +41,7 @@ import { LiveblocksCursors } from './LiveblocksCursors';
 import { ChartWidget } from '@/components/Charts/ChartWidget';
 import styles from './CanvasBoard.module.css';
 import LZString from 'lz-string';
+import { deflate, inflate } from 'pako';
 
 // Dynamic import for fabric to avoid TypeScript issues
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -59,15 +60,46 @@ interface HistoryState {
     future: string[];
 }
 
+// Helper to convert Uint8Array to Base64 (stack-safe)
+const uint8ToBase64 = (u8: Uint8Array): string => {
+    let binary = '';
+    const len = u8.byteLength;
+    for (let i = 0; i < len; i++) {
+        binary += String.fromCharCode(u8[i]);
+    }
+    return window.btoa(binary);
+};
+
+// Helper to convert Base64 to Uint8Array
+const base64ToUint8 = (b64: string): Uint8Array => {
+    const binary = window.atob(b64);
+    const len = binary.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+        bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes;
+};
+
 // Helper to parse canvas data (supports both raw JSON and LZ-compressed Base64)
 const parseCanvasData = (data: string | null) => {
     if (!data) return null;
     try {
+        const trimmed = data.trim();
         // If it starts with '{', assume it's legacy raw JSON
-        if (data.trim().startsWith('{')) {
-            return JSON.parse(data);
+        if (trimmed.startsWith('{')) {
+            return JSON.parse(trimmed);
         }
-        // Otherwise try to decompress
+
+        // Pako Gzip (prefixed with 'z:')
+        if (trimmed.startsWith('z:')) {
+            const base64 = trimmed.substring(2);
+            const bytes = base64ToUint8(base64);
+            const decompressed = inflate(bytes, { to: 'string' });
+            return JSON.parse(decompressed);
+        }
+
+        // Otherwise try to decompress (LZString)
         const decompressed = LZString.decompressFromBase64(data);
         if (decompressed) {
             return JSON.parse(decompressed);
@@ -207,8 +239,12 @@ const CanvasBoardInner: React.FC = () => {
                         canvas.renderAll();
 
                         // Initial push to Liveblocks if we are the first one
-                        const json = JSON.stringify(data);
-                        updateStorage(json);
+                        if (canvasData !== null) {
+                            const json = JSON.stringify(data);
+                            const compressedBytes = deflate(json);
+                            const payload = 'z:' + uint8ToBase64(compressedBytes);
+                            updateStorage(payload);
+                        }
                     }
                 } catch {
                     console.log('Empty or invalid board data');
@@ -237,17 +273,23 @@ const CanvasBoardInner: React.FC = () => {
             // Sync to Liveblocks only if not processing remote update
             if (fabricRef.current && !isRemoteUpdate.current && canvasDataRef.current !== null) {
                 const json = JSON.stringify(fabricRef.current.toJSON());
-                const compressed = LZString.compressToBase64(json);
-                console.log('SYNC: Pushing. Original:', json.length, 'Compressed:', compressed.length);
+
+                // Compress using Pako (Gzip) for maximum reduction
+                const compressedBytes = deflate(json);
+                const compressedBase64 = uint8ToBase64(compressedBytes);
+                const payload = 'z:' + compressedBase64;
+
+                console.log('SYNC: Pushing. Original:', json.length, 'Gzip:', payload.length);
 
                 // Limit check: Liveblocks WebSocket message limit is ~128KB
-                if (compressed.length > 100000) {
-                    console.error('SYNC ABORTED: Data too large (' + compressed.length + ' bytes).');
-                    message.warning(isEn ? 'Canvas too complex to sync. Please simplify.' : '画布内容过多无法同步，请简化内容。');
+                // We use 125KB to be safe
+                if (payload.length > 125000) {
+                    console.error('SYNC ABORTED: Data too large (' + payload.length + ' bytes).');
+                    message.warning(isEn ? 'Canvas too complex. Please simplify.' : '画布内容过于复杂，无法同步。');
                     return;
                 }
 
-                updateStorage(compressed);
+                updateStorage(payload);
 
                 // Also save to DB periodically (handled by auto-save effect), 
                 // but we trigger immediate save on important changes if needed

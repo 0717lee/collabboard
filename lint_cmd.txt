@@ -1,0 +1,13 @@
+
+C:\Users\谦友Lee\Desktop\Project\Collabboard\src\components\Canvas\CanvasBoardInner.tsx
+  518:8  warning  React Hook useCallback has an unnecessary dependency: 'canvasReady'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\谦友Lee\Desktop\Project\Collabboard\src\features\board\DashboardPage.tsx
+  125:13  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+C:\Users\谦友Lee\Desktop\Project\Collabboard\src\features\settings\SettingsPage.tsx
+  10:5  error  'Space' is defined but never used  @typescript-eslint/no-unused-vars
+
+✖ 3 problems (1 error, 2 warnings)
+  0 errors and 1 warning potentially fixable with the `--fix` option.
+

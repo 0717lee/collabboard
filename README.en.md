@@ -61,9 +61,6 @@ npm run dev
 
 Visit http://localhost:5173 to view the app.
 
-### Demo Account
-- Email: `demo@collabboard.com`
-- Password: `demo123`
 
 ## 📝 Available Scripts
 

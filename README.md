@@ -61,9 +61,6 @@ npm run dev
 
 访问 http://localhost:5173 查看应用
 
-### 演示账号
-- 邮箱：`demo@collabboard.com`
-- 密码：`demo123`
 
 ## 📝 可用脚本
 

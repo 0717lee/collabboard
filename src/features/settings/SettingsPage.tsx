@@ -35,14 +35,6 @@ const SettingsPage: React.FC = () => {
         message.success(language === 'zh-CN' ? '设置已重置' : 'Settings reset');
     };
 
-    const themeColors = [
-        { value: '#1890ff', label: language === 'zh-CN' ? '默认蓝' : 'Default Blue' },
-        { value: '#667eea', label: language === 'zh-CN' ? '紫罗兰' : 'Violet' },
-        { value: '#52c41a', label: language === 'zh-CN' ? '极光绿' : 'Aurora Green' },
-        { value: '#fa541c', label: language === 'zh-CN' ? '日落橙' : 'Sunset Orange' },
-        { value: '#eb2f96', label: language === 'zh-CN' ? '法式洋红' : 'Magenta' },
-    ];
-
     const languageOptions = [
         { value: 'zh-CN' as Language, label: '简体中文' },
         { value: 'en-US' as Language, label: 'English' },
@@ -82,34 +74,6 @@ const SettingsPage: React.FC = () => {
                                 checked={settings.theme.mode === 'dark'}
                                 onChange={toggleTheme}
                             />
-                        </div>
-
-                        <Divider />
-
-                        <div className={styles.settingItem}>
-                            <div className={styles.settingInfo}>
-                                <Text strong>{language === 'zh-CN' ? '主题色' : 'Theme Color'}</Text>
-                                <Paragraph type="secondary" className={styles.settingDesc}>
-                                    {language === 'zh-CN' ? '选择应用主题颜色' : 'Choose app theme color'}
-                                </Paragraph>
-                            </div>
-                            <Select
-                                value={settings.theme.primaryColor}
-                                onChange={(color) => updateSettings({ theme: { ...settings.theme, primaryColor: color } })}
-                                style={{ width: 120 }}
-                            >
-                                {themeColors.map((color) => (
-                                    <Select.Option key={color.value} value={color.value}>
-                                        <Space>
-                                            <span
-                                                className={styles.colorDot}
-                                                style={{ backgroundColor: color.value }}
-                                            />
-                                            {color.label}
-                                        </Space>
-                                    </Select.Option>
-                                ))}
-                            </Select>
                         </div>
                     </Card>
 

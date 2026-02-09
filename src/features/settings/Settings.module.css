@@ -1,60 +1,103 @@
 .settingsLayout {
     min-height: 100vh;
-    background: linear-gradient(180deg, #f8f9fe 0%, #eef1f8 100%);
+    background: var(--bg-app);
+    padding-bottom: 40px;
 }
 
+/* Floating Glass Header */
 .header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 16px;
-    height: 56px;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
-    border-bottom: 1px solid #e8e8e8;
+    padding: 0 24px;
+    margin: 16px 24px 32px 24px;
+    height: 72px;
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-backdrop);
+    -webkit-backdrop-filter: var(--glass-backdrop);
+    border: var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    border-radius: 20px;
+    position: sticky;
+    top: 16px;
+    z-index: 100;
+    transition: all 0.3s ease;
 }
 
 .headerTitle {
     margin: 0 !important;
+    color: var(--text-primary);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 18px !important;
 }
 
 .content {
-    padding: 24px;
+    padding: 0 24px;
     max-width: 800px;
     margin: 0 auto;
+    width: 100%;
 }
 
 .settingsGrid {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 24px;
 }
 
+/* Modern Glass Card */
 .settingCard {
-    border-radius: 16px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    border-radius: 20px;
+    border: 1px solid rgba(0, 0, 0, 0.04);
+    background: #fff;
+    box-shadow:
+        0 2px 4px -1px rgba(0, 0, 0, 0.02),
+        0 4px 6px -1px rgba(0, 0, 0, 0.02);
+    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.settingCard:hover {
+    transform: translateY(-2px);
+    box-shadow:
+        0 10px 15px -3px rgba(0, 0, 0, 0.05),
+        0 4px 6px -2px rgba(0, 0, 0, 0.025);
+}
+
+.settingCard :global(.ant-card-body) {
+    padding: 24px;
 }
 
 .cardHeader {
     display: flex;
     align-items: center;
     gap: 12px;
-    margin-bottom: 20px;
+    margin-bottom: 24px;
 }
 
 .cardHeader h5 {
     margin: 0 !important;
+    color: var(--text-primary);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 16px !important;
 }
 
 .cardIcon {
     font-size: 20px;
-    color: #667eea;
+    color: var(--primary);
+    background: rgba(16, 185, 129, 0.1);
+    padding: 8px;
+    border-radius: 10px;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .settingItem {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    padding: 8px 0;
 }
 
 .settingInfo {
@@ -64,6 +107,7 @@
 .settingDesc {
     margin: 4px 0 0 0 !important;
     font-size: 13px;
+    color: var(--text-secondary);
 }
 
 .colorDot {
@@ -74,30 +118,45 @@
 }
 
 .resetButton {
-    margin-top: 12px;
+    margin-top: 16px;
+    height: 40px;
+    border-radius: 10px;
+    font-weight: 500;
 }
 
 /* Dark theme */
 :global(.dark) .settingsLayout {
-    background: linear-gradient(180deg, #1a1a2e 0%, #16162a 100%);
+    background: #0f172a !important;
 }
 
 :global(.dark) .header {
-    background: rgba(26, 26, 46, 0.95);
-    border-color: #2a2a4a;
-}
-
-:global(.dark) .headerTitle {
-    color: #fff;
+    background: rgba(15, 23, 42, 0.8);
+    border-color: rgba(255, 255, 255, 0.05);
 }
 
 :global(.dark) .settingCard {
-    background: #252542;
-    border-color: rgba(255, 255, 255, 0.1);
+    background: #1e293b;
+    border-color: rgba(255, 255, 255, 0.05);
+}
+
+:global(.dark) .cardHeader h5 {
+    color: #f8fafc;
+}
+
+:global(.dark) .settingDesc {
+    color: #94a3b8;
 }
 
 /* Mobile responsive */
 @media (max-width: 600px) {
+    .header {
+        margin: 0;
+        border-radius: 0;
+        top: 0;
+        padding: 0 16px;
+        height: 60px;
+    }
+
     .content {
         padding: 16px;
     }
@@ -105,6 +164,6 @@
     .settingItem {
         flex-direction: column;
         align-items: flex-start;
-        gap: 12px;
+        gap: 16px;
     }
 }

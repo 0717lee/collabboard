@@ -20,8 +20,9 @@
 - 📁 **Export** - Support PNG/SVG export
 
 ### User Experience
+- ✨ **Modern Glass UI** - Minimalist glassmorphism design for immersive experience
 - 🔐 **Authentication** - Complete registration/login system (JWT mock)
-- 🌓 **Theme Switching** - Light/Dark mode toggling
+- 🌓 **Dark Mode** - Perfect support for Light/Dark themes
 - 📱 **Responsive Design** - Optimized for desktop and mobile
 - ⚡ **Performance** - Code splitting, lazy loading
 

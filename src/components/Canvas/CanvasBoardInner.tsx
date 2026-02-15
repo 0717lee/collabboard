@@ -836,23 +836,29 @@ const CanvasBoardInner: React.FC = () => {
             </Modal>
 
             <Modal
-                title={isEn ? 'Invite Friends' : '邀请好友协作'}
                 open={showInviteModal}
                 onCancel={() => setShowInviteModal(false)}
                 footer={null}
                 centered
                 className={styles.inviteModal}
+                width={480}
             >
                 <div className={styles.inviteContent}>
-                    <p className={styles.inviteDescription}>
-                        {isEn
-                            ? 'Share the link below to invite friends to collaborate on this board. Users who open the link will see each other\'s cursors and edits in real-time.'
-                            : '分享以下链接，邀请好友一起协作编辑这个白板。打开链接的用户将能够实时看到彼此的光标和编辑内容。'}
-                    </p>
+                    <div className={styles.inviteHeader}>
+                        <div className={styles.inviteIcon}>
+                            <ShareAltOutlined />
+                        </div>
+                        <h2 className={styles.inviteTitle}>{isEn ? 'Invite Friends' : '邀请好友协作'}</h2>
+                        <p className={styles.inviteDescription}>
+                            {isEn
+                                ? 'Share the link below to invite friends to collaborate on this board. Users who open the link will see each other\'s cursors and edits in real-time.'
+                                : '分享以下链接，邀请好友一起协作编辑这个白板。打开链接的用户将能够实时看到彼此的光标和编辑内容。'}
+                        </p>
+                    </div>
 
                     <div className={styles.shareSection}>
                         <label>{isEn ? 'Share Link' : '分享链接'}</label>
-                        <Space.Compact style={{ width: '100%' }}>
+                        <div className={styles.shareInputGroup}>
                             <Input
                                 value={shareLink}
                                 readOnly
@@ -860,12 +866,13 @@ const CanvasBoardInner: React.FC = () => {
                             />
                             <Button
                                 type="primary"
+                                className={styles.copyButton}
                                 icon={linkCopied ? <CheckOutlined /> : <CopyOutlined />}
                                 onClick={handleCopyLink}
                             >
                                 {linkCopied ? (isEn ? 'Copied' : '已复制') : (isEn ? 'Copy' : '复制')}
                             </Button>
-                        </Space.Compact>
+                        </div>
                     </div>
 
                     <div className={styles.collaboratorsList}>
@@ -876,6 +883,7 @@ const CanvasBoardInner: React.FC = () => {
                                     {isEn ? 'Me' : '我'}
                                 </div>
                                 <span>{isEn ? 'Me (You)' : '我 (你)'}</span>
+                                <div className={styles.statusDot} />
                             </div>
                             {others.map(({ connectionId, info, presence }) => (
                                 <div key={connectionId} className={styles.onlineUser}>
@@ -886,6 +894,7 @@ const CanvasBoardInner: React.FC = () => {
                                         {(presence?.name || info?.name || 'A').charAt(0).toUpperCase()}
                                     </div>
                                     <span>{presence?.name || info?.name || 'Anonymous'}</span>
+                                    <div className={styles.statusDot} />
                                 </div>
                             ))}
                         </div>

@@ -26,7 +26,7 @@ const { Title, Text, Paragraph } = Typography;
 
 const SettingsPage: React.FC = () => {
     const navigate = useNavigate();
-    const { settings, updateSettings, toggleTheme, resetSettings } = useSettingsStore();
+    const { settings, updateSettings, resetSettings } = useSettingsStore();
     const { language, setLanguage } = useLanguageStore();
 
     const handleReset = () => {
@@ -55,27 +55,6 @@ const SettingsPage: React.FC = () => {
 
             <Content className={styles.content}>
                 <div className={styles.settingsGrid}>
-                    {/* Appearance */}
-                    <Card className={styles.settingCard}>
-                        <div className={styles.cardHeader}>
-                            <BulbOutlined className={styles.cardIcon} />
-                            <Title level={5}>{language === 'zh-CN' ? '外观' : 'Appearance'}</Title>
-                        </div>
-
-                        <div className={styles.settingItem}>
-                            <div className={styles.settingInfo}>
-                                <Text strong>{language === 'zh-CN' ? '深色模式' : 'Dark Mode'}</Text>
-                                <Paragraph type="secondary" className={styles.settingDesc}>
-                                    {language === 'zh-CN' ? '切换深色/浅色主题' : 'Switch between dark/light theme'}
-                                </Paragraph>
-                            </div>
-                            <Switch
-                                checked={settings.theme.mode === 'dark'}
-                                onChange={toggleTheme}
-                            />
-                        </div>
-                    </Card>
-
                     {/* Language Settings */}
                     <Card className={styles.settingCard}>
                         <div className={styles.cardHeader}>

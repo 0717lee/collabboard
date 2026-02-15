@@ -45,9 +45,9 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 };
 
 const App: React.FC = () => {
-  const { settings } = useSettingsStore();
+  // Force light mode
   const { initializeAuth } = useAuthStore();
-  const isDark = settings.theme.mode === 'dark';
+  const isDark = false;
 
   // Initialize auth on app startup to restore Supabase session
   React.useEffect(() => {

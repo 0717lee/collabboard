@@ -16,7 +16,7 @@
 ### Core Features
 - 🎨 **Whiteboard Drawing** - Free drawing, shapes (rectangle/circle/line), text, sticky notes
 - 👥 **Real-time Collaboration** - Multi-user editing, real-time cursor display
-- 📊 **Data Visualization** - Built-in ECharts (bar/line/pie charts)
+- � **Data Visualization** - Built-in ECharts (bar/line/pie charts)
 - 📁 **Export** - Support PNG/SVG export
 
 ### User Experience
@@ -111,7 +111,6 @@ e2e/                     # E2E tests
 - ✅ Auth State (Login/Register/Logout)
 - ✅ Board CRUD Operations
 - ✅ User Settings
-- ✅ Theme Switching
 
 ### E2E Scenarios
 - ✅ Full Login/Register Flow

@@ -297,17 +297,23 @@ const CanvasBoardInner: React.FC = () => {
 
         loadBoardData();
 
-        // Handle window resize
-        const handleResize = () => {
+        const resizeCanvas = () => {
             if (container && canvas) {
-                canvas.setDimensions({
-                    width: container.clientWidth,
-                    height: container.clientHeight,
-                });
-                canvas.renderAll();
+                const width = container.clientWidth;
+                const height = container.clientHeight;
+                if (width > 0 && height > 0) {
+                    canvas.setDimensions({
+                        width,
+                        height,
+                    });
+                    canvas.renderAll();
+                }
             }
         };
-        window.addEventListener('resize', handleResize);
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        const resizeObserver = new ResizeObserver(resizeCanvas);
+        resizeObserver.observe(container);
 
         // Sync to Liveblocks listener
         const handleModification = () => {
@@ -359,7 +365,8 @@ const CanvasBoardInner: React.FC = () => {
 
         return () => {
             setCanvasReady(false); // Reset ready state
-            window.removeEventListener('resize', handleResize);
+            window.removeEventListener('resize', resizeCanvas);
+            resizeObserver.disconnect();
             canvas.dispose();
             fabricRef.current = null;
         };
@@ -783,25 +790,27 @@ const CanvasBoardInner: React.FC = () => {
 
                     <Divider className={styles.toolDivider} />
 
-                    <div className={styles.colorPicker}>
-                        <ColorPicker
-                            value={brushColor}
-                            onChange={(color) => setBrushColor(color.toHexString())}
-                            size="small"
-                        />
-                    </div>
+                    <div className={styles.colorControls}>
+                        <div className={styles.colorPicker}>
+                            <ColorPicker
+                                value={brushColor}
+                                onChange={(color) => setBrushColor(color.toHexString())}
+                                size="small"
+                            />
+                        </div>
 
-                    <div className={styles.brushWidth}>
-                        <CircularSlider
-                            value={brushWidth}
-                            min={1}
-                            max={50}
-                            onChange={setBrushWidth}
-                            size={48}
-                            color={brushColor}
-                            thickness={4}
-                            trackColor="rgba(0,0,0,0.1)"
-                        />
+                        <div className={styles.brushWidth}>
+                            <CircularSlider
+                                value={brushWidth}
+                                min={1}
+                                max={50}
+                                onChange={setBrushWidth}
+                                size={40}
+                                color={brushColor}
+                                thickness={4}
+                                trackColor="rgba(0,0,0,0.1)"
+                            />
+                        </div>
                     </div>
                 </Sider>
 

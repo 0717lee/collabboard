@@ -169,6 +169,15 @@
     overflow: visible;
 }
 
+.toolbar :global(.ant-layout-sider-children) {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
 .toolButton {
     width: 48px;
     height: 48px;
@@ -214,6 +223,8 @@
     align-items: center;
     justify-content: center;
     line-height: 1;
+    width: 20px;
+    height: 20px;
 }
 
 .toolDivider {

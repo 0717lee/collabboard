@@ -38,6 +38,7 @@ import { useLanguageStore } from '@/stores/languageStore';
 import { useUpdateMyPresence, useOthers, useStorage, useMutation } from '@/liveblocks.config';
 import { LiveblocksCursors } from './LiveblocksCursors';
 import { ChartWidget } from '@/components/Charts/ChartWidget';
+import { CircularSlider } from './CircularSlider';
 import styles from './CanvasBoard.module.css';
 import LZString from 'lz-string';
 
@@ -792,13 +793,15 @@ const CanvasBoardInner: React.FC = () => {
                     </div>
 
                     <div className={styles.brushWidth}>
-                        <Slider
-                            vertical
-                            min={1}
-                            max={20}
+                        <CircularSlider
                             value={brushWidth}
+                            min={1}
+                            max={50}
                             onChange={setBrushWidth}
-                            className={styles.widthSlider}
+                            size={48}
+                            color={brushColor}
+                            thickness={4}
+                            trackColor="rgba(0,0,0,0.1)"
                         />
                     </div>
                 </Sider>

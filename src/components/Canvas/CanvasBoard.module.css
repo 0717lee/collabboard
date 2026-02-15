@@ -207,14 +207,9 @@
 }
 
 .brushWidth {
-    margin-top: 8px;
+    margin-top: 12px;
     display: flex;
     justify-content: center;
-}
-
-.widthSlider {
-    height: 100px;
-    margin-bottom: 8px;
 }
 
 /* Cursors */

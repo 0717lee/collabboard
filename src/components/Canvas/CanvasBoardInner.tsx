@@ -764,8 +764,8 @@ const CanvasBoardInner: React.FC = () => {
                 </div>
             </Header>
 
-            <Layout>
-                <Sider width={64} className={styles.toolbar}>
+            <Layout className={styles.boardArea}>
+                <Sider width={96} className={styles.toolbar}>
                     {tools.map((tool) => (
                         <Tooltip key={tool.key} title={tool.title} placement="right">
                             <Button

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from 'react';
 import {
     Layout,
@@ -122,8 +121,7 @@ const DashboardPage: React.FC = () => {
 
             const deletePromise = deleteBoard(boardId);
 
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const result = await Promise.race([deletePromise, timeoutPromise]) as any;
+            const result = await Promise.race([deletePromise, timeoutPromise]) as { success: boolean; error?: string };
 
             hideHelper();
 

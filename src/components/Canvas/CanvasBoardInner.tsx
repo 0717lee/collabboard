@@ -514,7 +514,7 @@ const CanvasBoardInner: React.FC = () => {
 
             setActiveTool('select');
         }
-    }, [activeTool, brushColor, canvasReady]); // Removed brushWidth dependency as it's not used in this scope
+    }, [activeTool, brushColor]); // Removed brushWidth dependency as it's not used in this scope
 
     useEffect(() => {
         const canvas = fabricRef.current;

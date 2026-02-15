@@ -87,6 +87,12 @@ npm run test:coverage
 npm run test:e2e
 ```
 
+首次运行 E2E 测试前需要下载浏览器：
+
+```bash
+npx playwright install
+```
+
 ## 📁 项目结构
 
 ```

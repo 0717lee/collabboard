@@ -11,7 +11,6 @@ import {
 } from 'antd';
 import {
     ArrowLeftOutlined,
-    BulbOutlined,
     ReloadOutlined,
     LayoutOutlined,
     GlobalOutlined,

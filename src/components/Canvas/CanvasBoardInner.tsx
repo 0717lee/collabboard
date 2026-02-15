@@ -12,7 +12,6 @@ import {
     Slider,
     Typography,
     Input,
-    Space,
 } from 'antd';
 import {
     ArrowLeftOutlined,

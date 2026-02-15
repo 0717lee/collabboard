@@ -46,6 +46,6 @@ test.describe('Dashboard', () => {
         await page.getByText('设置').click();
 
         await expect(page).toHaveURL(/.*settings/);
-        await expect(page.locator('text=外观')).toBeVisible();
+        await expect(page.locator('text=语言')).toBeVisible();
     });
 });

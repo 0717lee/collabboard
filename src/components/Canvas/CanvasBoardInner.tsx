@@ -9,7 +9,6 @@ import {
     message,
     Modal,
     ColorPicker,
-    Slider,
     Typography,
     Input,
 } from 'antd';

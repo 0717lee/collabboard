@@ -103,9 +103,6 @@ const CanvasBoardInner: React.FC = () => {
     const [fabricLoaded, setFabricLoaded] = useState(false);
     const [canvasReady, setCanvasReady] = useState(false);
 
-    // Debounce ref for Liveblocks sync
-    const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
     // Liveblocks hooks - Sync Canvas Data (Chunked)
     const chunk1 = useStorage((root) => root.canvasData);
     const chunk2 = useStorage((root) => root.canvasData_2);
@@ -165,6 +162,8 @@ const CanvasBoardInner: React.FC = () => {
 
         // Loop prevention: if data hasn't changed from what we last synced/sent, ignore
         if (canvasData === lastSyncedData.current) return;
+
+        // Receiving remote update
 
         const applyRemoteUpdate = async () => {
             try {
@@ -288,6 +287,7 @@ const CanvasBoardInner: React.FC = () => {
                         }
                     }
                 } catch {
+                    console.log('Empty or invalid board data');
                 }
             }
         };
@@ -312,27 +312,26 @@ const CanvasBoardInner: React.FC = () => {
         const resizeObserver = new ResizeObserver(resizeCanvas);
         resizeObserver.observe(container);
 
-        // Sync to Liveblocks listener
+        // Sync to Liveblocks listener (debounced 300ms to avoid flooding during rapid edits)
+        let syncTimeout: ReturnType<typeof setTimeout> | null = null;
         const handleModification = () => {
             saveState();
 
-            // Sync to Liveblocks only if not processing remote update
+            // Debounced sync to Liveblocks
             if (fabricRef.current && !isRemoteUpdate.current && canvasDataRef.current !== null) {
-                const json = JSON.stringify(fabricRef.current.toJSON());
-                const compressed = LZString.compressToBase64(json);
-                console.log('SYNC: Pushing. Original:', json.length, 'Compressed:', compressed.length);
+                if (syncTimeout) clearTimeout(syncTimeout);
+                syncTimeout = setTimeout(() => {
+                    if (!fabricRef.current) return;
+                    const json = JSON.stringify(fabricRef.current.toJSON());
+                    const compressed = LZString.compressToBase64(json);
 
-                // Limit check: Total capacity 5 * 80KB = 400KB
-                if (compressed.length > 400000) {
-                    console.error('SYNC ABORTED: Data too large (' + compressed.length + ' bytes).');
-                    message.warning(isEn ? 'Canvas too complex. Please simplify.' : '画布内容过多无法同步，请简化内容。');
-                    return;
-                }
+                    if (compressed.length > 400000) {
+                        message.warning(isEn ? 'Canvas too complex. Please simplify.' : '画布内容过多无法同步，请简化内容。');
+                        return;
+                    }
 
-                updateStorage(compressed);
-
-                // Also save to DB periodically (handled by auto-save effect), 
-                // but we trigger immediate save on important changes if needed
+                    updateStorage(compressed);
+                }, 300);
             }
         };
 
@@ -574,7 +573,7 @@ const CanvasBoardInner: React.FC = () => {
         });
     }, []);
 
-// Keyboard shortcuts (Ctrl+Z, Ctrl+Y, Delete)
+    // Keyboard shortcuts (Ctrl+Z, Ctrl+Y, Delete)
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             const tag = (e.target as HTMLElement)?.tagName;

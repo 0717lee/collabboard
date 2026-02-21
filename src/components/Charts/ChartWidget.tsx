@@ -156,6 +156,8 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({ onAdd }) => {
                         value={chartType}
                         onChange={setChartType}
                         style={{ width: 120 }}
+                        popupClassName={styles.chartSelectDropdown}
+                        getPopupContainer={(trigger) => trigger.parentElement || document.body}
                     >
                         <Option value="bar">柱状图</Option>
                         <Option value="line">折线图</Option>

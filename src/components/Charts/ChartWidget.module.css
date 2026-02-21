@@ -64,12 +64,14 @@
     margin-top: auto;
     height: 40px;
     border-radius: 8px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--primary);
+    color: #fff;
     border: none;
 }
 
 .addButton:hover {
-    background: linear-gradient(135deg, #5a6fd6 0%, #6a4190 100%);
+    background: var(--primary-hover);
+    color: #fff;
 }
 
 @media (max-width: 600px) {

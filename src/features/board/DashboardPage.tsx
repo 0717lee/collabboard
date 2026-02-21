@@ -319,7 +319,7 @@ const DashboardPage: React.FC = () => {
                         <Input placeholder={isEn ? 'Enter board name' : '输入白板名称'} autoFocus />
                     </Form.Item>
                     <Form.Item className={styles.modalFooter}>
-                        <Button onClick={() => setIsCreateModalOpen(false)}>{isEn ? 'Cancel' : '取消'}</Button>
+                        <Button onClick={() => setIsCreateModalOpen(false)} className={styles.cancelBtn}>{isEn ? 'Cancel' : '取消'}</Button>
                         <Button type="primary" htmlType="submit">
                             {isEn ? 'Create' : '创建'}
                         </Button>

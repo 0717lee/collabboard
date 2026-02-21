@@ -200,6 +200,20 @@
     padding: 32px;
 }
 
+
+
+.cancelBtn {
+    background: rgba(0, 0, 0, 0.04) !important;
+    border-radius: 999px !important;
+    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+    border: none !important;
+    color: var(--text-secondary);
+}
+.cancelBtn:hover {
+    background: rgba(0, 0, 0, 0.08) !important;
+    color: var(--text-primary);
+}
+
 .modalFooter {
     display: flex;
     justify-content: flex-end;
@@ -282,4 +296,12 @@
 
 :global(.dark) .thumbnailPlaceholder {
     color: #334155;
+}
+:global(.dark) .cancelBtn {
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+:global(.dark) .cancelBtn:hover {
+    background: rgba(255, 255, 255, 0.15) !important;
+    color: #fff !important;
 }

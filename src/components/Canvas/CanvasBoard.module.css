@@ -52,6 +52,23 @@
     transform: translateX(-50%);
 }
 
+
+
+.headerIconButton {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50% !important;
+}
+.headerTextButton {
+    display: flex !important;
+    align-items: center;
+    height: 36px;
+    border-radius: 999px !important;
+}
+
 .headerRight {
     display: flex;
     align-items: center;

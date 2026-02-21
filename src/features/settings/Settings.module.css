@@ -1,6 +1,6 @@
 .settingsLayout {
     min-height: 100vh;
-    background: var(--bg-app);
+    background: transparent;
     padding-bottom: 40px;
 }
 
@@ -46,12 +46,12 @@
 
 /* Modern Glass Card */
 .settingCard {
-    border-radius: 20px;
-    border: 1px solid rgba(0, 0, 0, 0.04);
-    background: #fff;
-    box-shadow:
-        0 2px 4px -1px rgba(0, 0, 0, 0.02),
-        0 4px 6px -1px rgba(0, 0, 0, 0.02);
+    border-radius: var(--card-radius);
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-backdrop);
+    -webkit-backdrop-filter: var(--glass-backdrop);
+    border: var(--glass-border);
+    box-shadow: var(--glass-shadow);
     transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
@@ -126,7 +126,7 @@
 
 /* Dark theme */
 :global(.dark) .settingsLayout {
-    background: #0f172a !important;
+    background: transparent !important;
 }
 
 :global(.dark) .header {
@@ -135,8 +135,9 @@
 }
 
 :global(.dark) .settingCard {
-    background: #1e293b;
-    border-color: rgba(255, 255, 255, 0.05);
+    background: var(--glass-bg);
+    border: var(--glass-border);
+    box-shadow: var(--glass-shadow);
 }
 
 :global(.dark) .cardHeader h5 {

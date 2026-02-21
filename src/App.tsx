@@ -70,6 +70,7 @@ const App: React.FC = () => {
         },
       }}
     >
+      <div className="aurora-bg" />
       <BrowserRouter>
         <Suspense fallback={<PageLoader />}>
           <Routes>

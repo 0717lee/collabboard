@@ -3,7 +3,7 @@
     width: 100vw;
     overflow: hidden;
     position: relative;
-    background: var(--bg-app);
+    background: transparent;
 }
 
 .boardArea {
@@ -19,7 +19,6 @@
     /* Dot pattern background for canvas */
     background-image: radial-gradient(rgba(0, 0, 0, 0.1) 1px, transparent 1px);
     background-size: 20px 20px;
-    background-color: #f8fafc;
 }
 
 .canvasContainer canvas {
@@ -500,11 +499,10 @@
 
 /* Dark theme */
 :global(.dark) .canvasLayout {
-    background: #0f172a !important;
+    background: transparent !important;
 }
 
 :global(.dark) .canvasContainer {
-    background-color: #0f172a !important;
     background-image: radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px);
 }
 

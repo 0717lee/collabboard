@@ -9,22 +9,26 @@
   [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178c6?logo=typescript)](https://www.typescriptlang.org/)
   [![Vite](https://img.shields.io/badge/Vite-7-646cff?logo=vite)](https://vite.dev/)
   [![License](https://img.shields.io/badge/License-MIT-green)](./LICENSE)
+
+  🔗 **[Live Demo → collabboard.pages.dev](https://collabboard.pages.dev)**
 </div>
 
 ## ✨ Features
 
 ### Core Features
-- 🎨 **Whiteboard Drawing** - Free drawing, shapes (rectangle/circle/line), text, sticky notes
-- 👥 **Real-time Collaboration** - Multi-user editing, real-time cursor display
-- � **Data Visualization** - Built-in ECharts (bar/line/pie charts)
-- 📁 **Export** - Support PNG/SVG export
+- 🎨 **Whiteboard Drawing** - Free draw, shapes (rect/circle/line), text, sticky notes
+- 👥 **Real-time Collaboration** - Multi-user editing via Liveblocks with live cursors & presence
+- 🔗 **One-click Invite** - Generate share links to invite collaborators instantly
+- 📊 **Data Visualization** - Built-in ECharts (bar/line/pie), embeddable on canvas
+- 📁 **Export** - PNG/SVG export support
+- ⌨️ **Keyboard Shortcuts** - Ctrl+Z undo / Ctrl+Y redo / Delete remove
 
 ### User Experience
-- ✨ **Modern Glass UI** - Minimalist glassmorphism design for immersive experience
-- 🔐 **Authentication** - Complete registration/login system (JWT mock)
-- 🌓 **Dark Mode** - Perfect support for Light/Dark themes
-- 📱 **Responsive Design** - Optimized for desktop and mobile
-- ⚡ **Performance** - Code splitting, lazy loading
+- ✨ **Ethereal Glassmorphism** - Minimalist frosted glass design for immersive experience
+- 🔐 **Authentication** - Full registration/login via Supabase Auth
+- 🌐 **Bilingual** - Chinese & English interface
+- 📱 **Responsive** - Adapts to desktop, tablet & mobile
+- ⚡ **Performant** - Code splitting, lazy loading, debounced Liveblocks sync
 
 ## 🛠️ Tech Stack
 
@@ -32,12 +36,16 @@
 |----------|------------|
 | **Framework** | React 19 + TypeScript |
 | **Build Tool** | Vite 7 |
-| **State Management** | Zustand |
+| **State Management** | Zustand (persist) |
 | **UI Components** | Ant Design 5 |
 | **Canvas Engine** | Fabric.js |
+| **Real-time** | Liveblocks |
+| **Backend/Auth** | Supabase (Auth + PostgreSQL) |
 | **Charts** | ECharts |
 | **Routing** | React Router 7 |
+| **Compression** | LZString |
 | **Testing** | Vitest + Playwright |
+| **Deployment** | Cloudflare Pages |
 
 ## 🚀 Quick Start
 
@@ -49,7 +57,7 @@
 
 ```bash
 # Clone repository
-git clone <repository-url>
+git clone https://github.com/0717lee/collabboard.git
 cd collabboard
 
 # Install dependencies
@@ -61,68 +69,49 @@ npm run dev
 
 Visit http://localhost:5173 to view the app.
 
+### Environment Variables
+
+```bash
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_LIVEBLOCKS_PUBLIC_KEY=your_liveblocks_key
+```
 
 ## 📝 Available Scripts
 
 ```bash
-# Development mode
-npm run dev
-
-# Build for production
-npm run build
-
-# Preview production build
-npm run preview
-
-# Lint code
-npm run lint
-
-# Run unit tests
-npm run test
-
-# Check test coverage
-npm run test:coverage
-
-# Run E2E tests
-npm run test:e2e
+npm run dev          # Development mode
+npm run build        # Build for production
+npm run preview      # Preview production build
+npm run lint         # Lint code
+npm run test         # Run unit tests
+npm run test:coverage # Check test coverage
+npm run test:e2e     # Run E2E tests
 ```
 
-Before running E2E tests for the first time, download browsers:
-
-```bash
-npx playwright install
-```
+Before running E2E tests for the first time: `npx playwright install`
 
 ## 📁 Project Structure
 
 ```
 src/
 ├── components/          # Reusable components
-│   ├── Canvas/          # Core canvas components
-│   └── Charts/          # Chart components
+│   ├── Canvas/          # Canvas core (CanvasBoardInner, LiveblocksRoom)
+│   └── Charts/          # Chart components (ChartWidget)
 ├── features/            # Feature modules
-│   ├── auth/            # User authentication
-│   ├── board/           # Board management
+│   ├── auth/            # Authentication (Login/Register)
+│   ├── board/           # Board management (Dashboard)
 │   └── settings/        # User settings
-├── stores/              # State management
+├── stores/              # Zustand state management
+│   ├── authStore.ts     # Auth state
+│   ├── boardStore.ts    # Board data
+│   ├── settingsStore.ts # User settings
+│   └── languageStore.ts # i18n
+├── lib/                 # Utilities (Supabase Client)
 ├── styles/              # Global styles
-├── types/               # TypeScript definitions
-└── tests/               # Unit tests
+└── types/               # TypeScript definitions
 e2e/                     # E2E tests
 ```
-
-## 🧪 Testing
-
-### Unit Test Coverage
-- ✅ Auth State (Login/Register/Logout)
-- ✅ Board CRUD Operations
-- ✅ User Settings
-
-### E2E Scenarios
-- ✅ Full Login/Register Flow
-- ✅ Board Creation & Search
-- ✅ Canvas Tool Operations
-- ✅ Export Functionality
 
 ## 🏗️ Architecture
 
@@ -133,17 +122,18 @@ e2e/                     # E2E tests
 
 ### Performance
 - **Code Splitting** - Route-based lazy loading
-- **Virtual Canvas** - Efficient Fabric.js rendering
+- **Debounced Sync** - 300ms debounce on Liveblocks pushes
+- **Data Compression** - LZString chunked storage (5×80KB)
 - **State Selectors** - Precise Zustand subscriptions
 
-### Exception Handling
-- **Network Reconnection** - WebSocket auto-reconnect
-- **Real-time Sync** - Liveblocks Storage + Loop Prevention Mechanism
-- **Large File Export** - Chunked processing
+### Real-time Collaboration
+- **Liveblocks Storage** - Chunked canvas data sync
+- **Loop Prevention** - Remote update flag to prevent infinite cycles
+- **Optimistic UI** - Instant local updates + async sync
 
 ## 📄 License
 
-MIT License © 2024
+MIT License © 2026
 
 ---
 

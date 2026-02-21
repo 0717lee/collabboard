@@ -1,20 +1,19 @@
-/* Global styles - Elegant Frosted Glassmorphism (V4 Focus Tracker Style) */
+/* Global styles - Focus Tracker Perfect Replica */
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap');
 
 :root {
-    /* Brand Colors ( Emerald / Cyan / Ice ) */
     --primary: #10B981;
     --primary-hover: #059669;
     --secondary: #06B6D4;
     --accent: #F59E0B;
 
-    /* Frosted Glass Tokens - Light, clean, pure white base */
-    --glass-bg: rgba(255, 255, 255, 0.65);
-    --glass-border: 1px solid rgba(255, 255, 255, 0.8);
-    --glass-border-light: 1px solid rgba(255, 255, 255, 0.9);
-    --glass-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.05);
-    --glass-backdrop: blur(24px) saturate(120%);
-
+    /* Focus Tracker Light Mode - Frosty White, Delicate Shadows */
+    --glass-bg: rgba(255, 255, 255, 0.75);
+    --glass-border: 1px solid rgba(255, 255, 255, 1);
+    --glass-shadow: 0 4px 24px -6px rgba(0, 0, 0, 0.04), 0 0 1px rgba(0,0,0,0.06);
+    --glass-shadow-lg: 0 20px 40px -10px rgba(0, 0, 0, 0.08), 0 0 1px rgba(0,0,0,0.1);
+    --glass-backdrop: blur(24px) saturate(140%);
+    
     --text-primary: #1e293b;
     --text-secondary: #64748b;
 
@@ -23,172 +22,136 @@
 }
 
 .dark {
-    /* Dark Mode Frosted Tokens */
-    --glass-bg: rgba(15, 23, 42, 0.65);
+    /* Dark Mode - Soft Noir Glass */
+    --glass-bg: rgba(15, 23, 42, 0.7);
     --glass-border: 1px solid rgba(255, 255, 255, 0.1);
-    --glass-border-light: 1px solid rgba(255, 255, 255, 0.15);
-    --glass-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.4);
-    --glass-backdrop: blur(24px) saturate(120%);
+    --glass-shadow: 0 4px 24px -6px rgba(0, 0, 0, 0.3);
+    --glass-shadow-lg: 0 20px 40px -10px rgba(0, 0, 0, 0.5);
+    --glass-backdrop: blur(24px) saturate(140%);
     --text-primary: #f8fafc;
     --text-secondary: #cbd5e1;
 }
 
-html,
-body,
-#root {
-    width: 100%;
-    min-height: 100%;
-    margin: 0;
-    padding: 0;
-}
-
-body {
-    color: var(--text-primary);
-    background-color: transparent;
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    overflow-x: hidden;
-}
+html, body, #root { width: 100%; min-height: 100%; margin: 0; padding: 0; }
+body { color: var(--text-primary); background-color: transparent; font-family: 'Plus Jakarta Sans', sans-serif; overflow-x: hidden; }
 
 /* -------------------------------------------------------------------------- */
-/* FLUID PASTEL ORB BACKGROUND (Focus Tracker Aesthetic)                      */
+/* ELEGANT GEOMETRIC ORBS (Focus Tracker Style)                               */
 /* -------------------------------------------------------------------------- */
 .aurora-bg {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
+    top: 0; left: 0; width: 100vw; height: 100vh;
     z-index: -999;
-    background-color: #f8fafc;
-    /* Very light, clean slate white */
+    background-color: #f4f7fb; /* Very soft slate/lavender-ish white */
     overflow: hidden;
 }
 
-.aurora-bg::before,
+/* Distinct, elegant spheres instead of a blurry mess */
+.aurora-bg::before {
+    content: '';
+    position: absolute;
+    width: 800px;
+    height: 800px;
+    border-radius: 50%;
+    top: -200px;
+    left: -200px;
+    background: radial-gradient(circle, rgba(16, 185, 129, 0.08) 0%, transparent 70%);
+    filter: blur(40px);
+    animation: drift 25s ease-in-out infinite alternate;
+}
+
 .aurora-bg::after {
     content: '';
     position: absolute;
-    width: 140vmax;
-    height: 140vmax;
-    top: -20vmax;
-    left: -20vmax;
-    opacity: 0.8;
-    z-index: -1;
-}
-
-.aurora-bg::before {
-    background:
-        radial-gradient(circle at 20% 30%, rgba(16, 185, 129, 0.12) 0%, transparent 50%),
-        /* Soft Emerald */
-        radial-gradient(circle at 80% 70%, rgba(6, 182, 212, 0.12) 0%, transparent 50%);
-    /* Soft Cyan */
-    filter: blur(80px);
-    animation: floatOrbs 20s ease-in-out infinite alternate;
-}
-
-.aurora-bg::after {
-    background:
-        radial-gradient(circle at 70% 30%, rgba(207, 250, 254, 0.5) 0%, transparent 40%),
-        /* Ice white/cyan glow */
-        radial-gradient(circle at 30% 70%, rgba(209, 250, 229, 0.4) 0%, transparent 40%);
-    /* Menthol glow */
+    width: 1000px;
+    height: 1000px;
+    border-radius: 50%;
+    bottom: -300px;
+    right: -200px;
+    background: radial-gradient(circle, rgba(6, 182, 212, 0.08) 0%, transparent 70%);
     filter: blur(60px);
-    animation: floatOrbsReverse 25s ease-in-out infinite alternate;
+    animation: driftReverse 30s ease-in-out infinite alternate;
 }
 
-.dark .aurora-bg {
-    background-color: #020617;
-    /* Deep slate baseline */
+.dark .aurora-bg { background-color: #020617; }
+.dark .aurora-bg::before { background: radial-gradient(circle, rgba(16, 185, 129, 0.15) 0%, transparent 70%); }
+.dark .aurora-bg::after { background: radial-gradient(circle, rgba(6, 182, 212, 0.15) 0%, transparent 70%); }
+
+@keyframes drift {
+    0% { transform: translate(0, 0) scale(1); }
+    100% { transform: translate(100px, 50px) scale(1.1); }
 }
-
-.dark .aurora-bg::before {
-    background:
-        radial-gradient(circle at 20% 30%, rgba(16, 185, 129, 0.15) 0%, transparent 50%),
-        radial-gradient(circle at 80% 70%, rgba(6, 182, 212, 0.15) 0%, transparent 50%);
-}
-
-.dark .aurora-bg::after {
-    background:
-        radial-gradient(circle at 70% 30%, rgba(6, 78, 59, 0.4) 0%, transparent 40%),
-        radial-gradient(circle at 30% 70%, rgba(8, 51, 68, 0.4) 0%, transparent 40%);
-}
-
-@keyframes floatOrbs {
-    0% {
-        transform: scale(1) translate(0, 0);
-    }
-
-    100% {
-        transform: scale(1.1) translate(5%, 5%);
-    }
-}
-
-@keyframes floatOrbsReverse {
-    0% {
-        transform: scale(1) translate(0, 0);
-    }
-
-    100% {
-        transform: scale(1.15) translate(-5%, -5%);
-    }
+@keyframes driftReverse {
+    0% { transform: translate(0, 0) scale(1); }
+    100% { transform: translate(-100px, -50px) scale(1.05); }
 }
 
 /* -------------------------------------------------------------------------- */
-/* GLOBAL ANT DESIGN GLASS OVERRIDES (RETAINED)                               */
+/* ANT DESIGN FIXES (NO DOUBLE BORDERS, NO DARK MODALS)                       */
 /* -------------------------------------------------------------------------- */
-.ant-card,
-.ant-card-head,
-.ant-card-body,
-.ant-modal-content,
-.ant-modal-header,
-.ant-modal-title,
-.ant-select-selector,
-.ant-select-dropdown,
-.ant-dropdown-menu,
-.ant-input,
-.ant-input-password,
-.ant-input-affix-wrapper,
+.ant-card, .ant-card-head, .ant-card-body,
+.ant-select-selector, .ant-select-dropdown, .ant-dropdown-menu,
+.ant-input, .ant-input-password, .ant-input-affix-wrapper,
 .ant-btn-default {
     background: transparent !important;
 }
 
-/* Fix input default white backgrounds sticking out */
-.ant-input,
-.ant-input-password,
-.ant-input-affix-wrapper,
-.ant-select-selector {
-    background: rgba(255, 255, 255, 0.5) !important;
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(255, 255, 255, 0.8) !important;
-    transition: all 0.3s;
-    border-radius: 12px;
+/* Force Modal to be Glassy */
+.ant-modal-content, .ant-modal-header, .ant-modal-title {
+    background: var(--glass-bg) !important;
+    backdrop-filter: var(--glass-backdrop) !important;
+    -webkit-backdrop-filter: var(--glass-backdrop) !important;
+    border: var(--glass-border) !important;
+    border-radius: var(--card-radius) !important;
+    box-shadow: none !important; /* Managed by parent */
 }
-
-.ant-input:focus,
-.ant-input-focused,
-.ant-input-affix-wrapper-focused,
-.ant-select-focused .ant-select-selector {
-    background: rgba(255, 255, 255, 0.8) !important;
-    border-color: var(--primary) !important;
-    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15) !important;
+.ant-modal {
+    box-shadow: var(--glass-shadow-lg) !important;
+    border-radius: var(--card-radius) !important;
 }
-
-.dark .ant-input,
-.dark .ant-input-password,
-.dark .ant-input-affix-wrapper,
-.dark .ant-select-selector {
-    background: rgba(0, 0, 0, 0.3) !important;
-    border-color: rgba(255, 255, 255, 0.15) !important;
-    color: #fff;
+.ant-modal-mask {
+    background: rgba(255, 255, 255, 0.3) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
 }
-
-.dark .ant-input:focus,
-.dark .ant-input-focused,
-.dark .ant-input-affix-wrapper-focused {
+.dark .ant-modal-mask {
     background: rgba(0, 0, 0, 0.5) !important;
 }
 
-/* Base Glass Class for reusable glass panels */
+/* Inputs - Crisp borders, no double outlines */
+.ant-input, .ant-input-password, .ant-input-affix-wrapper, .ant-select-selector {
+    background: rgba(255, 255, 255, 0.6) !important;
+    border: 1px solid rgba(0, 0, 0, 0.06) !important;
+    border-radius: 12px;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02) !important; /* Inner depth */
+    outline: none !important; /* CRITICAL: Fix double outline */
+}
+.ant-input:focus, .ant-input-focused, .ant-input-affix-wrapper-focus, .ant-input-affix-wrapper-focused, .ant-select-focused .ant-select-selector {
+    background: #fff !important;
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15) !important;
+    outline: none !important; /* CRITICAL */
+}
+.dark .ant-input, .dark .ant-input-password, .dark .ant-input-affix-wrapper, .dark .ant-select-selector {
+    background: rgba(0, 0, 0, 0.2) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: #fff;
+}
+.dark .ant-input:focus, .dark .ant-input-focused, .dark .ant-input-affix-wrapper-focus, .dark .ant-input-affix-wrapper-focused {
+    background: rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Chrome Autofill Glass Override */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 50px #fff inset !important;
+    -webkit-text-fill-color: var(--text-primary) !important;
+    transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Base Glass Class */
 .glass-panel {
     background: var(--glass-bg) !important;
     backdrop-filter: var(--glass-backdrop) !important;
@@ -197,48 +160,22 @@ body {
     box-shadow: var(--glass-shadow) !important;
     border-radius: var(--card-radius);
     position: relative;
-    overflow: hidden;
 }
 
-/* Animations and utilities */
-.page-loader {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    background: transparent;
-}
-
-::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-}
-
-::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-    background: rgba(16, 185, 129, 0.3);
-    border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: rgba(16, 185, 129, 0.5);
-}
-
-::selection {
-    background: rgba(16, 185, 129, 0.3);
-}
+.page-loader { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: transparent; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(16, 185, 129, 0.2); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(16, 185, 129, 0.4); }
+::selection { background: rgba(16, 185, 129, 0.2); }
 
 .ant-btn-primary {
-    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%) !important;
+    background: var(--primary) !important;
     border: none !important;
-    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3) !important;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25) !important;
 }
-
 .ant-btn-primary:hover {
-    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5) !important;
+    background: var(--primary-hover) !important;
     transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(16, 185, 129, 0.35) !important;
 }

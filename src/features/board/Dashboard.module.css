@@ -169,6 +169,7 @@
     background: var(--glass-bg) !important; backdrop-filter: var(--glass-backdrop) !important; -webkit-backdrop-filter: var(--glass-backdrop) !important;
     border: var(--glass-border) !important; box-shadow: var(--glass-shadow) !important;
     position: relative;
+    padding: 4px; /* Slight padding for inner border illusion */
 }
 
 .boardCard:hover {
@@ -181,8 +182,8 @@
 
 .boardThumbnail {
     height: 180px; display: flex; align-items: center; justify-content: center;
-    position: relative; overflow: hidden; background: rgba(0,0,0,0.03);
-    border-bottom: var(--glass-border);
+    position: relative; overflow: hidden; background: rgba(16, 185, 129, 0.02);
+    border-radius: calc(var(--card-radius) - 4px);
 }
 
 .thumbnailPlaceholder {
@@ -211,7 +212,7 @@
 
 .createModal :global(.ant-modal-content) {
     border-radius: 24px;
-    padding: 24px;
+    padding: 32px;
 }
 
 .modalFooter {

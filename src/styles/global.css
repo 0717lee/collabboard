@@ -245,5 +245,15 @@ input:-webkit-autofill:active {
 .ant-input-affix-wrapper-focused {
     outline: none !important;
     border: none !important;
-    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2), 0 4px 12px rgba(16, 185, 129, 0.1) !important;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.5), 0 4px 16px rgba(16, 185, 129, 0.25) !important;
+}
+
+/* Fix Ant Design Tooltip Shape (Override global pill) */
+.ant-tooltip-inner {
+    border-radius: 8px !important;
+    padding: 6px 12px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
 }

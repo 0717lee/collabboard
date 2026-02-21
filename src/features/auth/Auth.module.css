@@ -182,3 +182,51 @@
 :global(.dark) .demoAccount code {
   background: rgba(0, 0, 0, 0.2);
 }
+
+/* Tablet responsive */
+@media (max-width: 768px) {
+    .authContainer {
+        padding: 16px;
+    }
+}
+
+/* Mobile responsive */
+@media (max-width: 480px) {
+    .authContainer {
+        padding: 12px;
+        align-items: flex-start;
+        padding-top: 12vh;
+    }
+
+    .authCard {
+        max-width: 100%;
+        padding: 24px 20px;
+        border-radius: 20px;
+    }
+
+    .logoIcon {
+        font-size: 26px;
+    }
+
+    .logoText {
+        font-size: 20px;
+    }
+
+    .title {
+        font-size: 14px !important;
+    }
+
+    .logoSection {
+        margin-bottom: 20px;
+    }
+
+    .submitButton {
+        height: 44px;
+        font-size: 15px;
+    }
+
+    .errorMessage {
+        padding: 10px;
+        font-size: 13px;
+    }
+}

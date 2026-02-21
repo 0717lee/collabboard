@@ -221,6 +221,24 @@
     margin-top: 32px;
 }
 
+
+/* Tablet landscape responsive */
+@media (max-width: 1024px) {
+    .boardGrid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 24px;
+    }
+
+    .content {
+        padding: 0 24px;
+    }
+
+    .headerCenter {
+        max-width: 320px;
+        margin: 0 20px;
+    }
+}
+
 /* Mobile responsive */
 @media (max-width: 768px) {
     .header {
@@ -256,6 +274,52 @@
     .boardGrid {
         grid-template-columns: 1fr;
         gap: 20px;
+    }
+}
+
+
+
+/* Phone portrait responsive */
+@media (max-width: 480px) {
+    .header {
+        padding: 0 12px;
+        height: 52px;
+        margin: 0;
+    }
+
+    .logoText {
+        font-size: 15px;
+    }
+
+    .content {
+        padding: 0 12px;
+    }
+
+    .contentHeader {
+        margin-bottom: 24px;
+    }
+
+    .pageTitle {
+        font-size: 18px !important;
+    }
+
+    .createButton {
+        height: 42px;
+        font-size: 14px;
+        padding: 0 16px;
+        border-radius: 12px;
+    }
+
+    .boardGrid {
+        gap: 16px;
+    }
+
+    .emptyState {
+        padding: 60px 0;
+    }
+
+    .boardCardMeta {
+        font-size: 12px;
     }
 }
 

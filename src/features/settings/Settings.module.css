@@ -151,3 +151,27 @@
         gap: 16px;
     }
 }
+
+/* Phone portrait responsive */
+@media (max-width: 480px) {
+    .header {
+        height: 52px;
+        padding: 0 12px;
+    }
+
+    .content {
+        padding: 12px;
+    }
+
+    .settingCard {
+        padding: 16px;
+    }
+
+    .settingLabel {
+        font-size: 13px;
+    }
+
+    .settingDesc {
+        font-size: 12px;
+    }
+}

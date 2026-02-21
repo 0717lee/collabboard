@@ -33,7 +33,7 @@
 }
 
 html, body, #root { width: 100%; min-height: 100%; margin: 0; padding: 0; }
-body { color: var(--text-primary); background-color: transparent; font-family: 'Plus Jakarta Sans', sans-serif; overflow-x: hidden; }
+body { color: var(--text-primary); background-color: #f8fafc; font-family: 'Plus Jakarta Sans', sans-serif; overflow-x: hidden; }
 
 /* -------------------------------------------------------------------------- */
 /* ELEGANT GEOMETRIC ORBS (Focus Tracker Style)                               */
@@ -42,7 +42,7 @@ body { color: var(--text-primary); background-color: transparent; font-family: '
     position: fixed;
     top: 0; left: 0; width: 100vw; height: 100vh;
     z-index: -999;
-    background-color: #f4f7fb; /* Very soft slate/lavender-ish white */
+    background-color: #f8fafc;
     overflow: hidden;
 }
 
@@ -55,8 +55,8 @@ body { color: var(--text-primary); background-color: transparent; font-family: '
     border-radius: 50%;
     top: -200px;
     left: -200px;
-    background: radial-gradient(circle, rgba(16, 185, 129, 0.08) 0%, transparent 70%);
-    filter: blur(40px);
+    background: radial-gradient(circle, rgba(16, 185, 129, 0.05) 0%, transparent 70%);
+    filter: blur(80px);
     animation: drift 25s ease-in-out infinite alternate;
 }
 
@@ -68,8 +68,8 @@ body { color: var(--text-primary); background-color: transparent; font-family: '
     border-radius: 50%;
     bottom: -300px;
     right: -200px;
-    background: radial-gradient(circle, rgba(6, 182, 212, 0.08) 0%, transparent 70%);
-    filter: blur(60px);
+    background: radial-gradient(circle, rgba(6, 182, 212, 0.05) 0%, transparent 70%);
+    filter: blur(100px);
     animation: driftReverse 30s ease-in-out infinite alternate;
 }
 
@@ -118,29 +118,6 @@ body { color: var(--text-primary); background-color: transparent; font-family: '
     background: rgba(0, 0, 0, 0.5) !important;
 }
 
-/* Inputs - Crisp borders, no double outlines */
-.ant-input, .ant-input-password, .ant-input-affix-wrapper, .ant-select-selector {
-    background: rgba(255, 255, 255, 0.6) !important;
-    border: 1px solid rgba(0, 0, 0, 0.06) !important;
-    border-radius: 12px;
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02) !important; /* Inner depth */
-    outline: none !important; /* CRITICAL: Fix double outline */
-}
-.ant-input:focus, .ant-input-focused, .ant-input-affix-wrapper-focus, .ant-input-affix-wrapper-focused, .ant-select-focused .ant-select-selector {
-    background: #fff !important;
-    border-color: var(--primary) !important;
-    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15) !important;
-    outline: none !important; /* CRITICAL */
-}
-.dark .ant-input, .dark .ant-input-password, .dark .ant-input-affix-wrapper, .dark .ant-select-selector {
-    background: rgba(0, 0, 0, 0.2) !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    color: #fff;
-}
-.dark .ant-input:focus, .dark .ant-input-focused, .dark .ant-input-affix-wrapper-focus, .dark .ant-input-affix-wrapper-focused {
-    background: rgba(0, 0, 0, 0.4) !important;
-}
-
 /* Chrome Autofill Glass Override */
 input:-webkit-autofill,
 input:-webkit-autofill:hover, 
@@ -153,12 +130,12 @@ input:-webkit-autofill:active {
 
 /* Base Glass Class */
 .glass-panel {
-    background: var(--glass-bg) !important;
-    backdrop-filter: var(--glass-backdrop) !important;
-    -webkit-backdrop-filter: var(--glass-backdrop) !important;
-    border: var(--glass-border) !important;
-    box-shadow: var(--glass-shadow) !important;
-    border-radius: var(--card-radius);
+    background: rgba(255,255,255,0.6) !important;
+    backdrop-filter: blur(32px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(32px) saturate(180%) !important;
+    border: none !important;
+    box-shadow: 0 24px 48px -12px rgba(0,0,0,0.06) !important;
+    border-radius: 24px;
     position: relative;
 }
 
@@ -181,3 +158,11 @@ input:-webkit-autofill:active {
 }
 
 *:focus, *:focus-visible { outline: none !important; }
+
+
+/* EXTREME RESET FOR DOUBLE RINGS */
+*:focus, *:focus-visible, .ant-input:focus, .ant-input-focused {
+    outline: none !important;
+    box-shadow: none !important;
+    border: none !important;
+}

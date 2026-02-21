@@ -26,7 +26,7 @@
 .authCard {
     width: 100%; max-width: 400px; padding: 40px;
     background: var(--glass-bg); backdrop-filter: var(--glass-backdrop); -webkit-backdrop-filter: var(--glass-backdrop);
-    border: var(--glass-border); box-shadow: var(--glass-shadow); border-radius: var(--card-radius);
+    border: none; box-shadow: var(--glass-shadow); border-radius: var(--card-radius);
     z-index: 10; animation: scaleIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     position: relative;
     overflow: hidden;

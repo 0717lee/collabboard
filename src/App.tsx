@@ -66,38 +66,50 @@ const App: React.FC = () => {
         token: {
           colorPrimary: '#10B981',
           colorPrimaryHover: '#059669',
-          borderRadius: 16,
+          borderRadius: 24, // softer overall radius
           fontFamily: '"Plus Jakarta Sans", "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
           colorBgContainer: 'transparent',
-          colorBgElevated: isDark ? 'rgba(15,23,42,0.85)' : 'rgba(255,255,255,0.75)',
-          colorBorderSecondary: 'rgba(255,255,255,0.4)',
-          boxShadowSecondary: '0 10px 40px -10px rgba(0,0,0,0.06)',
-          lineWidthFocus: 0, // KILL double focus rings natively
-          controlOutlineWidth: 0, // KILL AntD focus outline
+          colorBgElevated: isDark ? 'rgba(15,23,42,0.6)' : 'rgba(255,255,255,0.6)',
+          colorBorder: 'transparent', // Nuke global borders
+          colorBorderSecondary: 'transparent',
+          boxShadowSecondary: '0 24px 48px -12px rgba(0,0,0,0.06)', // The only shadow we need
+          lineWidthFocus: 0,
+          controlOutlineWidth: 0,
         },
         components: {
           Card: {
-            colorBgContainer: 'transparent',
+            colorBgContainer: isDark ? 'rgba(15,23,42,0.4)' : 'rgba(255,255,255,0.4)',
             headerBg: 'transparent',
+            boxShadow: '0 24px 48px -12px rgba(0,0,0,0.06)',
+            lineWidth: 0, // Nuke card border
+            borderRadiusLG: 24,
+            paddingLG: 40, // Extreme whitespace
           },
           Modal: {
-            contentBg: isDark ? 'rgba(15,23,42,0.85)' : 'rgba(255,255,255,0.75)',
+            contentBg: isDark ? 'rgba(15,23,42,0.6)' : 'rgba(255,255,255,0.6)',
             headerBg: 'transparent',
-            boxShadow: '0 24px 48px -12px rgba(0,0,0,0.1)',
-            borderRadiusOuter: 24,
-            borderRadiusLG: 24,
-            paddingMD: 32,
-            paddingContentHorizontalLG: 32,
+            boxShadow: '0 32px 64px -16px rgba(0,0,0,0.1)',
+            lineWidth: 0, // Nuke modal border
+            borderRadiusOuter: 32,
+            borderRadiusLG: 32,
+            paddingMD: 40,
+            paddingContentHorizontalLG: 40,
+          },
+          Button: {
+            borderRadius: 999, // Extreme pill shape
+            colorBorder: 'transparent',
+            lineWidth: 0,
           },
           Input: {
-            colorBgContainer: isDark ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.6)',
-            colorBorder: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)',
-            hoverBorderColor: '#10B981',
-            activeBorderColor: '#10B981',
-            activeShadow: '0 0 0 3px rgba(16, 185, 129, 0.15)',
-            paddingBlock: 10,
-            paddingInline: 16,
-            borderRadius: 12,
+            colorBgContainer: isDark ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.5)',
+            colorBorder: 'transparent',
+            hoverBorderColor: 'transparent',
+            activeBorderColor: 'transparent',
+            activeShadow: '0 4px 12px rgba(16, 185, 129, 0.1)', // Soft glow focus, no ring
+            paddingBlock: 12,
+            paddingInline: 20,
+            borderRadius: 999, // Extreme pill shape
+            lineWidth: 0,
           }
         }
       }}

@@ -28,6 +28,10 @@ export const LiveblocksRoom: React.FC<LiveblocksRoomProps> = ({ roomId, children
             }}
             initialStorage={{
                 canvasData: '{}',
+                canvasData_2: '',
+                canvasData_3: '',
+                canvasData_4: '',
+                canvasData_5: '',
                 version: 0,
             }}
         >

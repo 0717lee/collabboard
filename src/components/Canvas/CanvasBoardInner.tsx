@@ -44,9 +44,6 @@ import LZString from 'lz-string';
 // Dynamic import for fabric to avoid TypeScript issues
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let fabric: any = null;
-import('fabric').then((mod) => {
-    fabric = mod;
-});
 
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
@@ -105,6 +102,9 @@ const CanvasBoardInner: React.FC = () => {
     const [linkCopied, setLinkCopied] = useState(false);
     const [fabricLoaded, setFabricLoaded] = useState(false);
     const [canvasReady, setCanvasReady] = useState(false);
+
+    // Debounce ref for Liveblocks sync
+    const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Liveblocks hooks - Sync Canvas Data (Chunked)
     const chunk1 = useStorage((root) => root.canvasData);
@@ -165,8 +165,6 @@ const CanvasBoardInner: React.FC = () => {
 
         // Loop prevention: if data hasn't changed from what we last synced/sent, ignore
         if (canvasData === lastSyncedData.current) return;
-
-        console.log('SYNC: Receiving update from remote');
 
         const applyRemoteUpdate = async () => {
             try {
@@ -290,7 +288,6 @@ const CanvasBoardInner: React.FC = () => {
                         }
                     }
                 } catch {
-                    console.log('Empty or invalid board data');
                 }
             }
         };
@@ -576,6 +573,28 @@ const CanvasBoardInner: React.FC = () => {
             isRestoringRef.current = false;
         });
     }, []);
+
+// Keyboard shortcuts (Ctrl+Z, Ctrl+Y, Delete)
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            const tag = (e.target as HTMLElement)?.tagName;
+            if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+                e.preventDefault();
+                undo();
+            } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+                e.preventDefault();
+                redo();
+            } else if (e.key === 'Delete' || e.key === 'Backspace') {
+                e.preventDefault();
+                deleteSelected();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [undo, redo]);
 
     // Zoom controls
     const handleZoom = (delta: number) => {

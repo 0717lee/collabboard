@@ -1,27 +1,12 @@
-.dashboardLayout {
-    min-height: 100vh;
-    background: transparent;
-    padding-bottom: 40px;
-}
+.dashboardLayout { min-height: 100vh; padding-bottom: 40px; background: transparent; }
 
 /* Floating Glass Header */
 .header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 24px;
-    margin: 16px 24px 32px 24px;
-    height: 72px;
-    background: var(--glass-bg);
-    backdrop-filter: var(--glass-backdrop);
-    -webkit-backdrop-filter: var(--glass-backdrop);
-    border: var(--glass-border);
-    box-shadow: var(--glass-shadow);
-    border-radius: 20px;
-    position: sticky;
-    top: 16px;
-    z-index: 100;
-    transition: all 0.3s ease;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 24px; margin: 16px 24px 32px 24px; height: 72px;
+    background: var(--glass-bg); backdrop-filter: var(--glass-backdrop); -webkit-backdrop-filter: var(--glass-backdrop);
+    border: var(--glass-border); box-shadow: var(--glass-shadow); border-radius: 20px;
+    position: sticky; top: 16px; z-index: 100; transition: all 0.3s ease;
 }
 
 .headerLeft {
@@ -180,14 +165,10 @@
 
 /* Modern Glass Card Style */
 .boardCard {
-    border-radius: var(--card-radius);
-    overflow: hidden;
-    transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
-    background: var(--glass-bg);
-    backdrop-filter: var(--glass-backdrop);
-    -webkit-backdrop-filter: var(--glass-backdrop);
-    border: var(--glass-border);
-    box-shadow: var(--glass-shadow);
+    border-radius: var(--card-radius); overflow: hidden; transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+    background: var(--glass-bg) !important; backdrop-filter: var(--glass-backdrop) !important; -webkit-backdrop-filter: var(--glass-backdrop) !important;
+    border: var(--glass-border) !important; box-shadow: var(--glass-shadow) !important;
+    position: relative;
 }
 
 .boardCard:hover {
@@ -199,13 +180,9 @@
 }
 
 .boardThumbnail {
-    height: 180px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    overflow: hidden;
-    background: transparent;
+    height: 180px; display: flex; align-items: center; justify-content: center;
+    position: relative; overflow: hidden; background: rgba(0,0,0,0.03);
+    border-bottom: var(--glass-border);
 }
 
 .thumbnailPlaceholder {

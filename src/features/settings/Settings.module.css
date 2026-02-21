@@ -1,27 +1,12 @@
-.settingsLayout {
-    min-height: 100vh;
-    background: transparent;
-    padding-bottom: 40px;
-}
+.settingsLayout { min-height: 100vh; background: transparent; padding-bottom: 40px; }
 
 /* Floating Glass Header */
 .header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 24px;
-    margin: 16px 24px 32px 24px;
-    height: 72px;
-    background: var(--glass-bg);
-    backdrop-filter: var(--glass-backdrop);
-    -webkit-backdrop-filter: var(--glass-backdrop);
-    border: var(--glass-border);
-    box-shadow: var(--glass-shadow);
-    border-radius: 20px;
-    position: sticky;
-    top: 16px;
-    z-index: 100;
-    transition: all 0.3s ease;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 24px; margin: 16px 24px 32px 24px; height: 72px;
+    background: var(--glass-bg); backdrop-filter: var(--glass-backdrop); -webkit-backdrop-filter: var(--glass-backdrop);
+    border: var(--glass-border); box-shadow: var(--glass-shadow); border-radius: 20px;
+    position: sticky; top: 16px; z-index: 100; transition: all 0.3s ease;
 }
 
 .headerTitle {
@@ -47,12 +32,10 @@
 /* Modern Glass Card */
 .settingCard {
     border-radius: var(--card-radius);
-    background: var(--glass-bg);
-    backdrop-filter: var(--glass-backdrop);
-    -webkit-backdrop-filter: var(--glass-backdrop);
-    border: var(--glass-border);
-    box-shadow: var(--glass-shadow);
+    background: var(--glass-bg) !important; backdrop-filter: var(--glass-backdrop) !important; -webkit-backdrop-filter: var(--glass-backdrop) !important;
+    border: var(--glass-border) !important; box-shadow: var(--glass-shadow) !important;
     transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+    position: relative;
 }
 
 .settingCard:hover {

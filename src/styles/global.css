@@ -8,15 +8,15 @@
     --secondary: #06B6D4;
     --accent: #F59E0B;
 
-    /* Dreamy Light Mode Tokens */
-    --bg-app: #f0fdfa; /* Very light teal/emerald tint */
-    --glass-bg: rgba(255, 255, 255, 0.15);
-    --glass-border: 1px solid rgba(255, 255, 255, 0.5);
+    /* Dreamy Light Mode Tokens V3 - True Glass */
+    --bg-app: #e0f2fe; /* Slightly deeper pastel base for contrast */
+    --glass-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.1) 100%);
+    --glass-border: 1px solid rgba(255, 255, 255, 0.8);
     --glass-shadow:
-        0 8px 32px 0 rgba(0, 0, 0, 0.05),
-        inset 0 0 0 1px rgba(255, 255, 255, 0.2),
-        inset 0 0 20px rgba(255, 255, 255, 0.15); /* Inner glow */
-    --glass-backdrop: blur(24px) saturate(200%);
+        0 8px 32px 0 rgba(0, 0, 0, 0.07),
+        inset 0 1px 1px rgba(255, 255, 255, 0.9),
+        inset 0 -1px 1px rgba(255, 255, 255, 0.2); /* Optical reflection */
+    --glass-backdrop: blur(24px) saturate(180%);
 
     --text-primary: #0f172a;
     --text-secondary: #64748b;
@@ -260,7 +260,7 @@ html {
 }
 
 
-/* Dreamy Aurora Background */
+/* Vibrant Aurora Background V3 */
 .aurora-bg {
     position: fixed;
     top: 0;
@@ -269,9 +269,63 @@ html {
     height: 100vh;
     z-index: -1;
     overflow: hidden;
-    background: var(--bg-app);
+    background: #eef2ff; /* Very soft cool white base */
 }
 
+/* Base vibrant gradient to ensure no dead white zones */
+.aurora-bg::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: 
+        radial-gradient(circle at 10% 20%, rgba(16, 185, 129, 0.4) 0%, transparent 60%),
+        radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.4) 0%, transparent 60%),
+        radial-gradient(circle at 50% 50%, rgba(245, 158, 11, 0.1) 0%, transparent 50%); /* Hint of warmth */
+    filter: blur(40px);
+}
+
+/* Floating organic shapes */
+.aurora-bg::after {
+    content: '';
+    position: absolute;
+    width: 150vw;
+    height: 150vw;
+    top: -25vw;
+    left: -25vw;
+    background: 
+        conic-gradient(from 0deg at 50% 50%, 
+            rgba(16, 185, 129, 0.3) 0deg, 
+            rgba(6, 182, 212, 0.3) 120deg, 
+            rgba(16, 185, 129, 0.1) 240deg, 
+            rgba(16, 185, 129, 0.3) 360deg);
+    border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+    filter: blur(100px);
+    animation: slowSpin 30s linear infinite;
+    pointer-events: none;
+}
+
+@keyframes slowSpin {
+    0% { transform: rotate(0deg) scale(1); }
+    50% { transform: rotate(180deg) scale(1.1); border-radius: 60% 40% 30% 70% / 50% 60% 40% 50%; }
+    100% { transform: rotate(360deg) scale(1); }
+}
+
+.dark .aurora-bg {
+    background: #022c22;
+}
+.dark .aurora-bg::before {
+    background: 
+        radial-gradient(circle at 10% 20%, rgba(16, 185, 129, 0.2) 0%, transparent 60%),
+        radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.2) 0%, transparent 60%);
+}
+.dark .aurora-bg::after {
+    background: 
+        conic-gradient(from 0deg at 50% 50%, 
+            rgba(16, 185, 129, 0.15) 0deg, 
+            rgba(6, 182, 212, 0.15) 120deg, 
+            rgba(16, 185, 129, 0.05) 240deg, 
+            rgba(16, 185, 129, 0.15) 360deg);
+}
 .aurora-bg::before,
 .aurora-bg::after {
     content: '';
@@ -304,4 +358,33 @@ html {
 
 .dark .aurora-bg::after {
     background: radial-gradient(circle, rgba(6, 182, 212, 0.3) 0%, transparent 60%);
+}
+
+/* Global Ant Design Overrides to Prevent Opaque Blocks */
+.ant-card {
+    background: transparent !important;
+}
+.ant-card-head {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+.ant-card-body {
+    background: transparent !important;
+}
+
+/* Fix input default white backgrounds sticking out */
+.ant-input, .ant-input-password, .ant-select-selector {
+    background: rgba(255, 255, 255, 0.4) !important;
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.6) !important;
+    transition: all 0.3s;
+}
+.ant-input:focus, .ant-input-focused, .ant-select-focused .ant-select-selector {
+    background: rgba(255, 255, 255, 0.7) !important;
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2) !important;
+}
+.dark .ant-input, .dark .ant-input-password, .dark .ant-select-selector {
+    background: rgba(0, 0, 0, 0.2) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    color: #fff;
 }

@@ -65,9 +65,18 @@ const App: React.FC = () => {
         algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
         token: {
           colorPrimary: '#10B981',
-          borderRadius: 8,
+          borderRadius: 12, // Increased for glass feel
           fontFamily: '"Plus Jakarta Sans", "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif',
+          colorBgContainer: 'transparent',
+          colorBgElevated: isDark ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.6)',
+          colorBorderSecondary: 'transparent',
         },
+        components: {
+          Card: {
+            colorBgContainer: 'transparent',
+            headerBg: 'transparent',
+          }
+        }
       }}
     >
       <div className="aurora-bg" />

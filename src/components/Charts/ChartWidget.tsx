@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import ReactECharts from 'echarts-for-react';
-import { Input, Button, Select, InputNumber } from 'antd';
+import { Input, Button, Segmented, InputNumber } from 'antd';
 import { PlusOutlined, MinusCircleOutlined } from '@ant-design/icons';
 import styles from './ChartWidget.module.css';
 
@@ -9,7 +9,7 @@ interface ChartWidgetProps {
     onAdd: (chartData: any) => void;
 }
 
-const { Option } = Select;
+
 
 export const ChartWidget: React.FC<ChartWidgetProps> = ({ onAdd }) => {
     const [chartType, setChartType] = useState<'bar' | 'line' | 'pie'>('bar');
@@ -152,17 +152,16 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({ onAdd }) => {
             <div className={styles.editor}>
                 <div className={styles.formRow}>
                     <label>图表类型</label>
-                    <Select
+                    <Segmented
                         value={chartType}
-                        onChange={setChartType}
-                        style={{ width: 120 }}
-                        popupClassName={styles.chartSelectDropdown}
-                        getPopupContainer={(trigger) => trigger.parentElement || document.body}
-                    >
-                        <Option value="bar">柱状图</Option>
-                        <Option value="line">折线图</Option>
-                        <Option value="pie">饼图</Option>
-                    </Select>
+                        onChange={(val) => setChartType(val as 'bar' | 'line' | 'pie')}
+                        options={[
+                            { label: '柱状图', value: 'bar' },
+                            { label: '折线图', value: 'line' },
+                            { label: '饼图', value: 'pie' },
+                        ]}
+                        block
+                    />
                 </div>
 
                 <div className={styles.formRow}>

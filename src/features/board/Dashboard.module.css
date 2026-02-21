@@ -43,28 +43,13 @@
 }
 
 /* Glass Search Input */
-.searchInput {
-    border-radius: 12px;
-    padding: 10px 16px;
-    background: rgba(0, 0, 0, 0.03);
-    border: 1px solid transparent;
-    transition: all 0.2s;
-}
+.searchInput { transition: all 0.2s; padding: 4px; }
 
-.searchInput:hover {
-    background: rgba(0, 0, 0, 0.05);
-}
 
-.searchInput:focus-within {
-    background: #fff;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-    border-color: rgba(16, 185, 129, 0.2);
-}
 
-.searchInput :global(.ant-input) {
-    background: transparent;
-    font-size: 14px;
-}
+
+
+
 
 .headerRight {
     display: flex;
@@ -275,17 +260,11 @@
     color: #f8fafc !important;
 }
 
-:global(.dark) .searchInput {
-    background: rgba(255, 255, 255, 0.05);
-}
 
-:global(.dark) .searchInput:focus-within {
-    background: rgba(30, 41, 59, 0.8);
-}
 
-:global(.dark) .searchInput :global(.ant-input) {
-    color: #fff;
-}
+:global(.dark) 
+
+:global(.dark) 
 
 :global(.dark) .userInfo:hover {
     background: rgba(255, 255, 255, 0.1);

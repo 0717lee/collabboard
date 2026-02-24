@@ -18,7 +18,7 @@ export const CircularSlider: React.FC<CircularSliderProps> = ({
     max,
     onChange,
     size = 40,
-    color = '#10B981',
+    color = '#00F0FF',
     trackColor = 'rgba(0,0,0,0.06)',
     thickness = 3,
     className

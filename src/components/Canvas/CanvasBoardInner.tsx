@@ -229,7 +229,7 @@ const CanvasBoardInner: React.FC = () => {
         const canvas = new fabric.Canvas(canvasRef.current, {
             width: container.clientWidth,
             height: container.clientHeight,
-            backgroundColor: '#ffffff',
+            backgroundColor: 'transparent',
             selection: true,
             preserveObjectStacking: true,
         });

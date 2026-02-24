@@ -1,12 +1,29 @@
-.dashboardLayout { min-height: 100vh; padding-bottom: 40px; background: transparent; }
+.dashboardLayout {
+    min-height: 100vh;
+    padding-bottom: 40px;
+    background: transparent;
+}
 
-/* Floating Glass Header */
+/* Floating Soft Header */
 .header {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 0 24px; margin: 16px 24px 32px 24px; height: 72px;
-    background: var(--glass-bg); backdrop-filter: var(--glass-backdrop); -webkit-backdrop-filter: var(--glass-backdrop);
-    border: var(--glass-border); box-shadow: var(--glass-shadow); border-radius: 20px;
-    position: sticky; top: 16px; z-index: 100; transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32px;
+    /* more breathing room */
+    margin: 24px 32px 40px 32px;
+    height: 80px;
+    /* Taller */
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-backdrop);
+    -webkit-backdrop-filter: var(--glass-backdrop);
+    border: var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    border-radius: var(--card-radius);
+    position: sticky;
+    top: 24px;
+    z-index: 100;
+    transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 .headerLeft {
@@ -17,39 +34,68 @@
 .logo {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     text-decoration: none;
 }
 
 .logoIcon {
-    font-size: 26px;
+    font-size: 28px;
     color: var(--primary);
-    filter: drop-shadow(0 2px 4px rgba(16, 185, 129, 0.2));
+    /* Sage Accent */
 }
 
 .logoText {
     font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 18px;
+    font-size: 20px;
     font-weight: 700;
     color: var(--text-primary);
     background: transparent;
     -webkit-text-fill-color: initial;
+    letter-spacing: -0.02em;
 }
 
 .headerCenter {
     flex: 1;
-    max-width: 480px;
+    max-width: 540px;
     margin: 0 40px;
 }
 
-/* Glass Search Input */
-.searchInput { transition: all 0.2s; padding: 4px; }
+.searchInput {
+    transition: all 0.3s;
+    padding: 8px 12px;
+    /* taller, softer */
+}
 
+.searchInput :global(.ant-input-affix-wrapper) {
+    background: rgba(255, 255, 255, 0.86) !important;
+    border: 1px solid rgba(139, 121, 94, 0.16) !important;
+    box-shadow: 0 2px 8px rgba(110, 100, 85, 0.06);
+}
 
+.searchInput :global(.ant-input-affix-wrapper:hover) {
+    border-color: rgba(139, 121, 94, 0.28) !important;
+}
 
+.searchInput :global(.ant-input-affix-wrapper-focused),
+.searchInput :global(.ant-input-affix-wrapper:focus-within) {
+    border-color: rgba(107, 128, 104, 0.42) !important;
+    box-shadow: 0 0 0 3px rgba(107, 128, 104, 0.14) !important;
+    background: #ffffff !important;
+}
 
+.searchInput :global(.ant-input) {
+    color: var(--text-primary) !important;
+    caret-color: var(--primary) !important;
+    font-weight: 500;
+}
 
+.searchInput :global(.ant-input::placeholder) {
+    color: rgba(66, 62, 58, 0.5) !important;
+}
 
+.searchInput :global(.ant-input-prefix) {
+    color: rgba(66, 62, 58, 0.5) !important;
+}
 
 .headerRight {
     display: flex;
@@ -61,32 +107,34 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 6px 12px 6px 6px;
-    border-radius: 30px;
+    padding: 8px 16px 8px 8px;
+    border-radius: 999px;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.3s;
     border: 1px solid transparent;
 }
 
 .userInfo:hover {
-    background: rgba(255, 255, 255, 0.5);
-    border-color: rgba(0, 0, 0, 0.05);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+    background: rgba(139, 121, 94, 0.05);
+    /* warm hover */
+    border-color: rgba(139, 121, 94, 0.08);
 }
 
 .avatar {
-    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+    background: #f1f5f9;
+    color: var(--text-secondary);
+    box-shadow: 0 4px 8px rgba(110, 100, 85, 0.08);
+    /* warm shadow */
 }
 
 .userName {
     font-weight: 500;
-    font-size: 14px;
+    font-size: 15px;
     color: var(--text-primary);
 }
 
 .content {
-    padding: 0 32px;
+    padding: 0 40px;
     max-width: 1400px;
     margin: 0 auto;
     width: 100%;
@@ -96,7 +144,8 @@
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
-    margin-bottom: 40px;
+    margin-bottom: 48px;
+    /* More space */
     padding: 0 8px;
 }
 
@@ -111,126 +160,154 @@
 }
 
 .pageTitle :global(.anticon) {
-    color: var(--primary);
-    background: rgba(16, 185, 129, 0.1);
+    color: var(--text-primary);
+    background: rgba(139, 121, 94, 0.05);
+    /* warm */
     padding: 8px;
     border-radius: 12px;
 }
 
 .createButton {
-    height: 48px;
-    padding: 0 24px;
-    border-radius: 14px;
+    height: 52px;
+    padding: 0 28px;
+    border-radius: 999px;
     font-weight: 600;
     font-size: 15px;
     background: var(--primary);
+    /* Sage */
+    color: #fff;
     border: none;
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
-    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+    box-shadow: 0 4px 16px rgba(107, 128, 104, 0.2);
+    transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 .createButton:hover {
     background: var(--primary-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(16, 185, 129, 0.35);
+    box-shadow: 0 8px 24px rgba(107, 128, 104, 0.25);
 }
 
 .boardGrid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 32px;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    /* slightly wider */
+    gap: 40px;
+    /* relaxed spacing */
 }
 
 .emptyState {
     grid-column: 1 / -1;
-    padding: 100px 0;
+    padding: 120px 0;
     text-align: center;
-    opacity: 0.6;
+    opacity: 0.8;
+    /* increase visibility */
 }
 
-/* Modern Glass Card Style */
+/* Warm Clay Card Style */
 .boardCard {
-    border-radius: var(--card-radius); overflow: hidden; transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
-    background: var(--glass-bg) !important; backdrop-filter: var(--glass-backdrop) !important; -webkit-backdrop-filter: var(--glass-backdrop) !important;
-    border: var(--glass-border) !important; box-shadow: var(--glass-shadow) !important;
+    border-radius: var(--card-radius);
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+    background: var(--glass-bg) !important;
+    backdrop-filter: var(--glass-backdrop) !important;
+    -webkit-backdrop-filter: var(--glass-backdrop) !important;
+    border: var(--glass-border) !important;
+    box-shadow: var(--glass-shadow-lg) !important;
+    /* more floaty default */
     position: relative;
-    padding: 4px; /* Slight padding for inner border illusion */
+    padding: 6px;
 }
 
 .boardCard:hover {
-    transform: translateY(-6px);
-    box-shadow:
-        0 10px 15px -3px rgba(0, 0, 0, 0.05),
-        0 4px 6px -2px rgba(0, 0, 0, 0.025),
-        0 0 0 1px rgba(16, 185, 129, 0.1);
+    transform: translateY(-8px);
+    box-shadow: 0 24px 64px rgba(110, 100, 85, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
 }
 
 .boardThumbnail {
-    height: 180px; display: flex; align-items: center; justify-content: center;
-    position: relative; overflow: hidden; background: rgba(16, 185, 129, 0.02);
-    border-radius: calc(var(--card-radius) - 4px);
+    height: 190px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    background: rgba(139, 121, 94, 0.04);
+    /* warm grey background */
+    border-radius: calc(var(--card-radius) - 6px);
 }
 
 .thumbnailPlaceholder {
     font-size: 40px;
-    color: #cbd5e1;
+    color: rgba(139, 121, 94, 0.2);
     z-index: 1;
 }
 
-/* Card Content Update */
 .boardCard :global(.ant-card-body) {
-    padding: 20px;
+    padding: 24px 20px;
 }
 
 .boardCard :global(.ant-card-meta-title) {
     font-family: 'Plus Jakarta Sans', sans-serif;
-    font-weight: 600;
-    font-size: 16px;
-    margin-bottom: 4px !important;
+    font-weight: 700;
+    font-size: 18px;
+    /* Bigger */
+    margin-bottom: 6px !important;
+    color: var(--text-primary);
 }
 
 .boardDate {
     margin-bottom: 0 !important;
-    font-size: 13px;
+    font-size: 14px;
     color: var(--text-secondary);
 }
-
-.createModal :global(.ant-modal-content) {
-    border-radius: 24px;
-    padding: 32px;
-}
-
 
 
 .cancelBtn {
-    background: rgba(0, 0, 0, 0.04) !important;
+    background: rgba(139, 121, 94, 0.06) !important;
+    /* warm */
     border-radius: 999px !important;
-    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+    transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
     border: none !important;
     color: var(--text-secondary);
 }
+
 .cancelBtn:hover {
-    background: rgba(0, 0, 0, 0.08) !important;
+    background: rgba(139, 121, 94, 0.12) !important;
     color: var(--text-primary);
 }
 
 .modalFooter {
     display: flex;
     justify-content: flex-end;
-    gap: 12px;
-    margin-top: 32px;
+    gap: 16px;
+    margin-top: 8px;
+    margin-bottom: 0 !important;
 }
 
+.modalFooter :global(.ant-form-item-control-input-content) {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    flex-wrap: wrap;
+}
 
-/* Tablet landscape responsive */
+.createModal :global(.ant-modal) {
+    width: min(520px, calc(100vw - 32px)) !important;
+    max-width: calc(100vw - 32px) !important;
+    margin: 0 auto;
+}
+
+.createModal :global(.ant-modal-content) {
+    padding: 24px 24px 20px !important;
+}
+
 @media (max-width: 1024px) {
     .boardGrid {
         grid-template-columns: repeat(2, 1fr);
-        gap: 24px;
+        gap: 32px;
     }
 
     .content {
-        padding: 0 24px;
+        padding: 0 32px;
     }
 
     .headerCenter {
@@ -239,14 +316,13 @@
     }
 }
 
-/* Mobile responsive */
 @media (max-width: 768px) {
     .header {
         margin: 0;
         border-radius: 0;
         top: 0;
-        padding: 0 16px;
-        height: 60px;
+        padding: 0 20px;
+        height: 64px;
     }
 
     .headerCenter {
@@ -258,7 +334,7 @@
     }
 
     .content {
-        padding: 0 16px;
+        padding: 0 20px;
     }
 
     .contentHeader {
@@ -271,101 +347,55 @@
         width: 100%;
     }
 
+    .createModal :global(.ant-modal) {
+        width: calc(100vw - 24px) !important;
+        max-width: calc(100vw - 24px) !important;
+    }
+
+    .createModal :global(.ant-modal-content) {
+        padding: 20px 16px 16px !important;
+    }
+
     .boardGrid {
         grid-template-columns: 1fr;
-        gap: 20px;
+        gap: 24px;
     }
 }
 
-
-
-/* Phone portrait responsive */
 @media (max-width: 480px) {
     .header {
-        padding: 0 12px;
-        height: 52px;
+        padding: 0 16px;
+        height: 56px;
         margin: 0;
     }
 
     .logoText {
-        font-size: 15px;
+        font-size: 16px;
     }
 
     .content {
-        padding: 0 12px;
+        padding: 0 16px;
     }
 
     .contentHeader {
-        margin-bottom: 24px;
+        margin-bottom: 32px;
     }
 
     .pageTitle {
-        font-size: 18px !important;
+        font-size: 20px !important;
     }
 
     .createButton {
-        height: 42px;
-        font-size: 14px;
-        padding: 0 16px;
-        border-radius: 12px;
+        height: 48px;
+        font-size: 15px;
+        padding: 0 20px;
     }
 
     .boardGrid {
-        gap: 16px;
+        gap: 20px;
     }
 
     .emptyState {
-        padding: 60px 0;
+        padding: 80px 0;
     }
-
-    .boardCardMeta {
-        font-size: 12px;
-    }
-}
-
-/* Dark theme */
-:global(.dark) .dashboardLayout {
-    background: transparent !important;
-}
-
-:global(.dark) .header {
-    background: rgba(15, 23, 42, 0.8);
-    border-color: rgba(255, 255, 255, 0.05);
-}
-
-:global(.dark) .logoText,
-:global(.dark) .userName {
-    color: #f8fafc !important;
-}
-
-
-
-:global(.dark) 
-
-:global(.dark) 
-
-:global(.dark) .userInfo:hover {
-    background: rgba(255, 255, 255, 0.1);
-}
-
-:global(.dark) .boardCard {
-    background: var(--glass-bg);
-    border: var(--glass-border);
-    box-shadow: var(--glass-shadow);
-}
-
-:global(.dark) .boardThumbnail {
-    background: transparent;
-}
-
-:global(.dark) .thumbnailPlaceholder {
-    color: #334155;
-}
-:global(.dark) .cancelBtn {
-    background: rgba(255, 255, 255, 0.08) !important;
-    color: rgba(255, 255, 255, 0.8) !important;
-}
-:global(.dark) .cancelBtn:hover {
-    background: rgba(255, 255, 255, 0.15) !important;
-    color: #fff !important;
 }

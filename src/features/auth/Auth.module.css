@@ -1,6 +1,15 @@
-.authContainer { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; position: relative; overflow: hidden; background: transparent; }
+.authContainer {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+  background: transparent;
+}
 
-/* Subtle Aurora Background */
+/* Subtle Background Elements */
 .authBackground {
   position: absolute;
   inset: 0;
@@ -8,34 +17,36 @@
   pointer-events: none;
 }
 
-.gradientOrb1 { display: none; }
-
-.gradientOrb2 { display: none; }
-
-@keyframes float {
-  0% {
-    transform: translate(0, 0);
-  }
-
-  100% {
-    transform: translate(30px, 50px);
-  }
+.gradientOrb1,
+.gradientOrb2 {
+  display: none;
 }
 
-/* Modern Glass Card */
+/* Warm Clay Card */
 .authCard {
-    width: 100%; max-width: 400px; padding: 40px;
-    background: var(--glass-bg); backdrop-filter: var(--glass-backdrop); -webkit-backdrop-filter: var(--glass-backdrop);
-    border: none; box-shadow: var(--glass-shadow); border-radius: var(--card-radius);
-    z-index: 10; animation: scaleIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-    position: relative;
-    overflow: hidden;
+  width: 100%;
+  max-width: 440px;
+  /* Slightly wider for the soft look */
+  padding: 56px 48px;
+  /* Bigger padding for breathing room */
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-backdrop);
+  -webkit-backdrop-filter: var(--glass-backdrop);
+  border: var(--glass-border);
+  box-shadow: var(--glass-shadow-lg);
+  border-radius: var(--card-radius);
+  /* huge 32px radius */
+  z-index: 10;
+  animation: floatIn 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+  /* Long, soft animation */
+  position: relative;
+  overflow: hidden;
 }
 
-@keyframes scaleIn {
+@keyframes floatIn {
   from {
     opacity: 0;
-    transform: scale(0.95) translateY(10px);
+    transform: scale(0.98) translateY(20px);
   }
 
   to {
@@ -46,25 +57,24 @@
 
 .logoSection {
   text-align: center;
-  margin-bottom: 32px;
+  margin-bottom: 40px;
 }
 
 .logoIcon {
-  font-size: 32px;
+  font-size: 36px;
+  /* slightly larger */
   color: var(--primary);
-  filter: drop-shadow(0 4px 6px rgba(16, 185, 129, 0.2));
+  /* Sage Green Accent */
 }
 
 .logoText {
   font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 24px;
+  font-size: 26px;
   font-weight: 700;
-  background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  margin-top: 8px;
+  color: var(--text-primary);
+  margin-top: 12px;
   display: block;
+  letter-spacing: -0.02em;
 }
 
 .title {
@@ -74,39 +84,34 @@
   margin-top: 8px !important;
 }
 
-/* Clean Inputs - No Border, Bottom Line focus */
 .form {
-  margin-top: 24px;
+  margin-top: 32px;
 }
 
-
-
-
-
-
-
-
-
 .submitButton {
-  height: 48px;
+  height: 52px;
+  /* Taller, softer button */
   border-radius: var(--btn-radius);
   font-size: 16px;
   font-weight: 600;
   background: var(--primary);
+  /* Sage */
+  color: #fff;
   border: none;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-  transition: all 0.2s ease;
+  box-shadow: 0 4px 16px rgba(107, 128, 104, 0.2);
+  transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+  margin-top: 8px;
 }
 
 .submitButton:hover {
   background: var(--primary-hover);
-  transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(107, 128, 104, 0.25);
 }
 
 .authFooter {
   text-align: center;
-  margin-top: 24px;
+  margin-top: 32px;
   color: var(--text-secondary);
 }
 
@@ -117,116 +122,56 @@
 }
 
 .errorMessage {
-  background: rgba(239, 68, 68, 0.1);
+  background: rgba(239, 68, 68, 0.05);
   color: #ef4444;
-  border: 1px solid rgba(239, 68, 68, 0.2);
-  padding: 12px;
-  border-radius: 8px;
-  margin-bottom: 20px;
+  border: 1px solid rgba(239, 68, 68, 0.1);
+  padding: 14px;
+  border-radius: 16px;
+  /* softer error box */
+  margin-bottom: 24px;
   text-align: center;
   font-size: 14px;
 }
 
-.demoAccount {
-  background: rgba(16, 185, 129, 0.05);
-  border: 1px solid rgba(16, 185, 129, 0.1);
-  border-radius: 12px;
-  padding: 12px;
-  font-size: 13px;
-  color: var(--text-secondary);
-  text-align: center;
-  margin: 20px 0;
-}
-
-.demoAccount code {
-  color: var(--primary);
-  font-weight: 600;
-  background: rgba(255, 255, 255, 0.5);
-  padding: 2px 6px;
-  border-radius: 4px;
-}
-
-/* Dark Mode */
-:global(.dark) .authContainer {
-  background: transparent !important;
-}
-
-:global(.dark) .gradientOrb1 {
-  background: radial-gradient(circle, rgba(16, 185, 129, 0.1) 0%, transparent 70%);
-}
-
-:global(.dark) .gradientOrb2 {
-  background: radial-gradient(circle, rgba(6, 182, 212, 0.1) 0%, transparent 70%);
-}
-
-:global(.dark) .logoText {
-  background: linear-gradient(135deg, #fff 0%, #cbd5e1 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-:global(.dark) 
-
-:global(.dark) 
-
-:global(.dark) 
-
-:global(.dark) 
-
-:global(.dark) .demoAccount {
-  background: rgba(16, 185, 129, 0.1);
-  border-color: rgba(16, 185, 129, 0.2);
-}
-
-:global(.dark) .demoAccount code {
-  background: rgba(0, 0, 0, 0.2);
-}
-
 /* Tablet responsive */
 @media (max-width: 768px) {
-    .authContainer {
-        padding: 16px;
-    }
+  .authContainer {
+    padding: 16px;
+  }
 }
 
 /* Mobile responsive */
 @media (max-width: 480px) {
-    .authContainer {
-        padding: 12px;
-        align-items: flex-start;
-        padding-top: 12vh;
-    }
+  .authContainer {
+    padding: 12px;
+    align-items: flex-start;
+    padding-top: 10vh;
+  }
 
-    .authCard {
-        max-width: 100%;
-        padding: 24px 20px;
-        border-radius: 20px;
-    }
+  .authCard {
+    max-width: 100%;
+    padding: 32px 24px;
+    border-radius: 28px;
+  }
 
-    .logoIcon {
-        font-size: 26px;
-    }
+  .logoIcon {
+    font-size: 28px;
+  }
 
-    .logoText {
-        font-size: 20px;
-    }
+  .logoText {
+    font-size: 22px;
+  }
 
-    .title {
-        font-size: 14px !important;
-    }
+  .title {
+    font-size: 15px !important;
+  }
 
-    .logoSection {
-        margin-bottom: 20px;
-    }
+  .logoSection {
+    margin-bottom: 24px;
+  }
 
-    .submitButton {
-        height: 44px;
-        font-size: 15px;
-    }
-
-    .errorMessage {
-        padding: 10px;
-        font-size: 13px;
-    }
+  .submitButton {
+    height: 48px;
+    font-size: 15px;
+  }
 }

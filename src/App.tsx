@@ -25,10 +25,8 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   const location = useLocation();
 
   if (!isAuthenticated) {
-    // Save the attempted URL to redirect back after login
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
-
   return <>{children}</>;
 };
 
@@ -39,77 +37,74 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
   }
-
   return <>{children}</>;
 };
 
 const App: React.FC = () => {
-  // Force light mode
   const { initializeAuth } = useAuthStore();
-  const isDark = false;
 
-  // Initialize auth on app startup to restore Supabase session
+  // Initialize auth on app startup
   React.useEffect(() => {
     initializeAuth();
   }, [initializeAuth]);
 
-  // Apply theme class to document
+  // Ensure 'dark' class is strictly removed for Warm Light mode
   React.useEffect(() => {
-    document.documentElement.classList.toggle('dark', isDark);
-  }, [isDark]);
+    document.documentElement.classList.remove('dark');
+  }, []);
 
   return (
     <ConfigProvider
       locale={zhCN}
       theme={{
-        algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
+        algorithm: theme.defaultAlgorithm,
         token: {
-          colorPrimary: '#10B981',
-          colorPrimaryHover: '#059669',
-          borderRadius: 24, // softer overall radius
+          colorPrimary: '#6B8068', /* Sage Green */
+          colorPrimaryHover: '#556852',
+          borderRadius: 32, /* Pebble-like shapes */
           fontFamily: '"Plus Jakarta Sans", "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-          colorBgContainer: 'transparent',
-          colorBgElevated: isDark ? 'rgba(15,23,42,0.6)' : 'rgba(255,255,255,0.6)',
-          colorBorder: 'transparent', // Nuke global borders
+          colorBgContainer: 'rgba(255,255,255,0.85)',
+          colorBgElevated: 'rgba(255,255,255,0.95)',
+          colorBorder: 'rgba(139, 121, 94, 0.08)', /* Warm Sand */
           colorBorderSecondary: 'transparent',
-          boxShadowSecondary: '0 24px 48px -12px rgba(0,0,0,0.06)', // The only shadow we need
+          boxShadowSecondary: '0 12px 32px rgba(110, 100, 85, 0.04)',
           lineWidthFocus: 0,
           controlOutlineWidth: 0,
+          colorTextBase: '#423e3a',
+          colorTextSecondary: '#8c8781',
         },
         components: {
           Card: {
-            colorBgContainer: isDark ? 'rgba(15,23,42,0.4)' : 'rgba(255,255,255,0.4)',
+            colorBgContainer: 'rgba(255,255,255,0.85)',
             headerBg: 'transparent',
-            boxShadow: '0 24px 48px -12px rgba(0,0,0,0.06)',
-            lineWidth: 0, // Nuke card border
-            borderRadiusLG: 24,
-            paddingLG: 40, // Extreme whitespace
+            boxShadow: '0 12px 32px rgba(110, 100, 85, 0.04), 0 4px 12px rgba(110, 100, 85, 0.02)',
+            lineWidth: 0,
+            borderRadiusLG: 32,
+            paddingLG: 48, /* More breathing room */
           },
           Modal: {
-            contentBg: isDark ? 'rgba(15,23,42,0.6)' : 'rgba(255,255,255,0.6)',
+            contentBg: 'rgba(255,255,255,0.95)',
             headerBg: 'transparent',
-            boxShadow: '0 32px 64px -16px rgba(0,0,0,0.1)',
-            lineWidth: 0, // Nuke modal border
-            borderRadiusOuter: 32,
-            borderRadiusLG: 32,
-            paddingMD: 40,
-            paddingContentHorizontalLG: 40,
+            boxShadow: '0 24px 64px rgba(110, 100, 85, 0.08)',
+            lineWidth: 0,
+            borderRadiusOuter: 36,
+            borderRadiusLG: 36,
+            paddingMD: 16,
+            paddingContentHorizontalLG: 16,
           },
           Button: {
-            borderRadius: 999, // Extreme pill shape
+            borderRadius: 999, /* Pill */
             colorBorder: 'transparent',
             lineWidth: 0,
           },
           Input: {
-            colorBgContainer: isDark ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.5)',
-            colorBorder: 'transparent',
-            hoverBorderColor: 'transparent',
+            colorBgContainer: 'rgba(255,255,255,0.7)',
+            colorBorder: 'rgba(139, 121, 94, 0.12)',
+            hoverBorderColor: 'rgba(139, 121, 94, 0.2)',
             activeBorderColor: 'transparent',
-            activeShadow: '0 4px 12px rgba(16, 185, 129, 0.1)', // Soft glow focus, no ring
-            paddingBlock: 12,
-            paddingInline: 20,
-            borderRadius: 999, // Extreme pill shape
-            lineWidth: 0,
+            activeShadow: 'none',
+            borderRadius: 999,
+            lineWidth: 1,
           }
         }
       }}
@@ -118,54 +113,12 @@ const App: React.FC = () => {
       <BrowserRouter>
         <Suspense fallback={<PageLoader />}>
           <Routes>
-            {/* Public routes */}
-            <Route
-              path="/login"
-              element={
-                <PublicRoute>
-                  <LoginPage />
-                </PublicRoute>
-              }
-            />
-            <Route
-              path="/register"
-              element={
-                <PublicRoute>
-                  <RegisterPage />
-                </PublicRoute>
-              }
-            />
-
-            {/* Protected routes */}
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <DashboardPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/board/:boardId"
-              element={
-                <ProtectedRoute>
-                  <CanvasBoard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/settings"
-              element={
-                <ProtectedRoute>
-                  <SettingsPage />
-                </ProtectedRoute>
-              }
-            />
-
-            {/* Redirect root to dashboard or login */}
+            <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+            <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
+            <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+            <Route path="/board/:boardId" element={<ProtectedRoute><CanvasBoard /></ProtectedRoute>} />
+            <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
-
-            {/* 404 fallback */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </Suspense>

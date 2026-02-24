@@ -14,6 +14,7 @@ interface ChartWidgetProps {
 export const ChartWidget: React.FC<ChartWidgetProps> = ({ onAdd }) => {
     const [chartType, setChartType] = useState<'bar' | 'line' | 'pie'>('bar');
     const [chartTitle, setChartTitle] = useState('示例图表');
+    const [themeColor, setThemeColor] = useState<string>('#6B8068'); // Default Sage Green
     const [dataPoints, setDataPoints] = useState([
         { label: '一月', value: 120 },
         { label: '二月', value: 200 },
@@ -23,14 +24,14 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({ onAdd }) => {
     ]);
 
     const colors = [
-        '#667eea',
-        '#764ba2',
-        '#f093fb',
-        '#f5576c',
-        '#4facfe',
-        '#00f2fe',
-        '#43e97b',
-        '#38f9d7',
+        '#6B8068', // Sage Green
+        '#8B795E', // Warm Taupe
+        '#C2A38F', // Terracotta Light
+        '#8EB4B1', // Misty Aqua
+        '#B4A29A', // Mushroom
+        '#D08C60', // Soft Orange
+        '#7B8C78', // Deeper Sage
+        '#E0C5A8', // Sand
     ];
 
     const getChartOption = () => {
@@ -93,18 +94,8 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({ onAdd }) => {
                     type: chartType,
                     data: values,
                     itemStyle: {
-                        color: {
-                            type: 'linear',
-                            x: 0,
-                            y: 0,
-                            x2: 0,
-                            y2: 1,
-                            colorStops: [
-                                { offset: 0, color: '#667eea' },
-                                { offset: 1, color: '#764ba2' },
-                            ],
-                        },
-                        borderRadius: chartType === 'bar' ? [4, 4, 0, 0] : 0,
+                        color: themeColor,
+                        borderRadius: chartType === 'bar' ? [8, 8, 0, 0] : 0,
                     },
                     smooth: chartType === 'line',
                     areaStyle: chartType === 'line' ? {
@@ -115,8 +106,8 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({ onAdd }) => {
                             x2: 0,
                             y2: 1,
                             colorStops: [
-                                { offset: 0, color: 'rgba(102, 126, 234, 0.3)' },
-                                { offset: 1, color: 'rgba(102, 126, 234, 0)' },
+                                { offset: 0, color: `${themeColor}66` }, // 40% opacity
+                                { offset: 1, color: `${themeColor}00` }, // 0% opacity
                             ],
                         },
                     } : undefined,
@@ -171,6 +162,23 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({ onAdd }) => {
                         onChange={(e) => setChartTitle(e.target.value)}
                         placeholder="图表标题"
                     />
+                </div>
+
+                <div className={styles.formRow}>
+                    <label>主题颜色</label>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        {['#6B8068', '#8B795E', '#C2A38F', '#8EB4B1', '#B4A29A', '#D08C60'].map(c => (
+                            <div
+                                key={c}
+                                onClick={() => setThemeColor(c)}
+                                style={{
+                                    width: 24, height: 24, borderRadius: '50%', backgroundColor: c,
+                                    cursor: 'pointer', border: themeColor === c ? '2px solid #333' : '2px solid transparent',
+                                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                }}
+                            />
+                        ))}
+                    </div>
                 </div>
 
                 <div className={styles.dataSection}>

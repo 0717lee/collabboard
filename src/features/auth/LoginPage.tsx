@@ -3,6 +3,7 @@ import { Form, Input, Button, Card, Typography, message } from 'antd';
 import { LockOutlined, MailOutlined } from '@ant-design/icons';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
+import { Logo } from '@/components/Logo';
 import styles from './Auth.module.css';
 
 const { Title, Text } = Typography;
@@ -44,7 +45,7 @@ const LoginPage: React.FC = () => {
             <Card className={styles.authCard} bordered={false}>
                 <div className={styles.logoSection}>
                     <div className={styles.logo}>
-                        <span className={styles.logoIcon}>◇</span>
+                        <Logo size={32} className={styles.logoIcon} />
                         <span className={styles.logoText}>CollabBoard</span>
                     </div>
                     <Title level={3} className={styles.title}>欢迎回来</Title>

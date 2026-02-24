@@ -23,6 +23,7 @@ import {
     EditOutlined,
     AppstoreOutlined,
 } from '@ant-design/icons';
+import { Logo } from '@/components/Logo';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { useBoardStore } from '@/stores/boardStore';
@@ -198,7 +199,7 @@ const DashboardPage: React.FC = () => {
             <Header className={styles.header}>
                 <div className={styles.headerLeft}>
                     <div className={styles.logo}>
-                        <span className={styles.logoIcon}>◇</span>
+                        <Logo size={28} className={styles.logoIcon} />
                         <span className={styles.logoText}>CollabBoard</span>
                     </div>
                 </div>

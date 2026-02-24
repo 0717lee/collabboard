@@ -24,7 +24,9 @@
 - ⌨️ **Keyboard Shortcuts** - Ctrl+Z undo / Ctrl+Y redo / Delete remove
 
 ### User Experience
-- ✨ **Ethereal Glassmorphism** - Minimalist frosted glass design for immersive experience
+- ✨ **Warm Minimalism & Claymorphism** - Brand new soft glass UI aesthetic with breathable shadows and organic shapes, eliminating high-contrast eye strain.
+- 🎨 **Organic Color Palette** - Sage Green and warm linen aesthetics applied systematically to all components.
+- 📊 **Customizable Charts** - ECharts integration with a bespoke UI allowing color palette selection that matches the organic theme.
 - 🔐 **Authentication** - Full registration/login via Supabase Auth
 - 🌐 **Bilingual** - Chinese & English interface
 - 📱 **Responsive** - Adapts to desktop, tablet & mobile

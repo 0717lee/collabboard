@@ -6,6 +6,13 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+*_log.txt
+*_report.json
+error_ascii.txt
+lint.txt
+lint_cmd.txt
+lint_output.txt
+tracked_files.tmp
 
 node_modules
 dist

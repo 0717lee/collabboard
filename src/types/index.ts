@@ -14,7 +14,36 @@ export interface Board {
     thumbnail?: string;
     createdAt: string;
     updatedAt: string;
-    data: string; // JSON string of canvas data
+    data?: string; // JSON string of canvas data
+    accessRole?: BoardRole;
+    source?: BoardSource;
+}
+
+export type BoardRole = 'owner' | 'editor' | 'viewer';
+export type BoardSource = 'owned' | 'shared';
+
+export interface BoardLibraryEntry {
+    id: string;
+    name: string;
+    ownerId: string;
+    createdAt: string;
+    updatedAt: string;
+    thumbnail?: string;
+    lastOpenedAt?: string;
+    isFavorite?: boolean;
+    role?: Extract<BoardRole, 'editor' | 'viewer'>;
+    source: BoardSource;
+}
+
+export interface BoardSnapshot {
+    id: string;
+    boardId: string;
+    name: string;
+    compressedData: string;
+    createdAt: string;
+    source: 'manual' | 'auto';
+    storage: 'local' | 'remote';
+    thumbnail?: string;
 }
 
 export interface CanvasObject {

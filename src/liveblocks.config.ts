@@ -1,19 +1,7 @@
-import { createClient } from "@liveblocks/client";
-import { createRoomContext } from "@liveblocks/react";
+import React from 'react';
+import { createClient } from '@liveblocks/client';
+import { createRoomContext } from '@liveblocks/react';
 
-// Create the Liveblocks client
-// In production, get your public key from https://liveblocks.io/dashboard
-const client = createClient({
-    // For demo purposes, we use a public key placeholder
-    // Replace with your actual Liveblocks public key
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    publicApiKey: (import.meta as any).env?.VITE_LIVEBLOCKS_PUBLIC_KEY || "pk_dev_placeholder",
-
-    // Throttle presence updates to reduce network traffic
-    throttle: 100,
-});
-
-// Define types for presence and storage
 export type Presence = {
     cursor: { x: number; y: number } | null;
     name: string;
@@ -21,11 +9,11 @@ export type Presence = {
 };
 
 export type Storage = {
-    canvasData: string; // JSON stringified canvas data (Chunk 1)
-    canvasData_2?: string; // Chunk 2
-    canvasData_3?: string; // Chunk 3
-    canvasData_4?: string; // Chunk 4
-    canvasData_5?: string; // Chunk 5
+    canvasData: string;
+    canvasData_2?: string;
+    canvasData_3?: string;
+    canvasData_4?: string;
+    canvasData_5?: string;
     version: number;
 };
 
@@ -38,17 +26,70 @@ export type UserMeta = {
     };
 };
 
-// Create Room context with types
-export const {
-    RoomProvider,
-    useRoom,
-    useMyPresence,
-    useUpdateMyPresence,
-    useOthersMapped,
-    useOthers,
-    useSelf,
-    useStorage,
-    useMutation,
-    useBroadcastEvent,
-    useEventListener,
-} = createRoomContext<Presence, Storage, UserMeta>(client);
+const useMockLiveblocks = import.meta.env.VITE_E2E_MOCK_MODE === 'true' || !import.meta.env.VITE_LIVEBLOCKS_PUBLIC_KEY;
+
+const realContext = createRoomContext<Presence, Storage, UserMeta>(createClient({
+    publicApiKey: import.meta.env.VITE_LIVEBLOCKS_PUBLIC_KEY || 'pk_dev_placeholder',
+    throttle: 100,
+}));
+
+const mockStorage: Storage = {
+    canvasData: '{}',
+    canvasData_2: '',
+    canvasData_3: '',
+    canvasData_4: '',
+    canvasData_5: '',
+    version: 0,
+};
+
+const mockPresence: Presence = {
+    cursor: null,
+    name: 'Mock User',
+    color: '#6B8068',
+};
+
+const createMockMutationHelpers = () => ({
+    storage: {
+        get<K extends keyof Storage>(key: K) {
+            return mockStorage[key];
+        },
+        set<K extends keyof Storage>(key: K, value: Storage[K]) {
+            mockStorage[key] = value;
+        },
+    },
+});
+
+if (useMockLiveblocks) {
+    console.warn('Liveblocks key missing or mock mode enabled. Using local collaboration mock.');
+}
+
+const mockRoomProvider: typeof realContext.RoomProvider = ({ children }) => React.createElement(React.Fragment, null, children);
+const mockUseRoom = (() => null) as unknown as typeof realContext.useRoom;
+const mockUseMyPresence: typeof realContext.useMyPresence = () => [mockPresence, () => undefined] as never;
+const useMockUpdateMyPresence: typeof realContext.useUpdateMyPresence = () => React.useCallback((nextPresence) => {
+    void nextPresence;
+}, []);
+const mockUseOthersMapped: typeof realContext.useOthersMapped = () => [];
+const mockUseOthers: typeof realContext.useOthers = () => [];
+const mockUseSelf: typeof realContext.useSelf = () => null;
+const mockUseStorage: typeof realContext.useStorage = ((selector: (root: Storage) => unknown) => selector(mockStorage)) as typeof realContext.useStorage;
+const useMockMutation: typeof realContext.useMutation = ((callback: (context: ReturnType<typeof createMockMutationHelpers>, ...args: unknown[]) => unknown) => {
+    const callbackRef = React.useRef(callback);
+    callbackRef.current = callback;
+
+    return React.useCallback((...args: unknown[]) => callbackRef.current(createMockMutationHelpers(), ...args), []);
+}) as typeof realContext.useMutation;
+const mockUseBroadcastEvent: typeof realContext.useBroadcastEvent = () => () => undefined;
+const mockUseEventListener: typeof realContext.useEventListener = () => undefined;
+
+export const RoomProvider = useMockLiveblocks ? mockRoomProvider : realContext.RoomProvider;
+export const useRoom = useMockLiveblocks ? mockUseRoom : realContext.useRoom;
+export const useMyPresence = useMockLiveblocks ? mockUseMyPresence : realContext.useMyPresence;
+export const useUpdateMyPresence = useMockLiveblocks ? useMockUpdateMyPresence : realContext.useUpdateMyPresence;
+export const useOthersMapped = useMockLiveblocks ? mockUseOthersMapped : realContext.useOthersMapped;
+export const useOthers = useMockLiveblocks ? mockUseOthers : realContext.useOthers;
+export const useSelf = useMockLiveblocks ? mockUseSelf : realContext.useSelf;
+export const useStorage = useMockLiveblocks ? mockUseStorage : realContext.useStorage;
+export const useMutation = useMockLiveblocks ? useMockMutation : realContext.useMutation;
+export const useBroadcastEvent = useMockLiveblocks ? mockUseBroadcastEvent : realContext.useBroadcastEvent;
+export const useEventListener = useMockLiveblocks ? mockUseEventListener : realContext.useEventListener;

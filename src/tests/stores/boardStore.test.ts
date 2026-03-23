@@ -57,6 +57,7 @@ describe('boardStore', () => {
         // Reset store state before each test
         useBoardStore.setState({
             boards: [],
+            sharedBoards: [],
             currentBoard: null,
             isLoading: false,
             error: null,

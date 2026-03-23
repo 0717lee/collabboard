@@ -1,9 +1,11 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabaseClient';
+import { useBoardLibraryStore } from '@/stores/boardLibraryStore';
 import type { Board } from '@/types';
 
 interface BoardState {
     boards: Board[];
+    sharedBoards: Board[];
     currentBoard: Board | null;
     isLoading: boolean;
     error: string | null;
@@ -19,6 +21,7 @@ interface BoardState {
 
 export const useBoardStore = create<BoardState>()((set, get) => ({
     boards: [],
+    sharedBoards: [],
     currentBoard: null,
     isLoading: false,
     error: null,
@@ -65,6 +68,8 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
                 createdAt: data.created_at,
                 updatedAt: data.updated_at,
                 data: JSON.stringify(data.data),
+                accessRole: 'owner',
+                source: 'owned',
             };
 
             set((state) => ({
@@ -105,6 +110,11 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
                         ? { ...board, ...updates, updatedAt: new Date().toISOString() }
                         : board
                 ),
+                sharedBoards: state.sharedBoards.map((board) =>
+                    board.id === id
+                        ? { ...board, ...updates, updatedAt: new Date().toISOString() }
+                        : board
+                ),
                 currentBoard:
                     state.currentBoard?.id === id
                         ? { ...state.currentBoard, ...updates, updatedAt: new Date().toISOString() }
@@ -141,8 +151,10 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
 
             set((state) => ({
                 boards: state.boards.filter((board) => board.id !== id),
+                sharedBoards: state.sharedBoards.filter((board) => board.id !== id),
                 currentBoard: state.currentBoard?.id === id ? null : state.currentBoard,
             }));
+            useBoardLibraryStore.getState().removeBoard(id);
             return { success: true };
         } catch (err) {
             console.error('Delete board failed:', err);
@@ -178,7 +190,12 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
                 createdAt: data.created_at,
                 updatedAt: data.updated_at,
                 data: JSON.stringify(data.data),
+                source: 'owned',
             };
+
+            const cachedEntry = useBoardLibraryStore.getState().entries[boardId];
+            board.accessRole = cachedEntry?.role || 'owner';
+            board.source = cachedEntry?.role ? 'shared' : 'owned';
 
             set({ currentBoard: board, isLoading: false });
             return board;
@@ -200,7 +217,7 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
         try {
             const { data, error } = await supabase
                 .from('boards')
-                .select('*')
+                .select('id, name, owner_id, created_at, updated_at')
                 .eq('owner_id', userId)
                 .order('updated_at', { ascending: false });
 
@@ -209,16 +226,36 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
                 return;
             }
 
-            const boards: Board[] = (data || []).map((item) => ({
+            const boards: Board[] = (data || []).map((item: {
+                id: string;
+                name: string;
+                owner_id: string;
+                created_at: string;
+                updated_at: string;
+            }) => ({
                 id: item.id,
                 name: item.name,
                 ownerId: item.owner_id,
                 createdAt: item.created_at,
                 updatedAt: item.updated_at,
-                data: JSON.stringify(item.data),
+                accessRole: 'owner',
+                source: 'owned',
             }));
 
-            set({ boards, isLoading: false });
+            const sharedBoards: Board[] = Object.values(useBoardLibraryStore.getState().entries)
+                .filter((entry) => entry.source === 'shared' && entry.ownerId !== userId)
+                .map((entry) => ({
+                    id: entry.id,
+                    name: entry.name,
+                    ownerId: entry.ownerId,
+                    createdAt: entry.createdAt,
+                    updatedAt: entry.updatedAt,
+                    thumbnail: entry.thumbnail,
+                    accessRole: entry.role,
+                    source: 'shared',
+                }));
+
+            set({ boards, sharedBoards, isLoading: false });
         } catch {
             set({ isLoading: false, error: '加载白板失败' });
         }

@@ -8,7 +8,7 @@ export default defineConfig({
     workers: process.env.CI ? 1 : undefined,
     reporter: 'html',
     use: {
-        baseURL: 'http://localhost:5173',
+        baseURL: 'http://127.0.0.1:4173',
         trace: 'on-first-retry',
         screenshot: 'only-on-failure',
     },
@@ -23,8 +23,12 @@ export default defineConfig({
         },
     ],
     webServer: {
-        command: 'npm run dev',
-        url: 'http://localhost:5173',
-        reuseExistingServer: !process.env.CI,
+        command: 'npm run dev -- --host 127.0.0.1 --port 4173 --strictPort',
+        env: {
+            ...process.env,
+            VITE_E2E_MOCK_MODE: 'true',
+        },
+        url: 'http://127.0.0.1:4173',
+        reuseExistingServer: true,
     },
 });

@@ -1,71 +1,112 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-    Layout,
-    Card,
-    Button,
-    Input,
-    Typography,
     Avatar,
+    Button,
+    Card,
     Dropdown,
-    Modal,
-    Form,
     Empty,
+    Form,
+    Input,
+    Layout,
+    Modal,
+    Tag,
     Tooltip,
+    Typography,
     message,
 } from 'antd';
 import {
-    PlusOutlined,
-    SearchOutlined,
-    UserOutlined,
-    SettingOutlined,
-    LogoutOutlined,
+    AppstoreOutlined,
+    ClockCircleOutlined,
     DeleteOutlined,
     EditOutlined,
-    AppstoreOutlined,
+    EyeOutlined,
+    LogoutOutlined,
+    PlusOutlined,
+    SearchOutlined,
+    SettingOutlined,
+    StarFilled,
+    StarOutlined,
+    TeamOutlined,
+    UserOutlined,
 } from '@ant-design/icons';
-import { Logo } from '@/components/Logo';
 import { useNavigate } from 'react-router-dom';
+import { Logo } from '@/components/Logo';
+import { sortBoardsForDisplay } from '@/lib/boardUtils';
 import { useAuthStore } from '@/stores/authStore';
+import { useBoardLibraryStore } from '@/stores/boardLibraryStore';
 import { useBoardStore } from '@/stores/boardStore';
 import { useLanguageStore } from '@/stores/languageStore';
+import type { Board } from '@/types';
 import styles from './Dashboard.module.css';
 
 const { Header, Content } = Layout;
 const { Title, Text, Paragraph } = Typography;
 
+const formatLocaleDate = (date: string, locale: 'zh-CN' | 'en-US') =>
+    new Date(date).toLocaleDateString(locale, {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+    });
+
 const DashboardPage: React.FC = () => {
     const navigate = useNavigate();
     const { user, logout } = useAuthStore();
-    const { boards, createBoard, deleteBoard, loadBoards } = useBoardStore();
+    const { boards, sharedBoards, createBoard, deleteBoard, loadBoards } = useBoardStore();
+    const {
+        entries,
+        removeBoard,
+        setThumbnail,
+        syncBoards,
+        toggleFavorite,
+        touchBoard,
+    } = useBoardLibraryStore();
     const { language } = useLanguageStore();
+
     const [editingBoard, setEditingBoard] = useState<{ id: string; name: string } | null>(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-
     const [searchQuery, setSearchQuery] = useState('');
     const [form] = Form.useForm();
 
     const isEn = language === 'en-US';
 
-    // Load boards on mount
     useEffect(() => {
         if (user?.id) {
             loadBoards(user.id);
         }
     }, [user?.id, loadBoards]);
 
-    const filteredBoards = boards.filter((b) =>
-        b.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    useEffect(() => {
+        if (boards.length > 0) {
+            syncBoards(boards, 'owned');
+        }
+
+        if (sharedBoards.length > 0) {
+            syncBoards(sharedBoards, 'shared');
+        }
+    }, [boards, sharedBoards, syncBoards]);
+
+    const filteredOwnedBoards = useMemo(() => {
+        const sorted = sortBoardsForDisplay(boards, entries);
+        return sorted.filter((board) => board.name.toLowerCase().includes(searchQuery.toLowerCase()));
+    }, [boards, entries, searchQuery]);
+
+    const filteredSharedBoards = useMemo(() => {
+        const sorted = sortBoardsForDisplay(sharedBoards, entries);
+        return sorted.filter((board) => board.name.toLowerCase().includes(searchQuery.toLowerCase()));
+    }, [entries, searchQuery, sharedBoards]);
+
+    const totalBoardCount = boards.length + sharedBoards.length;
 
     const handleCreateBoard = async (values: { name: string }) => {
         if (!user) return;
 
-        // Show loading state implicitly via button loading or just UI response
-        // Better UX: add loading state to component if desired, but for now restore original logic
         const newBoard = await createBoard(values.name);
 
         if (newBoard) {
+            syncBoards([newBoard], 'owned');
+            touchBoard(newBoard, 'owner');
             message.success(isEn ? 'Board created!' : '白板创建成功！');
             setIsCreateModalOpen(false);
             form.resetFields();
@@ -76,8 +117,13 @@ const DashboardPage: React.FC = () => {
         }
     };
 
-    const handleEditStart = (board: { id: string; name: string }, e: React.MouseEvent) => {
-        e.stopPropagation();
+    const handleOpenBoard = (board: Board) => {
+        touchBoard(board, board.accessRole || 'owner');
+        navigate(`/board/${board.id}`);
+    };
+
+    const handleEditStart = (board: { id: string; name: string }, event: React.MouseEvent) => {
+        event.stopPropagation();
         setEditingBoard(board);
         form.setFieldsValue({ name: board.name });
         setIsEditModalOpen(true);
@@ -85,29 +131,45 @@ const DashboardPage: React.FC = () => {
 
     const handleUpdateBoard = async (values: { name: string }) => {
         if (!editingBoard) return;
-        // Assume updateBoard is available from store (it is)
+
         const { updateBoard } = useBoardStore.getState();
         await updateBoard(editingBoard.id, { name: values.name });
+        syncBoards([
+            {
+                ...(boards.find((board) => board.id === editingBoard.id)
+                    || sharedBoards.find((board) => board.id === editingBoard.id)
+                    || {
+                        id: editingBoard.id,
+                        ownerId: user?.id || '',
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString(),
+                    }),
+                name: values.name,
+                updatedAt: new Date().toISOString(),
+            },
+        ], 'owned');
         message.success(isEn ? 'Board updated' : '白板已更新');
         setIsEditModalOpen(false);
         setEditingBoard(null);
         form.resetFields();
     };
 
-    const handleDeleteBoard = async (boardId: string, boardOwnerId: string, e: React.MouseEvent) => {
-        // Critical: Prevent event bubbling to card click
-        if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
-        e.stopPropagation();
-        e.preventDefault();
+    const handleToggleFavorite = (board: Board, event: React.MouseEvent) => {
+        event.stopPropagation();
+        syncBoards([board], board.source || 'owned');
+        toggleFavorite(board.id);
+    };
 
-        // Permission check
+    const handleDeleteBoard = async (boardId: string, boardOwnerId: string, event: React.MouseEvent) => {
+        if (event.nativeEvent) event.nativeEvent.stopImmediatePropagation();
+        event.stopPropagation();
+        event.preventDefault();
+
         if (user?.id !== boardOwnerId) {
             message.error(isEn ? 'Permission denied: You are not the owner' : '权限不足：您不是该白板的创建者');
             return;
         }
 
-        // Use native window.confirm for maximum reliability
-        // AntD Modal can have z-index/propagation issues in this context
         if (!window.confirm(isEn ? 'Are you sure you want to delete this board?' : '确定要删除这个白板吗？\n删除后无法恢复。')) {
             return;
         }
@@ -115,25 +177,23 @@ const DashboardPage: React.FC = () => {
         const hideHelper = message.loading(isEn ? 'Deleting...' : '正在删除...', 0);
 
         try {
-            // Race against a 10s timeout to detect hangs
             const timeoutPromise = new Promise<{ success: boolean; error: string }>((_, reject) =>
                 setTimeout(() => reject(new Error('Timeout')), 10000)
             );
 
-            const deletePromise = deleteBoard(boardId);
-
-            const result = await Promise.race([deletePromise, timeoutPromise]) as { success: boolean; error?: string };
+            const result = await Promise.race([deleteBoard(boardId), timeoutPromise]) as { success: boolean; error?: string };
 
             hideHelper();
 
             if (result.success) {
+                removeBoard(boardId);
                 message.success(isEn ? 'Deleted successfully' : '白板已删除');
             } else {
                 message.error(result.error || (isEn ? 'Delete failed' : '删除失败'));
             }
-        } catch (err) {
+        } catch (error) {
             hideHelper();
-            console.error('Delete error:', err);
+            console.error('Delete error:', error);
             message.error(isEn ? 'An error occurred' : '操作超时或失败');
         }
     };
@@ -143,39 +203,109 @@ const DashboardPage: React.FC = () => {
             await logout();
             navigate('/login');
             message.info(isEn ? 'Logged out' : '已退出登录');
-        } catch (e) {
-            console.error('Logout failed', e);
+        } catch (error) {
+            console.error('Logout failed', error);
         }
     };
 
-    // ... userMenuItems ...
+    const renderBoardCard = (board: Board, section: 'owned' | 'shared') => {
+        const entry = entries[board.id];
+        const isFavorite = entry?.isFavorite;
+        const lastOpenedAt = entry?.lastOpenedAt;
+        const roleLabel = board.accessRole === 'viewer'
+            ? (isEn ? 'View only' : '只读')
+            : board.accessRole === 'editor'
+                ? (isEn ? 'Can edit' : '可编辑')
+                : null;
 
-    // And update the return JSX for Cards
-    // actions={[
-    //    <Tooltip title="编辑名称" key="edit">
-    //        <EditOutlined onClick={(e) => handleEditStart(board, e)} />
-    //    </Tooltip>,
-    //    ...
-    // ]}
+        const actions = [
+            <Tooltip title={isFavorite ? (isEn ? 'Remove favorite' : '取消收藏') : (isEn ? 'Favorite' : '收藏')} key="favorite">
+                {isFavorite ? (
+                    <StarFilled className={styles.favoriteActionActive} onClick={(event) => handleToggleFavorite(board, event)} />
+                ) : (
+                    <StarOutlined className={styles.favoriteAction} onClick={(event) => handleToggleFavorite(board, event)} />
+                )}
+            </Tooltip>,
+        ];
 
-    // And add Edit Modal at the bottom
-    /*
-            <Modal
-                title={isEn ? 'Edit Board Name' : '编辑白板名称'}
-                open={isEditModalOpen}
-                onCancel={() => {
-                    setIsEditModalOpen(false);
-                    setEditingBoard(null);
-                    form.resetFields();
-                }}
-                footer={null}
-                centered
+        if (section === 'owned') {
+            actions.push(
+                <Tooltip title={isEn ? 'Rename' : '编辑名称'} key="edit">
+                    <EditOutlined onClick={(event) => handleEditStart(board, event)} />
+                </Tooltip>,
+                <Tooltip title={isEn ? 'Delete' : '删除'} key="delete">
+                    <DeleteOutlined
+                        onClick={(event) => handleDeleteBoard(board.id, board.ownerId, event)}
+                        style={{ color: 'red' }}
+                    />
+                </Tooltip>
+            );
+        }
+
+        return (
+            <Card
+                key={board.id}
+                className={styles.boardCard}
+                hoverable
+                onClick={() => handleOpenBoard(board)}
+                cover={(
+                    <div className={styles.boardThumbnail}>
+                        {entry?.thumbnail ? (
+                            <>
+                                <img
+                                    src={entry.thumbnail}
+                                    alt={board.name}
+                                    className={styles.boardThumbnailImage}
+                                    onError={() => setThumbnail(board.id, undefined)}
+                                />
+                                <div className={styles.thumbnailOverlay} />
+                            </>
+                        ) : (
+                            <div className={styles.thumbnailPlaceholder}>
+                                {section === 'shared' ? <TeamOutlined /> : <AppstoreOutlined />}
+                            </div>
+                        )}
+                    </div>
+                )}
+                actions={actions}
             >
-                <Form form={form} onFinish={handleUpdateBoard} layout="vertical">
-                    ...
-                </Form>
-            </Modal>
-    */
+                <Card.Meta
+                    title={board.name}
+                    description={(
+                        <div className={styles.boardMeta}>
+                            <div className={styles.boardTags}>
+                                {section === 'shared' && (
+                                    <Tag color="geekblue" className={styles.boardTag}>
+                                        <TeamOutlined /> {isEn ? 'Shared' : '协作'}
+                                    </Tag>
+                                )}
+                                {roleLabel && (
+                                    <Tag color={board.accessRole === 'viewer' ? 'default' : 'green'} className={styles.boardTag}>
+                                        {board.accessRole === 'viewer' ? <EyeOutlined /> : <EditOutlined />} {roleLabel}
+                                    </Tag>
+                                )}
+                                {isFavorite && (
+                                    <Tag color="gold" className={styles.boardTag}>
+                                        <StarFilled /> {isEn ? 'Favorite' : '收藏'}
+                                    </Tag>
+                                )}
+                            </div>
+
+                            <Paragraph type="secondary" ellipsis className={styles.boardDate}>
+                                {isEn ? 'Updated' : '更新于'} {formatLocaleDate(board.updatedAt, language)}
+                            </Paragraph>
+
+                            {lastOpenedAt && (
+                                <Text type="secondary" className={styles.boardRecent}>
+                                    <ClockCircleOutlined /> {isEn ? 'Visited' : '最近访问'} {formatLocaleDate(lastOpenedAt, language)}
+                                </Text>
+                            )}
+                        </div>
+                    )}
+                />
+            </Card>
+        );
+    };
 
     const userMenuItems = [
         {
@@ -194,6 +324,33 @@ const DashboardPage: React.FC = () => {
         },
     ];
 
+    const renderSection = (title: string, description: string, boardsToRender: Board[], section: 'owned' | 'shared') => {
+        if (boardsToRender.length === 0) {
+            return null;
+        }
+
+        return (
+            <section className={styles.section}>
+                <div className={styles.sectionHeader}>
+                    <div>
+                        <Title level={4} className={styles.sectionTitle}>{title}</Title>
+                        <Text type="secondary" className={styles.sectionDescription}>{description}</Text>
+                    </div>
+                </div>
+
+                <div className={styles.boardGrid}>
+                    {boardsToRender.map((board) => renderBoardCard(board, section))}
+                </div>
+            </section>
+        );
+    };
+
+    const emptyDescription = searchQuery
+        ? (isEn ? 'No matching boards found' : '没有找到匹配的白板')
+        : totalBoardCount === 0
+            ? (isEn ? 'No boards yet. Click the button above to create one.' : '还没有白板，点击上方按钮创建第一个')
+            : (isEn ? 'No boards in this view yet.' : '当前分类下还没有白板');
+
     return (
         <Layout className={styles.dashboardLayout}>
             <Header className={styles.header}>
@@ -206,10 +363,10 @@ const DashboardPage: React.FC = () => {
 
                 <div className={styles.headerCenter}>
                     <Input
-                        placeholder={isEn ? "Search boards..." : "搜索白板..."}
+                        placeholder={isEn ? 'Search boards...' : '搜索白板...'}
                         prefix={<SearchOutlined />}
                         value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onChange={(event) => setSearchQuery(event.target.value)}
                         className={styles.searchInput}
                         allowClear
                     />
@@ -229,12 +386,13 @@ const DashboardPage: React.FC = () => {
                 <div className={styles.contentHeader}>
                     <div>
                         <Title level={2} className={styles.pageTitle}>
-                            <AppstoreOutlined /> {isEn ? 'My Boards' : '我的白板'}
+                            <AppstoreOutlined /> {isEn ? 'Boards Library' : '白板总览'}
                         </Title>
                         <Text type="secondary">
-                            {isEn ? `${boards.length} boards` : `共 ${boards.length} 个白板`}
+                            {isEn ? `${totalBoardCount} boards across owned and shared spaces` : `共 ${totalBoardCount} 个白板，含我的白板与协作白板`}
                         </Text>
                     </div>
+
                     <Button
                         type="primary"
                         icon={<PlusOutlined />}
@@ -246,55 +404,26 @@ const DashboardPage: React.FC = () => {
                     </Button>
                 </div>
 
-                <div className={styles.boardGrid}>
-                    {filteredBoards.length === 0 ? (
-                        <div className={styles.emptyState}>
-                            <Empty
-                                description={
-                                    searchQuery
-                                        ? (isEn ? 'No matching boards found' : '没有找到匹配的白板')
-                                        : (isEn ? 'No boards yet. Click the button above to create one.' : '还没有白板，点击上方按钮创建第一个')
-                                }
-                            />
-                        </div>
-                    ) : (
-                        filteredBoards.map((board) => (
-                            <Card
-                                key={board.id}
-                                className={styles.boardCard}
-                                hoverable
-                                onClick={() => navigate(`/board/${board.id}`)}
-                                cover={
-                                    <div className={styles.boardThumbnail}>
-                                        <div className={styles.thumbnailPlaceholder}>
-                                            <AppstoreOutlined />
-                                        </div>
-                                    </div>
-                                }
-                                actions={[
-                                    <Tooltip title={isEn ? "Rename" : "编辑名称"} key="edit">
-                                        <EditOutlined onClick={(e) => handleEditStart(board, e)} />
-                                    </Tooltip>,
-                                    <Tooltip title={isEn ? "Delete" : "删除"} key="delete">
-                                        <DeleteOutlined
-                                            onClick={(e) => handleDeleteBoard(board.id, board.ownerId, e)}
-                                            style={{ color: 'red' }}
-                                        />
-                                    </Tooltip>,
-                                ]}
-                            >
-                                <Card.Meta
-                                    title={board.name}
-                                    description={
-                                        <Paragraph type="secondary" ellipsis className={styles.boardDate}>
-                                            {isEn ? 'Updated' : '更新于'} {new Date(board.updatedAt).toLocaleDateString(isEn ? 'en-US' : 'zh-CN')}
-                                        </Paragraph>
-                                    }
-                                />
-                            </Card>
-                        ))
-                    )}
-                </div>
+                {filteredOwnedBoards.length === 0 && filteredSharedBoards.length === 0 ? (
+                    <div className={styles.emptyState}>
+                        <Empty description={emptyDescription} />
+                    </div>
+                ) : (
+                    <>
+                        {renderSection(
+                            isEn ? 'My Boards' : '我的白板',
+                            isEn ? `${boards.length} owned boards` : `${boards.length} 个我创建的白板`,
+                            filteredOwnedBoards,
+                            'owned'
+                        )}
+                        {renderSection(
+                            isEn ? 'Shared With Me' : '协作白板',
+                            isEn ? `${sharedBoards.length} recently opened shared boards` : `${sharedBoards.length} 个最近访问的协作白板`,
+                            filteredSharedBoards,
+                            'shared'
+                        )}
+                    </>
+                )}
             </Content>
 
             <Modal
@@ -320,7 +449,9 @@ const DashboardPage: React.FC = () => {
                         <Input placeholder={isEn ? 'Enter board name' : '输入白板名称'} autoFocus />
                     </Form.Item>
                     <Form.Item className={styles.modalFooter}>
-                        <Button onClick={() => setIsCreateModalOpen(false)} className={styles.cancelBtn}>{isEn ? 'Cancel' : '取消'}</Button>
+                        <Button onClick={() => setIsCreateModalOpen(false)} className={styles.cancelBtn}>
+                            {isEn ? 'Cancel' : '取消'}
+                        </Button>
                         <Button type="primary" htmlType="submit">
                             {isEn ? 'Create' : '创建'}
                         </Button>

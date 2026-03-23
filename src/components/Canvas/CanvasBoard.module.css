@@ -17,13 +17,25 @@
     position: relative;
     overflow: hidden;
     background-color: transparent !important;
-    /* Soft warm dot grid */
-    background-image: radial-gradient(rgba(139, 121, 94, 0.08) 1.5px, transparent 1.5px);
-    background-size: 24px 24px;
+    background-image: none;
+    background-size: var(--grid-size, 24px) var(--grid-size, 24px);
 }
 
 .canvasContainer canvas {
     display: block;
+}
+
+.gridVisible {
+    background-image: radial-gradient(rgba(139, 121, 94, 0.08) 1.5px, transparent 1.5px);
+}
+
+.canvasNotice {
+    position: absolute;
+    top: 96px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(680px, calc(100% - 48px));
+    z-index: 95;
 }
 
 /* Floating Soft Header */
@@ -176,6 +188,19 @@
     font-weight: 600;
     font-variant-numeric: tabular-nums;
     color: var(--text-secondary);
+}
+
+.readOnlyBadge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 40px;
+    padding: 0 16px;
+    border-radius: 999px;
+    background: rgba(255, 248, 225, 0.92);
+    color: #8a6d3b;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(138, 109, 59, 0.12);
 }
 
 /* Floating Toolbar Island */
@@ -348,6 +373,92 @@
 .inviteModal :global(.ant-modal-content) {
     border-radius: 36px;
     padding: 40px;
+}
+
+.versionModal :global(.ant-modal-content) {
+    border-radius: 32px;
+    padding: 28px;
+}
+
+.versionModalContent {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.versionToolbar {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: center;
+}
+
+.versionMetaText {
+    color: var(--text-secondary);
+    margin-top: 6px;
+    font-size: 14px;
+}
+
+.versionEmpty {
+    padding: 24px 0 8px;
+}
+
+.versionList {
+    max-height: 420px;
+    overflow-y: auto;
+}
+
+.versionItem {
+    align-items: center !important;
+    padding: 14px 0 !important;
+}
+
+.versionThumb {
+    width: 112px;
+    height: 72px;
+    border-radius: 18px;
+    overflow: hidden;
+    background: rgba(139, 121, 94, 0.06);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+.versionThumbImage {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.versionBody {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-left: 16px;
+}
+
+.versionTitleRow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.versionMetaRow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-secondary);
+}
+
+.modalLoader {
+    min-height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
 }
 
 .inviteContent {

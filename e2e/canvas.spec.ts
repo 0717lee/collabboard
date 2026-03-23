@@ -1,19 +1,23 @@
 import { test, expect } from '@playwright/test';
 
+const loginAndCreateBoard = async (page: import('@playwright/test').Page) => {
+    await page.goto('/login');
+    await page.evaluate(() => localStorage.clear());
+    await page.getByPlaceholder('邮箱地址').fill('demo@collabboard.com');
+    await page.getByPlaceholder('密码').fill('demo123');
+    await page.getByRole('button', { name: '登录' }).click();
+    await expect(page).toHaveURL(/.*dashboard/);
+
+    await page.getByRole('button', { name: /新建白板/ }).click();
+    const createDialog = page.getByRole('dialog', { name: '新建白板' });
+    await createDialog.getByPlaceholder('输入白板名称').fill('画布测试');
+    await createDialog.getByRole('button', { name: /创\s*建/ }).click();
+    await expect(page).toHaveURL(/.*board\/.+/);
+};
+
 test.describe('Canvas Board', () => {
     test.beforeEach(async ({ page }) => {
-        // Login and create a board
-        await page.goto('/login');
-        await page.evaluate(() => localStorage.clear());
-        await page.getByPlaceholder('邮箱地址').fill('demo@collabboard.com');
-        await page.getByPlaceholder('密码').fill('demo123');
-        await page.getByRole('button', { name: '登录' }).click();
-        await expect(page).toHaveURL(/.*dashboard/);
-
-        await page.getByRole('button', { name: /新建白板/ }).click();
-        await page.getByPlaceholder('输入白板名称').fill('画布测试');
-        await page.getByRole('button', { name: '创建' }).click();
-        await expect(page).toHaveURL(/.*board\/.+/);
+        await loginAndCreateBoard(page);
     });
 
     test('should display canvas with toolbar', async ({ page }) => {
@@ -32,7 +36,9 @@ test.describe('Canvas Board', () => {
         await expect(page).toHaveURL(/.*dashboard/);
     });
 
-    test('should show export dropdown', async ({ page }) => {
+    test('should show export dropdown', async ({ page }, testInfo) => {
+        test.skip(testInfo.project.name === 'Mobile Chrome', 'Export control is intentionally hidden on mobile header.');
+
         await page.getByRole('button', { name: /导出/ }).click();
 
         await expect(page.locator('text=导出为 PNG')).toBeVisible();
@@ -44,10 +50,8 @@ test.describe('Canvas Board', () => {
     });
 
     test('should show collaborator avatars', async ({ page }) => {
-        // Wait for mock collaborators to load
-        await page.waitForTimeout(1000);
-
-        // Check for collaborator indicators
-        await expect(page.locator('[class*="collaborator"]').first()).toBeVisible();
+        await page.getByRole('button', { name: /邀请/ }).click();
+        await expect(page.locator('text=当前在线 (1 人)')).toBeVisible();
+        await expect(page.locator('text=我 (你)')).toBeVisible();
     });
 });

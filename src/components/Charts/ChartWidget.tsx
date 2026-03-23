@@ -5,8 +5,7 @@ import { PlusOutlined, MinusCircleOutlined } from '@ant-design/icons';
 import styles from './ChartWidget.module.css';
 
 interface ChartWidgetProps {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    onAdd: (chartData: any) => void;
+    onAdd: () => void;
 }
 
 
@@ -225,7 +224,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({ onAdd }) => {
                 <Button
                     type="primary"
                     block
-                    onClick={() => onAdd({ type: chartType, title: chartTitle, data: dataPoints })}
+                    onClick={onAdd}
                     className={styles.addButton}
                 >
                     添加到画布

@@ -134,6 +134,7 @@ const RegisterPage: React.FC = () => {
                             htmlType="submit"
                             loading={isLoading}
                             block
+                            aria-label="注册"
                             className={styles.submitButton}
                         >
                             注册

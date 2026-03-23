@@ -1,47 +1,58 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
-    Layout,
+    Alert,
     Button,
-    Tooltip,
+    ColorPicker,
     Divider,
     Dropdown,
-    message,
-    Modal,
-    ColorPicker,
-    Typography,
     Input,
+    Layout,
+    Modal,
+    Segmented,
+    Tooltip,
+    Typography,
+    message,
 } from 'antd';
 import {
     ArrowLeftOutlined,
-    SelectOutlined,
-    EditOutlined,
-    BorderOutlined,
-    MinusOutlined,
-    FontSizeOutlined,
-    UndoOutlined,
-    RedoOutlined,
-    DownloadOutlined,
-    ZoomInOutlined,
-    ZoomOutOutlined,
-    DeleteOutlined,
     BarChartOutlined,
-    ShareAltOutlined,
-    CopyOutlined,
+    BorderOutlined,
     CheckOutlined,
     ClearOutlined,
+    CopyOutlined,
+    DeleteOutlined,
+    DownloadOutlined,
+    EditOutlined,
+    EyeOutlined,
+    FontSizeOutlined,
+    HistoryOutlined,
+    LockOutlined,
+    MinusOutlined,
+    RedoOutlined,
+    SelectOutlined,
+    ShareAltOutlined,
+    UndoOutlined,
+    ZoomInOutlined,
+    ZoomOutOutlined,
 } from '@ant-design/icons';
-import { useBoardStore } from '@/stores/boardStore';
-import { useSettingsStore } from '@/stores/settingsStore';
-import { useLanguageStore } from '@/stores/languageStore';
-import { useUpdateMyPresence, useOthers, useStorage, useMutation } from '@/liveblocks.config';
-import { LiveblocksCursors } from './LiveblocksCursors';
-import { ChartWidget } from '@/components/Charts/ChartWidget';
-import { CircularSlider } from './CircularSlider';
-import styles from './CanvasBoard.module.css';
 import LZString from 'lz-string';
+import { useAuthStore } from '@/stores/authStore';
+import { useBoardHistoryStore } from '@/stores/boardHistoryStore';
+import { useBoardLibraryStore } from '@/stores/boardLibraryStore';
+import { useBoardStore } from '@/stores/boardStore';
+import { useLanguageStore } from '@/stores/languageStore';
+import { useSettingsStore } from '@/stores/settingsStore';
+import { buildBoardShareLink, decompressSnapshotData, extractBoardRoleFromUrl } from '@/lib/boardUtils';
+import { useMutation, useOthers, useStorage, useUpdateMyPresence } from '@/liveblocks.config';
+import { CircularSlider } from './CircularSlider';
+import { LiveblocksCursors } from './LiveblocksCursors';
+import { VersionHistoryModal } from './VersionHistoryModal';
+import styles from './CanvasBoard.module.css';
+import type { Board, BoardRole, BoardSnapshot } from '@/types';
 
-// Dynamic import for fabric to avoid TypeScript issues
+const LazyChartWidget = lazy(() => import('@/components/Charts/ChartWidget'));
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let fabric: any = null;
 
@@ -55,38 +66,64 @@ interface HistoryState {
     future: string[];
 }
 
-// Helper to parse canvas data (supports both raw JSON and LZ-compressed Base64)
-const parseCanvasData = (data: string | null) => {
+const GRID_SIZE = 24;
+const MAX_SYNC_SIZE = 400000;
+const AUTO_SAVE_INTERVAL_MS = 5000;
+const AUTO_SNAPSHOT_INTERVAL_MS = 60000;
+const EMPTY_SNAPSHOTS: BoardSnapshot[] = [];
+
+const decodeCanvasData = (data: string | null) => {
     if (!data) return null;
+
     try {
         const trimmed = data.trim();
-        // If it starts with '{', assume it's legacy raw JSON
+
         if (trimmed.startsWith('{')) {
-            return JSON.parse(trimmed);
+            return {
+                json: trimmed,
+                parsed: JSON.parse(trimmed),
+            };
         }
 
-        // Otherwise try to decompress
         const decompressed = LZString.decompressFromBase64(data);
         if (decompressed) {
-            return JSON.parse(decompressed);
+            return {
+                json: decompressed,
+                parsed: JSON.parse(decompressed),
+            };
         }
-    } catch (e) {
-        console.error('Failed to parse canvas data', e);
+    } catch (error) {
+        console.error('Failed to decode canvas data', error);
     }
+
     return null;
 };
 
 const CanvasBoardInner: React.FC = () => {
     const { boardId } = useParams<{ boardId: string }>();
+    const location = useLocation();
     const navigate = useNavigate();
+
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const fabricRef = useRef<any>(null);
-    const containerRef = useRef<HTMLDivElement>(null);
 
-    const { boards, currentBoard, setCurrentBoard, saveCanvasData } = useBoardStore();
+    const { user } = useAuthStore();
+    const {
+        boards,
+        sharedBoards,
+        currentBoard,
+        fetchBoard,
+        saveCanvasData,
+        setCurrentBoard,
+    } = useBoardStore();
     const { settings } = useSettingsStore();
     const { language } = useLanguageStore();
+    const { entries, setRole, setThumbnail, touchBoard } = useBoardLibraryStore();
+    const createSnapshot = useBoardHistoryStore((state) => state.createSnapshot);
+    const removeSnapshot = useBoardHistoryStore((state) => state.removeSnapshot);
+    const snapshotMap = useBoardHistoryStore((state) => state.snapshots);
     const updateMyPresence = useUpdateMyPresence();
     const others = useOthers();
 
@@ -99,131 +136,309 @@ const CanvasBoardInner: React.FC = () => {
     const [history, setHistory] = useState<HistoryState>({ past: [], future: [] });
     const [showChartModal, setShowChartModal] = useState(false);
     const [showInviteModal, setShowInviteModal] = useState(false);
+    const [showVersionModal, setShowVersionModal] = useState(false);
     const [linkCopied, setLinkCopied] = useState(false);
     const [fabricLoaded, setFabricLoaded] = useState(false);
     const [canvasReady, setCanvasReady] = useState(false);
+    const [shareRole, setShareRole] = useState<'editor' | 'viewer'>('editor');
 
-    // Liveblocks hooks - Sync Canvas Data (Chunked)
+    const historyRef = useRef<HistoryState>({ past: [], future: [] });
+    const presentStateRef = useRef('');
+    const latestSerializedRef = useRef('');
+    const lastPersistedStateRef = useRef('');
+    const lastSyncedDataRef = useRef<string | null>(null);
+    const isRemoteUpdateRef = useRef(false);
+    const isRestoringRef = useRef(false);
+    const dirtyRef = useRef(false);
+    const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const thumbnailTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const lastAutoSnapshotAtRef = useRef(0);
+
+    const sharedRoleFromUrl = useMemo(
+        () => extractBoardRoleFromUrl(location.search),
+        [location.search]
+    );
+    const snapshots = useMemo(
+        () => (boardId ? snapshotMap[boardId] || EMPTY_SNAPSHOTS : EMPTY_SNAPSHOTS),
+        [boardId, snapshotMap]
+    );
+    const cachedRole = boardId ? entries[boardId]?.role : undefined;
+    const resolvedRole: BoardRole = currentBoard?.ownerId === user?.id
+        ? 'owner'
+        : sharedRoleFromUrl || cachedRole || currentBoard?.accessRole || 'editor';
+    const isReadOnly = resolvedRole === 'viewer';
+    const gridPixelSize = `${Math.max((GRID_SIZE * zoom) / 100, 12)}px`;
+
+    const shareLink = useMemo(() => {
+        if (!boardId || typeof window === 'undefined') return '';
+        return buildBoardShareLink(window.location.origin, boardId, shareRole);
+    }, [boardId, shareRole]);
+
     const chunk1 = useStorage((root) => root.canvasData);
     const chunk2 = useStorage((root) => root.canvasData_2);
     const chunk3 = useStorage((root) => root.canvasData_3);
     const chunk4 = useStorage((root) => root.canvasData_4);
     const chunk5 = useStorage((root) => root.canvasData_5);
-
-    // Reassemble chunks
     const canvasData = (chunk1 || '') + (chunk2 || '') + (chunk3 || '') + (chunk4 || '') + (chunk5 || '');
 
-    // Use ref to access latest canvasData in closures/callbacks without triggering re-renders
-    const canvasDataRef = useRef(canvasData);
-    useEffect(() => {
-        canvasDataRef.current = canvasData;
-    }, [canvasData]);
-
     const updateStorage = useMutation(({ storage }, compressedData: string) => {
-        // Chunk size limit: 80KB (safe margin below 128KB limit)
-        const CHUNK_SIZE = 80000;
+        const chunkSize = 80000;
         const totalLength = compressedData.length;
 
-        // Chunk 1
-        storage.set('canvasData', compressedData.slice(0, CHUNK_SIZE));
+        storage.set('canvasData', compressedData.slice(0, chunkSize));
 
-        // Chunk 2
-        if (totalLength > CHUNK_SIZE) {
-            storage.set('canvasData_2', compressedData.slice(CHUNK_SIZE, CHUNK_SIZE * 2));
+        if (totalLength > chunkSize) {
+            storage.set('canvasData_2', compressedData.slice(chunkSize, chunkSize * 2));
         } else if (storage.get('canvasData_2')) {
             storage.set('canvasData_2', '');
         }
 
-        // Chunk 3
-        if (totalLength > CHUNK_SIZE * 2) {
-            storage.set('canvasData_3', compressedData.slice(CHUNK_SIZE * 2, CHUNK_SIZE * 3));
+        if (totalLength > chunkSize * 2) {
+            storage.set('canvasData_3', compressedData.slice(chunkSize * 2, chunkSize * 3));
         } else if (storage.get('canvasData_3')) {
             storage.set('canvasData_3', '');
         }
 
-        // Chunk 4
-        if (totalLength > CHUNK_SIZE * 3) {
-            storage.set('canvasData_4', compressedData.slice(CHUNK_SIZE * 3, CHUNK_SIZE * 4));
+        if (totalLength > chunkSize * 3) {
+            storage.set('canvasData_4', compressedData.slice(chunkSize * 3, chunkSize * 4));
         } else if (storage.get('canvasData_4')) {
             storage.set('canvasData_4', '');
         }
 
-        // Chunk 5
-        if (totalLength > CHUNK_SIZE * 4) {
-            storage.set('canvasData_5', compressedData.slice(CHUNK_SIZE * 4, CHUNK_SIZE * 5));
+        if (totalLength > chunkSize * 4) {
+            storage.set('canvasData_5', compressedData.slice(chunkSize * 4, chunkSize * 5));
         } else if (storage.get('canvasData_5')) {
             storage.set('canvasData_5', '');
         }
     }, []);
 
-    // Sync from Liveblocks to Canvas (Receive Updates)
-    useEffect(() => {
-        if (!fabricRef.current || !fabric || !canvasReady || !canvasData) return;
+    const resetHistory = useCallback((present: string) => {
+        presentStateRef.current = present;
+        historyRef.current = { past: [], future: [] };
+        setHistory({ ...historyRef.current });
+    }, []);
 
-        // Loop prevention: if data hasn't changed from what we last synced/sent, ignore
-        if (canvasData === lastSyncedData.current) return;
+    const commitHistory = useCallback((nextState: string) => {
+        if (!presentStateRef.current) {
+            presentStateRef.current = nextState;
+            setHistory({ ...historyRef.current });
+            return;
+        }
 
-        // Receiving remote update
+        if (nextState === presentStateRef.current) {
+            return;
+        }
 
-        const applyRemoteUpdate = async () => {
-            try {
-                const data = parseCanvasData(canvasData);
-                if (data && data.objects) {
-                    isRemoteUpdate.current = true;
-                    // Load data into canvas
-                    // We must wait for this to complete before unsetting isRemoteUpdate
-                    await fabricRef.current.loadFromJSON(data);
+        historyRef.current = {
+            past: [...historyRef.current.past.slice(-19), presentStateRef.current],
+            future: [],
+        };
+        presentStateRef.current = nextState;
+        setHistory({ ...historyRef.current });
+    }, []);
 
-                    // Update lastSyncedData to match the new remote state
-                    lastSyncedData.current = canvasData;
+    const syncCanvasState = useCallback((json: string) => {
+        const compressed = LZString.compressToBase64(json);
 
-                    fabricRef.current.requestRenderAll();
-                    isRemoteUpdate.current = false;
-                }
-            } catch (e) {
-                console.error('Error applying remote update:', e);
-                isRemoteUpdate.current = false;
+        if (compressed.length > MAX_SYNC_SIZE) {
+            message.warning(isEn ? 'Canvas too complex. Please simplify.' : '画布内容过多无法同步，请简化内容。');
+            return false;
+        }
+
+        lastSyncedDataRef.current = compressed;
+        updateStorage(compressed);
+        return true;
+    }, [isEn, updateStorage]);
+
+    const createThumbnail = useCallback(() => {
+        if (!fabricRef.current || !boardId) return;
+
+        try {
+            const thumbnail = fabricRef.current.toDataURL({
+                format: 'png',
+                multiplier: 0.18,
+            });
+
+            if (thumbnail.length < 220000) {
+                setThumbnail(boardId, thumbnail);
             }
+        } catch (error) {
+            console.warn('Unable to create thumbnail', error);
+        }
+    }, [boardId, setThumbnail]);
+
+    const scheduleThumbnailCapture = useCallback(() => {
+        if (thumbnailTimeoutRef.current) {
+            clearTimeout(thumbnailTimeoutRef.current);
+        }
+
+        thumbnailTimeoutRef.current = setTimeout(() => {
+            createThumbnail();
+        }, 600);
+    }, [createThumbnail]);
+
+    const applyCanvasState = useCallback(async (
+        json: string,
+        options?: {
+            resetHistory?: boolean;
+            markPersisted?: boolean;
+            sync?: boolean;
+            markDirty?: boolean;
+            suppressEvents?: boolean;
+        }
+    ) => {
+        if (!fabricRef.current) return;
+
+        isRestoringRef.current = true;
+        isRemoteUpdateRef.current = options?.suppressEvents ?? false;
+
+        try {
+            await fabricRef.current.loadFromJSON(JSON.parse(json));
+            fabricRef.current.requestRenderAll();
+
+            latestSerializedRef.current = json;
+
+            if (options?.resetHistory) {
+                resetHistory(json);
+            }
+
+            if (options?.markPersisted) {
+                lastPersistedStateRef.current = json;
+                dirtyRef.current = false;
+            }
+
+            if (options?.markDirty) {
+                dirtyRef.current = true;
+            }
+
+            if (options?.sync) {
+                syncCanvasState(json);
+            }
+
+            scheduleThumbnailCapture();
+        } finally {
+            isRemoteUpdateRef.current = false;
+            isRestoringRef.current = false;
+        }
+    }, [resetHistory, scheduleThumbnailCapture, syncCanvasState]);
+
+    const createBoardSnapshot = useCallback((source: 'manual' | 'auto') => {
+        if (!boardId || !fabricRef.current) return null;
+
+        const data = latestSerializedRef.current || JSON.stringify(fabricRef.current.toJSON());
+        const createdAt = new Date().toISOString();
+        const label = source === 'manual'
+            ? `${isEn ? 'Snapshot' : '快照'} ${snapshots.length + 1}`
+            : `${isEn ? 'Auto Snapshot' : '自动快照'} ${new Date(createdAt).toLocaleTimeString(isEn ? 'en-US' : 'zh-CN', {
+                hour: '2-digit',
+                minute: '2-digit',
+            })}`;
+
+        return createSnapshot({
+            boardId,
+            name: label,
+            data,
+            source,
+            thumbnail: entries[boardId]?.thumbnail,
+            createdAt,
+        });
+    }, [boardId, createSnapshot, entries, isEn, snapshots.length]);
+
+    const resolveBoard = useCallback(async () => {
+        if (!boardId) return null;
+
+        let board = [...boards, ...sharedBoards].find((item) => item.id === boardId) || null;
+
+        if (!board || !board.data) {
+            const fetchedBoard = await fetchBoard(boardId);
+            if (fetchedBoard) {
+                board = fetchedBoard;
+            }
+        }
+
+        if (!board) return null;
+
+        const accessRole: BoardRole = board.ownerId === user?.id
+            ? 'owner'
+            : sharedRoleFromUrl || cachedRole || board.accessRole || 'editor';
+
+        const normalizedBoard: Board = {
+            ...board,
+            accessRole,
+            source: accessRole === 'owner' ? 'owned' : 'shared',
         };
 
-        applyRemoteUpdate();
-    }, [canvasData, canvasReady]); // Only re-run when data changes
+        setCurrentBoard(normalizedBoard);
+        touchBoard(normalizedBoard, accessRole);
 
-    // Ref to track if update is coming from remote (to avoid loop)
-    const isRemoteUpdate = useRef(false);
-    // Ref to track the last synced data to avoid re-applying our own changes or duplicate updates
-    const lastSyncedData = useRef<string | null>(null);
+        if (accessRole !== 'owner') {
+            setRole(boardId, accessRole);
+        }
 
-    // Get share link
-    const shareLink = typeof window !== 'undefined'
-        ? `${window.location.origin}/board/${boardId}`
-        : '';
+        return normalizedBoard;
+    }, [boardId, boards, cachedRole, fetchBoard, setCurrentBoard, setRole, sharedBoards, sharedRoleFromUrl, touchBoard, user?.id]);
 
-    const handleCopyLink = () => {
-        navigator.clipboard.writeText(shareLink).then(() => {
-            setLinkCopied(true);
-            message.success(isEn ? 'Link copied to clipboard!' : '链接已复制到剪贴板！');
-            setTimeout(() => setLinkCopied(false), 2000);
-        });
-    };
+    const processLocalCanvasChange = useCallback(() => {
+        if (!fabricRef.current || isRemoteUpdateRef.current || isRestoringRef.current || isReadOnly) {
+            return;
+        }
 
-    // Load fabric dynamically
+        if (syncTimeoutRef.current) {
+            clearTimeout(syncTimeoutRef.current);
+        }
+
+        syncTimeoutRef.current = setTimeout(() => {
+            if (!fabricRef.current) return;
+
+            const json = JSON.stringify(fabricRef.current.toJSON());
+            latestSerializedRef.current = json;
+            dirtyRef.current = true;
+            commitHistory(json);
+            syncCanvasState(json);
+            scheduleThumbnailCapture();
+        }, 300);
+    }, [commitHistory, isReadOnly, scheduleThumbnailCapture, syncCanvasState]);
+
+    const snapCoordinate = useCallback((value: number) => Math.round(value / GRID_SIZE) * GRID_SIZE, []);
+
+    const snapObjectToGrid = useCallback((target?: { set: (key: string, value: number) => void; setCoords?: () => void; left?: number; top?: number; x1?: number; y1?: number; x2?: number; y2?: number; type?: string }) => {
+        if (!settings.snapToGrid || !target) return;
+
+        if (typeof target.left === 'number') target.set('left', snapCoordinate(target.left));
+        if (typeof target.top === 'number') target.set('top', snapCoordinate(target.top));
+        if (target.type === 'line') {
+            if (typeof target.x1 === 'number') target.set('x1', snapCoordinate(target.x1));
+            if (typeof target.y1 === 'number') target.set('y1', snapCoordinate(target.y1));
+            if (typeof target.x2 === 'number') target.set('x2', snapCoordinate(target.x2));
+            if (typeof target.y2 === 'number') target.set('y2', snapCoordinate(target.y2));
+        }
+        target.setCoords?.();
+    }, [settings.snapToGrid, snapCoordinate]);
+
+    const persistCurrentCanvas = useCallback(async () => {
+        if (!boardId || !currentBoard || !latestSerializedRef.current) return;
+
+        if (latestSerializedRef.current === lastPersistedStateRef.current) {
+            dirtyRef.current = false;
+            return;
+        }
+
+        await saveCanvasData(boardId, latestSerializedRef.current);
+        lastPersistedStateRef.current = latestSerializedRef.current;
+        dirtyRef.current = false;
+    }, [boardId, currentBoard, saveCanvasData]);
+
     useEffect(() => {
-        import('fabric').then((mod) => {
-            fabric = mod;
+        import('fabric').then((module) => {
+            fabric = module;
             setFabricLoaded(true);
         });
     }, []);
 
-
-
-    // Initialize canvas
     useEffect(() => {
-        if (!canvasRef.current || !containerRef.current || !fabricLoaded || !fabric) return;
+        if (!canvasRef.current || !containerRef.current || !fabricLoaded || !fabric || !boardId) return;
 
         const container = containerRef.current;
-
-        // Optimize JSON size by reducing precision
         fabric.Object.NUM_FRACTION_DIGITS = 2;
 
         const canvas = new fabric.Canvas(canvasRef.current, {
@@ -237,212 +452,154 @@ const CanvasBoardInner: React.FC = () => {
         fabricRef.current = canvas;
         setCanvasReady(true);
 
-        // Initialize free drawing brush
         canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
-        canvas.freeDrawingBrush.color = '#000000';
-        canvas.freeDrawingBrush.width = 3;
+        canvas.freeDrawingBrush.color = brushColor;
+        canvas.freeDrawingBrush.width = brushWidth;
         canvas.freeDrawingBrush.decimate = 5;
 
-        // Load board data
         const loadBoardData = async () => {
-            if (!boardId) return;
+            const board = await resolveBoard();
+            if (!board) return;
 
-            let board = boards.find((b) => b.id === boardId);
+            const liveblocksState = decodeCanvasData(canvasData);
+            const boardState = decodeCanvasData(board.data || '');
 
-            // If board not in local list, fetch it
-            if (!board) {
-                const fetchedBoard = await useBoardStore.getState().fetchBoard(boardId);
-                if (fetchedBoard) board = fetchedBoard;
-            } else {
-                setCurrentBoard(board);
+            if (liveblocksState?.parsed?.objects) {
+                lastSyncedDataRef.current = canvasData;
+                await applyCanvasState(liveblocksState.json, {
+                    resetHistory: true,
+                    markPersisted: true,
+                    suppressEvents: true,
+                });
+                return;
             }
 
-            // Sync Strategy:
-            // 1. If Liveblocks (canvasData) has data, use it (it's the real-time truth)
-            // 2. If Liveblocks is empty (new session), load from DB (persistence layer)
+            if (boardState?.parsed?.objects) {
+                await applyCanvasState(boardState.json, {
+                    resetHistory: true,
+                    markPersisted: true,
+                    suppressEvents: true,
+                });
 
-            if (canvasData && canvasData !== '{}') {
-                try {
-                    const data = parseCanvasData(canvasData);
-                    if (data && data.objects) {
-                        await canvas.loadFromJSON(data);
-                        canvas.requestRenderAll();
-                    }
-                } catch (e) {
-                    console.error('Error loading from Liveblocks:', e);
-                }
-            } else if (board) {
-                // Fallback to DB
-                try {
-                    const data = JSON.parse(board.data);
-                    if (data.objects && data.objects.length > 0) {
-                        await canvas.loadFromJSON(data);
-                        canvas.renderAll();
-
-                        // Initial push to Liveblocks if we are the first one
-                        if (canvasData !== null) {
-                            const json = JSON.stringify(data);
-                            const compressed = LZString.compressToBase64(json);
-                            updateStorage(compressed);
-                        }
-                    }
-                } catch {
-                    console.log('Empty or invalid board data');
-                }
+                syncCanvasState(boardState.json);
+                return;
             }
+
+            const emptyJson = JSON.stringify(canvas.toJSON());
+            latestSerializedRef.current = emptyJson;
+            lastPersistedStateRef.current = emptyJson;
+            resetHistory(emptyJson);
+            scheduleThumbnailCapture();
         };
-
-        loadBoardData();
 
         const resizeCanvas = () => {
-            if (container && canvas) {
-                const width = container.clientWidth;
-                const height = container.clientHeight;
-                if (width > 0 && height > 0) {
-                    canvas.setDimensions({
-                        width,
-                        height,
-                    });
-                    canvas.renderAll();
-                }
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            if (width > 0 && height > 0) {
+                canvas.setDimensions({ width, height });
+                canvas.requestRenderAll();
             }
         };
+
+        const handleObjectMoving = ({ target }: { target?: { left?: number; top?: number; set: (key: string, value: number) => void; setCoords?: () => void; type?: string; x1?: number; y1?: number; x2?: number; y2?: number } }) => {
+            snapObjectToGrid(target);
+        };
+
+        const handleModification = () => {
+            processLocalCanvasChange();
+        };
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const handleMouseMove = (options: any) => {
+            if (options.pointer) {
+                updateMyPresence({ cursor: options.pointer });
+            }
+        };
+
+        canvas.on('object:moving', handleObjectMoving);
+        canvas.on('object:modified', handleModification);
+        canvas.on('object:added', handleModification);
+        canvas.on('object:removed', handleModification);
+        canvas.on('mouse:move', handleMouseMove);
+        canvas.on('mouse:out', () => updateMyPresence({ cursor: null }));
+
+        loadBoardData();
         resizeCanvas();
+
         window.addEventListener('resize', resizeCanvas);
         const resizeObserver = new ResizeObserver(resizeCanvas);
         resizeObserver.observe(container);
 
-        // Sync to Liveblocks listener (debounced 300ms to avoid flooding during rapid edits)
-        let syncTimeout: ReturnType<typeof setTimeout> | null = null;
-        const handleModification = () => {
-            saveState();
-
-            // Debounced sync to Liveblocks
-            if (fabricRef.current && !isRemoteUpdate.current && canvasDataRef.current !== null) {
-                if (syncTimeout) clearTimeout(syncTimeout);
-                syncTimeout = setTimeout(() => {
-                    if (!fabricRef.current) return;
-                    const json = JSON.stringify(fabricRef.current.toJSON());
-                    const compressed = LZString.compressToBase64(json);
-
-                    if (compressed.length > 400000) {
-                        message.warning(isEn ? 'Canvas too complex. Please simplify.' : '画布内容过多无法同步，请简化内容。');
-                        return;
-                    }
-
-                    updateStorage(compressed);
-                }, 300);
-            }
-        };
-
-        canvas.on('object:modified', handleModification);
-        canvas.on('object:added', handleModification);
-        canvas.on('object:removed', handleModification);
-
-
-        // Track cursor
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        canvas.on('mouse:move', (options: any) => {
-            if (options.pointer) {
-                updateMyPresence({ cursor: options.pointer });
-            }
-        });
-
-        canvas.on('mouse:out', () => {
-            updateMyPresence({ cursor: null });
-        });
-
-        // Save initial empty state for full undo capability
-        setTimeout(() => {
-            const initialState = JSON.stringify(canvas.toJSON());
-            historyRef.current = { past: [initialState], future: [] };
-            setHistory({ ...historyRef.current });
-        }, 100);
-
         return () => {
-            setCanvasReady(false); // Reset ready state
+            setCanvasReady(false);
             window.removeEventListener('resize', resizeCanvas);
             resizeObserver.disconnect();
+            canvas.off('object:moving', handleObjectMoving);
+            canvas.off('object:modified', handleModification);
+            canvas.off('object:added', handleModification);
+            canvas.off('object:removed', handleModification);
+            canvas.off('mouse:move', handleMouseMove);
             canvas.dispose();
             fabricRef.current = null;
+
+            if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+            if (thumbnailTimeoutRef.current) clearTimeout(thumbnailTimeoutRef.current);
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [boardId, fabricLoaded]);
+    }, [applyCanvasState, boardId, brushColor, brushWidth, canvasData, fabricLoaded, processLocalCanvasChange, resetHistory, resolveBoard, scheduleThumbnailCapture, snapObjectToGrid, syncCanvasState, updateMyPresence]);
 
-    // Save canvas state for undo/redo - use ref to avoid stale closure
-    const historyRef = useRef<HistoryState>({ past: [], future: [] });
-    const isRestoringRef = useRef(false);
-
-    const saveState = useCallback(() => {
-        if (!fabricRef.current || isRestoringRef.current) return;
-        const json = JSON.stringify(fabricRef.current.toJSON());
-        historyRef.current = {
-            past: [...historyRef.current.past.slice(-20), json],
-            future: [],
-        };
-        setHistory({ ...historyRef.current });
-    }, []);
-
-    // Auto-save
     useEffect(() => {
-        if (!fabricRef.current || !currentBoard) return;
+        if (!canvasReady || !canvasData || canvasData === lastSyncedDataRef.current) return;
 
-        const interval = setInterval(() => {
-            if (settings.autoSave && fabricRef.current) {
-                const json = JSON.stringify(fabricRef.current.toJSON());
-                saveCanvasData(currentBoard.id, json);
-            }
-        }, 5000);
+        const decoded = decodeCanvasData(canvasData);
+        if (!decoded?.parsed?.objects) return;
 
-        return () => clearInterval(interval);
-    }, [currentBoard, settings.autoSave, saveCanvasData]);
+        lastSyncedDataRef.current = canvasData;
+        applyCanvasState(decoded.json, {
+            resetHistory: true,
+            markPersisted: true,
+            suppressEvents: true,
+        });
+    }, [applyCanvasState, canvasData, canvasReady]);
 
-    // Tool handlers
     useEffect(() => {
         const canvas = fabricRef.current;
         if (!canvas || !fabric || !canvasReady) return;
 
-        canvas.isDrawingMode = activeTool === 'draw' || activeTool === 'eraser';
-        canvas.selection = activeTool === 'select';
+        canvas.isDrawingMode = !isReadOnly && (activeTool === 'draw' || activeTool === 'eraser');
+        canvas.selection = !isReadOnly && activeTool === 'select';
 
-        // Handle path creation for eraser properties
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const handlePathCreated = (e: any) => {
-            if (activeTool === 'eraser' && e.path) {
-                e.path.set({
+        const pathCreated = (event: { path?: { set: (props: Record<string, unknown>) => void } }) => {
+            if (activeTool === 'eraser' && event.path) {
+                event.path.set({
                     globalCompositeOperation: 'destination-out',
-                    stroke: 'white', // Opaque color required for destination-out to clear pixels
+                    stroke: 'white',
                     selectable: false,
                     evented: false,
-                    perPixelTargetFind: true // Improve selection interaction if needed
+                    perPixelTargetFind: true,
                 });
                 canvas.requestRenderAll();
             }
         };
-        canvas.on('path:created', handlePathCreated);
 
-        if (activeTool === 'draw') {
-            // Use PencilBrush for drawing
+        canvas.on('path:created', pathCreated);
+
+        if (!isReadOnly && activeTool === 'draw') {
             canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
             canvas.freeDrawingBrush.color = brushColor;
             canvas.freeDrawingBrush.width = brushWidth;
-            canvas.freeDrawingBrush.decimate = 5; // Optimize path density
+            canvas.freeDrawingBrush.decimate = 5;
             canvas.freeDrawingCursor = 'default';
-        } else if (activeTool === 'eraser') {
+        } else if (!isReadOnly && activeTool === 'eraser') {
             const eraserWidth = brushWidth * 5;
-
-            // Use standard PencilBrush configured for erasure (destination-out)
             canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
-            canvas.freeDrawingBrush.color = 'white'; // Visual feedback while drawing
+            canvas.freeDrawingBrush.color = 'white';
             canvas.freeDrawingBrush.width = eraserWidth;
-            canvas.freeDrawingBrush.decimate = 5; // Optimize
+            canvas.freeDrawingBrush.decimate = 5;
 
-            // Create custom cursor for eraser
             try {
                 const size = eraserWidth;
-                const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-                    <circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 2}" fill="rgba(255, 255, 255, 0.5)" stroke="black" stroke-width="2"/>
-                </svg>`;
+                const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 2}" fill="rgba(255,255,255,0.5)" stroke="black" stroke-width="2"/></svg>`;
                 const cursorUrl = `data:image/svg+xml;base64,${btoa(svg)}`;
                 canvas.freeDrawingCursor = `url(${cursorUrl}) ${size / 2} ${size / 2}, auto`;
             } catch {
@@ -450,19 +607,31 @@ const CanvasBoardInner: React.FC = () => {
             }
         }
 
-        return () => {
-            canvas.off('path:created', handlePathCreated);
-        };
-    }, [activeTool, brushColor, brushWidth, canvasReady]);
+        canvas.forEachObject((object: { set: (props: Record<string, boolean>) => void; globalCompositeOperation?: string }) => {
+            const isEraserPath = object.globalCompositeOperation === 'destination-out';
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const handleCanvasMouseDown = useCallback((opt: any) => {
-        if (activeTool === 'select' || activeTool === 'draw' || activeTool === 'eraser' || !fabric) return;
+            if (isReadOnly) {
+                object.set({ selectable: false, evented: false });
+            } else if (!isEraserPath) {
+                object.set({ selectable: true, evented: true });
+            }
+        });
+
+        canvas.requestRenderAll();
+
+        return () => {
+            canvas.off('path:created', pathCreated);
+        };
+    }, [activeTool, brushColor, brushWidth, canvasReady, isReadOnly]);
+
+    const handleCanvasMouseDown = useCallback((opt: { pointer?: { x: number; y: number } }) => {
+        if (isReadOnly || activeTool === 'select' || activeTool === 'draw' || activeTool === 'eraser' || !fabric) return;
 
         const canvas = fabricRef.current;
         if (!canvas || !opt.pointer) return;
 
-        const { x, y } = opt.pointer;
+        const x = settings.snapToGrid ? snapCoordinate(opt.pointer.x) : opt.pointer.x;
+        const y = settings.snapToGrid ? snapCoordinate(opt.pointer.y) : opt.pointer.y;
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let object: any = null;
@@ -498,145 +667,167 @@ const CanvasBoardInner: React.FC = () => {
                 });
                 break;
             case 'text':
-                object = new fabric.IText('双击编辑', {
+                object = new fabric.IText(isEn ? 'Double click to edit' : '双击编辑', {
                     left: x,
                     top: y,
                     fontSize: 20,
                     fill: brushColor,
-                    fontFamily: 'Inter, sans-serif',
+                    fontFamily: 'Plus Jakarta Sans, sans-serif',
                 });
+                break;
+            default:
                 break;
         }
 
         if (object) {
             canvas.add(object);
             canvas.setActiveObject(object);
-
-            // Fix: Fabric v6 renderAll might need requestRenderAll
             canvas.requestRenderAll();
-
             setActiveTool('select');
         }
-    }, [activeTool, brushColor]); // Removed brushWidth dependency as it's not used in this scope
+    }, [activeTool, brushColor, isEn, isReadOnly, settings.snapToGrid, snapCoordinate]);
 
     useEffect(() => {
         const canvas = fabricRef.current;
         if (!canvas) return;
 
-        // Ensure we don't bind multiple times by cleaning up first (though React usually handles this)
         canvas.off('mouse:down', handleCanvasMouseDown);
         canvas.on('mouse:down', handleCanvasMouseDown);
 
         return () => {
             canvas.off('mouse:down', handleCanvasMouseDown);
         };
-    }, [handleCanvasMouseDown, fabricLoaded]);
+    }, [handleCanvasMouseDown]);
 
-    // Undo/Redo
-    const undo = useCallback(() => {
-        if (historyRef.current.past.length === 0 || !fabricRef.current) return;
+    const undo = useCallback(async () => {
+        if (!fabricRef.current || historyRef.current.past.length === 0 || isReadOnly) return;
 
-        isRestoringRef.current = true;
-        const newPast = [...historyRef.current.past];
-        const previous = newPast.pop()!;
-        const current = JSON.stringify(fabricRef.current.toJSON());
+        const previous = historyRef.current.past[historyRef.current.past.length - 1];
+        const nextPast = historyRef.current.past.slice(0, -1);
+        const current = presentStateRef.current;
 
         historyRef.current = {
-            past: newPast,
+            past: nextPast,
             future: [current, ...historyRef.current.future],
         };
+        presentStateRef.current = previous;
         setHistory({ ...historyRef.current });
 
-        fabricRef.current.loadFromJSON(JSON.parse(previous)).then(() => {
-            fabricRef.current!.renderAll();
-            isRestoringRef.current = false;
-        });
-    }, []);
+        await applyCanvasState(previous, { markDirty: true, sync: true });
+    }, [applyCanvasState, isReadOnly]);
 
-    const redo = useCallback(() => {
-        if (historyRef.current.future.length === 0 || !fabricRef.current) return;
+    const redo = useCallback(async () => {
+        if (!fabricRef.current || historyRef.current.future.length === 0 || isReadOnly) return;
 
-        isRestoringRef.current = true;
-        const newFuture = [...historyRef.current.future];
-        const next = newFuture.shift()!;
-        const current = JSON.stringify(fabricRef.current.toJSON());
+        const [next, ...remainingFuture] = historyRef.current.future;
+        const current = presentStateRef.current;
 
         historyRef.current = {
-            past: [...historyRef.current.past, current],
-            future: newFuture,
+            past: [...historyRef.current.past.slice(-19), current],
+            future: remainingFuture,
         };
+        presentStateRef.current = next;
         setHistory({ ...historyRef.current });
 
-        fabricRef.current.loadFromJSON(JSON.parse(next)).then(() => {
-            fabricRef.current!.renderAll();
-            isRestoringRef.current = false;
-        });
-    }, []);
+        await applyCanvasState(next, { markDirty: true, sync: true });
+    }, [applyCanvasState, isReadOnly]);
 
-    // Keyboard shortcuts (Ctrl+Z, Ctrl+Y, Delete)
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            const tag = (e.target as HTMLElement)?.tagName;
-            if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+    const deleteSelected = useCallback(() => {
+        if (isReadOnly) return;
 
-            if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
-                e.preventDefault();
-                undo();
-            } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
-                e.preventDefault();
-                redo();
-            } else if (e.key === 'Delete' || e.key === 'Backspace') {
-                e.preventDefault();
-                deleteSelected();
-            }
-        };
-
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [undo, redo]);
-
-    // Zoom controls
-    const handleZoom = (delta: number) => {
-        const newZoom = Math.min(Math.max(zoom + delta, 25), 200);
-        setZoom(newZoom);
-        if (fabricRef.current) {
-            fabricRef.current.setZoom(newZoom / 100);
-            fabricRef.current.renderAll();
-        }
-    };
-
-    // Delete selected objects
-    const deleteSelected = () => {
         const canvas = fabricRef.current;
         if (!canvas) return;
 
         const activeObjects = canvas.getActiveObjects();
         if (activeObjects.length > 0) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            activeObjects.forEach((obj: any) => canvas.remove(obj));
+            activeObjects.forEach((object: any) => canvas.remove(object));
             canvas.discardActiveObject();
-            canvas.renderAll();
-            message.success('已删除');
+            canvas.requestRenderAll();
+            message.success(isEn ? 'Deleted' : '已删除');
+        }
+    }, [isEn, isReadOnly]);
+
+    useEffect(() => {
+        const handleKeyDown = (event: KeyboardEvent) => {
+            const tagName = (event.target as HTMLElement)?.tagName;
+            if (tagName === 'INPUT' || tagName === 'TEXTAREA') return;
+
+            if ((event.ctrlKey || event.metaKey) && event.key === 'z' && !event.shiftKey) {
+                event.preventDefault();
+                undo();
+            } else if ((event.ctrlKey || event.metaKey) && (event.key === 'y' || (event.key === 'z' && event.shiftKey))) {
+                event.preventDefault();
+                redo();
+            } else if (!isReadOnly && (event.key === 'Delete' || event.key === 'Backspace')) {
+                event.preventDefault();
+                deleteSelected();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [deleteSelected, isReadOnly, redo, undo]);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            if (!settings.autoSave || !dirtyRef.current || !currentBoard) return;
+
+            persistCurrentCanvas();
+
+            if (Date.now() - lastAutoSnapshotAtRef.current >= AUTO_SNAPSHOT_INTERVAL_MS) {
+                const snapshot = createBoardSnapshot('auto');
+                if (snapshot) {
+                    lastAutoSnapshotAtRef.current = Date.now();
+                }
+            }
+        }, AUTO_SAVE_INTERVAL_MS);
+
+        return () => clearInterval(interval);
+    }, [createBoardSnapshot, currentBoard, persistCurrentCanvas, settings.autoSave]);
+
+    useEffect(() => {
+        if (!boardId || !currentBoard) return;
+
+        touchBoard({
+            ...currentBoard,
+            accessRole: resolvedRole,
+            source: resolvedRole === 'owner' ? 'owned' : 'shared',
+        }, resolvedRole);
+
+        if (resolvedRole !== 'owner') {
+            setRole(boardId, resolvedRole);
+        }
+    }, [boardId, currentBoard, resolvedRole, setRole, touchBoard]);
+
+    const handleZoom = (delta: number) => {
+        const nextZoom = Math.min(Math.max(zoom + delta, 25), 200);
+        setZoom(nextZoom);
+
+        if (fabricRef.current) {
+            fabricRef.current.setZoom(nextZoom / 100);
+            fabricRef.current.requestRenderAll();
         }
     };
 
-    // Export functions
     const exportPNG = () => {
         if (!fabricRef.current) return;
-        const dataURL = fabricRef.current.toDataURL({
+
+        const dataUrl = fabricRef.current.toDataURL({
             format: 'png',
             quality: 1,
             multiplier: 2,
         });
         const link = document.createElement('a');
         link.download = `${currentBoard?.name || 'canvas'}.png`;
-        link.href = dataURL;
+        link.href = dataUrl;
         link.click();
-        message.success('已导出为 PNG');
+        message.success(isEn ? 'Exported as PNG' : '已导出为 PNG');
     };
 
     const exportSVG = () => {
         if (!fabricRef.current) return;
+
         const svg = fabricRef.current.toSVG();
         const blob = new Blob([svg], { type: 'image/svg+xml' });
         const url = URL.createObjectURL(blob);
@@ -645,40 +836,78 @@ const CanvasBoardInner: React.FC = () => {
         link.href = url;
         link.click();
         URL.revokeObjectURL(url);
-        message.success('已导出为 SVG');
+        message.success(isEn ? 'Exported as SVG' : '已导出为 SVG');
     };
 
     const exportItems = [
-        { key: 'png', label: '导出为 PNG', onClick: exportPNG },
-        { key: 'svg', label: '导出为 SVG', onClick: exportSVG },
+        { key: 'png', label: isEn ? 'Export as PNG' : '导出为 PNG', onClick: exportPNG },
+        { key: 'svg', label: isEn ? 'Export as SVG' : '导出为 SVG', onClick: exportSVG },
     ];
 
     const addChart = async () => {
-        // Add chart as image to canvas
-        const chartElement = document.querySelector('.echarts-for-react canvas') as HTMLCanvasElement;
-        if (chartElement && fabricRef.current && fabric) {
-            const dataURL = chartElement.toDataURL();
-            try {
-                const img = await fabric.FabricImage.fromURL(dataURL);
-                img.scale(0.5);
-                fabricRef.current.add(img);
-                fabricRef.current.renderAll();
-            } catch (err) {
-                console.error('Failed to add chart', err);
-            }
+        if (isReadOnly) return;
+
+        const chartCanvas = document.querySelector('.echarts-for-react canvas') as HTMLCanvasElement | null;
+        if (!chartCanvas || !fabricRef.current || !fabric) return;
+
+        try {
+            const dataUrl = chartCanvas.toDataURL();
+            const image = await fabric.FabricImage.fromURL(dataUrl);
+            image.scale(0.5);
+            fabricRef.current.add(image);
+            fabricRef.current.requestRenderAll();
+            setShowChartModal(false);
+            message.success(isEn ? 'Chart added to canvas' : '图表已添加到画布');
+        } catch (error) {
+            console.error('Failed to add chart', error);
+            message.error(isEn ? 'Unable to add chart' : '添加图表失败');
         }
-        setShowChartModal(false);
-        message.success(isEn ? 'Chart added to canvas' : '图表已添加到画布');
+    };
+
+    const handleCopyLink = () => {
+        navigator.clipboard.writeText(shareLink).then(() => {
+            setLinkCopied(true);
+            message.success(isEn ? 'Link copied to clipboard!' : '链接已复制到剪贴板！');
+            setTimeout(() => setLinkCopied(false), 2000);
+        });
+    };
+
+    const handleCreateManualSnapshot = () => {
+        const snapshot = createBoardSnapshot('manual');
+        if (snapshot) {
+            message.success(isEn ? 'Snapshot saved' : '快照已保存');
+        }
+    };
+
+    const handleRestoreSnapshot = async (snapshot: BoardSnapshot) => {
+        if (isReadOnly) return;
+
+        const json = decompressSnapshotData(snapshot.compressedData);
+        historyRef.current = {
+            past: [...historyRef.current.past.slice(-19), presentStateRef.current],
+            future: [],
+        };
+        presentStateRef.current = json;
+        setHistory({ ...historyRef.current });
+
+        await applyCanvasState(json, { markDirty: true, sync: true });
+        message.success(isEn ? 'Snapshot restored' : '已恢复到该版本');
+    };
+
+    const handleDeleteSnapshot = (snapshotId: string) => {
+        if (!boardId) return;
+        removeSnapshot(boardId, snapshotId);
+        message.success(isEn ? 'Snapshot removed' : '快照已删除');
     };
 
     const tools = [
-        { key: 'select', icon: <SelectOutlined />, title: isEn ? 'Select' : '选择' },
-        { key: 'draw', icon: <EditOutlined />, title: isEn ? 'Draw' : '画笔' },
-        { key: 'eraser', icon: <ClearOutlined />, title: isEn ? 'Eraser' : '橡皮擦' },
-        { key: 'rect', icon: <BorderOutlined />, title: isEn ? 'Rectangle' : '矩形' },
-        { key: 'circle', icon: <span style={{ fontSize: 18 }}>○</span>, title: isEn ? 'Circle' : '圆形' },
-        { key: 'line', icon: <MinusOutlined />, title: isEn ? 'Line' : '直线' },
-        { key: 'text', icon: <FontSizeOutlined />, title: isEn ? 'Text' : '文本' },
+        { key: 'select', icon: <SelectOutlined />, title: isEn ? 'Select' : '选择', disabled: false },
+        { key: 'draw', icon: <EditOutlined />, title: isEn ? 'Draw' : '画笔', disabled: isReadOnly },
+        { key: 'eraser', icon: <ClearOutlined />, title: isEn ? 'Eraser' : '橡皮擦', disabled: isReadOnly },
+        { key: 'rect', icon: <BorderOutlined />, title: isEn ? 'Rectangle' : '矩形', disabled: isReadOnly },
+        { key: 'circle', icon: <span style={{ fontSize: 18 }}>○</span>, title: isEn ? 'Circle' : '圆形', disabled: isReadOnly },
+        { key: 'line', icon: <MinusOutlined />, title: isEn ? 'Line' : '直线', disabled: isReadOnly },
+        { key: 'text', icon: <FontSizeOutlined />, title: isEn ? 'Text' : '文本', disabled: isReadOnly },
     ];
 
     if (!fabricLoaded) {
@@ -693,11 +922,7 @@ const CanvasBoardInner: React.FC = () => {
         <Layout className={styles.canvasLayout}>
             <Header className={styles.header}>
                 <div className={styles.headerLeft}>
-                    <Button
-                        type="text"
-                        icon={<ArrowLeftOutlined />}
-                        onClick={() => navigate('/dashboard')}
-                    />
+                    <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate('/dashboard')} />
                     <Text strong className={styles.boardName}>
                         {currentBoard?.name || (isEn ? 'Untitled Board' : '未命名白板')}
                     </Text>
@@ -705,28 +930,17 @@ const CanvasBoardInner: React.FC = () => {
 
                 <div className={styles.headerCenter}>
                     <Tooltip title={isEn ? 'Undo' : '撤销'}>
-                        <Button
-                            type="text"
-                            icon={<UndoOutlined />}
-                            onClick={undo}
-                            disabled={history.past.length === 0}
-                        />
+                        <Button type="text" icon={<UndoOutlined />} onClick={undo} disabled={history.past.length === 0 || isReadOnly} />
                     </Tooltip>
                     <Tooltip title={isEn ? 'Redo' : '重做'}>
-                        <Button
-                            type="text"
-                            icon={<RedoOutlined />}
-                            onClick={redo}
-                            disabled={history.future.length === 0}
-                        />
+                        <Button type="text" icon={<RedoOutlined />} onClick={redo} disabled={history.future.length === 0 || isReadOnly} />
                     </Tooltip>
                     <Divider type="vertical" />
                     <Tooltip title={isEn ? 'Delete Selected' : '删除选中'}>
-                        <Button
-                            type="text"
-                            icon={<DeleteOutlined />}
-                            onClick={deleteSelected}
-                        />
+                        <Button type="text" icon={<DeleteOutlined />} onClick={deleteSelected} disabled={isReadOnly} />
+                    </Tooltip>
+                    <Tooltip title={isEn ? 'Version History' : '版本历史'}>
+                        <Button type="text" icon={<HistoryOutlined />} onClick={() => setShowVersionModal(true)} />
                     </Tooltip>
                     <Divider type="vertical" />
                     <Dropdown menu={{ items: exportItems }}>
@@ -737,6 +951,12 @@ const CanvasBoardInner: React.FC = () => {
                 </div>
 
                 <div className={styles.headerRight}>
+                    {isReadOnly && (
+                        <div className={styles.readOnlyBadge}>
+                            <LockOutlined /> {isEn ? 'Viewer mode' : '只读模式'}
+                        </div>
+                    )}
+
                     <div className={styles.collaborators}>
                         {others.slice(0, 3).map(({ connectionId, info, presence }) => (
                             <Tooltip key={connectionId} title={presence?.name || info?.name || 'Anonymous'}>
@@ -748,36 +968,24 @@ const CanvasBoardInner: React.FC = () => {
                                 </div>
                             </Tooltip>
                         ))}
-                        {others.length > 3 && (
-                            <div className={styles.collaboratorMore}>
-                                +{others.length - 3}
-                            </div>
-                        )}
+                        {others.length > 3 && <div className={styles.collaboratorMore}>+{others.length - 3}</div>}
                     </div>
-                    <Tooltip title={isEn ? 'Invite Friends' : '邀请好友'}>
+
+                    <Tooltip title={isReadOnly ? (isEn ? 'Viewer link cannot re-share access' : '只读模式下不能再次分享权限') : (isEn ? 'Invite collaborators' : '邀请协作者')}>
                         <Button
                             type="primary"
-                            icon={<ShareAltOutlined />}
+                            icon={isReadOnly ? <EyeOutlined /> : <ShareAltOutlined />}
                             onClick={() => setShowInviteModal(true)}
                             className={styles.inviteButton}
                         >
                             {isEn ? 'Invite' : '邀请'}
                         </Button>
                     </Tooltip>
+
                     <div className={styles.zoomControls}>
-                        <Button
-                            type="text"
-                            size="small"
-                            icon={<ZoomOutOutlined />}
-                            onClick={() => handleZoom(-10)}
-                        />
+                        <Button type="text" size="small" icon={<ZoomOutOutlined />} onClick={() => handleZoom(-10)} />
                         <Text className={styles.zoomText}>{zoom}%</Text>
-                        <Button
-                            type="text"
-                            size="small"
-                            icon={<ZoomInOutlined />}
-                            onClick={() => handleZoom(10)}
-                        />
+                        <Button type="text" size="small" icon={<ZoomInOutlined />} onClick={() => handleZoom(10)} />
                     </div>
                 </div>
             </Header>
@@ -791,18 +999,20 @@ const CanvasBoardInner: React.FC = () => {
                                 icon={tool.icon}
                                 className={styles.toolButton}
                                 onClick={() => setActiveTool(tool.key as ToolType)}
+                                disabled={tool.disabled}
                             />
                         </Tooltip>
                     ))}
 
                     <Divider className={styles.toolDivider} />
 
-                    <Tooltip title="添加图表" placement="right">
+                    <Tooltip title={isEn ? 'Add chart' : '添加图表'} placement="right">
                         <Button
                             type="text"
                             icon={<BarChartOutlined />}
                             className={styles.toolButton}
                             onClick={() => setShowChartModal(true)}
+                            disabled={isReadOnly}
                         />
                     </Tooltip>
 
@@ -814,6 +1024,7 @@ const CanvasBoardInner: React.FC = () => {
                                 value={brushColor}
                                 onChange={(color) => setBrushColor(color.toHexString())}
                                 size="small"
+                                disabled={isReadOnly}
                             />
                         </div>
 
@@ -833,21 +1044,22 @@ const CanvasBoardInner: React.FC = () => {
                 </Sider>
 
                 <Content
-                    className={styles.canvasContainer}
+                    className={`${styles.canvasContainer} ${settings.showGrid ? styles.gridVisible : ''}`}
                     ref={containerRef}
-                    onMouseMove={(e) => {
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        updateMyPresence({
-                            cursor: {
-                                x: e.clientX - rect.left,
-                                y: e.clientY - rect.top,
-                            },
-                        });
-                    }}
-                    onMouseLeave={() => {
-                        updateMyPresence({ cursor: null });
-                    }}
+                    style={{ ['--grid-size' as string]: gridPixelSize }}
                 >
+                    {isReadOnly && (
+                        <div className={styles.canvasNotice}>
+                            <Alert
+                                type="info"
+                                showIcon
+                                message={isEn
+                                    ? 'This board is in viewer mode. You can inspect, zoom, export, and browse snapshots, but editing tools are locked.'
+                                    : '当前白板处于只读模式。你仍可以查看、缩放、导出和浏览快照，但编辑工具已锁定。'}
+                            />
+                        </div>
+                    )}
+
                     <canvas ref={canvasRef} id="fabric-canvas" />
                     <LiveblocksCursors />
                 </Content>
@@ -860,7 +1072,11 @@ const CanvasBoardInner: React.FC = () => {
                 footer={null}
                 width={800}
             >
-                <ChartWidget onAdd={addChart} />
+                {showChartModal && (
+                    <Suspense fallback={<div className={styles.modalLoader}>{isEn ? 'Loading chart tools...' : '图表工具加载中...'}</div>}>
+                        <LazyChartWidget onAdd={addChart} />
+                    </Suspense>
+                )}
             </Modal>
 
             <Modal
@@ -879,19 +1095,28 @@ const CanvasBoardInner: React.FC = () => {
                         <h2 className={styles.inviteTitle}>{isEn ? 'Invite Friends' : '邀请好友协作'}</h2>
                         <p className={styles.inviteDescription}>
                             {isEn
-                                ? 'Share the link below to invite friends to collaborate on this board. Users who open the link will see each other\'s cursors and edits in real-time.'
-                                : '分享以下链接，邀请好友一起协作编辑这个白板。打开链接的用户将能够实时看到彼此的光标和编辑内容。'}
+                                ? 'Choose whether the link opens in edit mode or viewer mode. The selected role will be cached locally for quick re-entry from the dashboard.'
+                                : '你可以选择链接打开后是可编辑还是只读模式。选定的角色会被本地缓存，方便稍后从仪表盘再次进入。'}
                         </p>
+                    </div>
+
+                    <div className={styles.shareSection}>
+                        <label>{isEn ? 'Share mode' : '分享权限'}</label>
+                        <Segmented
+                            value={shareRole}
+                            options={[
+                                { label: isEn ? 'Can edit' : '可编辑', value: 'editor' },
+                                { label: isEn ? 'View only' : '只读', value: 'viewer' },
+                            ]}
+                            onChange={(value) => setShareRole(value as 'editor' | 'viewer')}
+                            block
+                        />
                     </div>
 
                     <div className={styles.shareSection}>
                         <label>{isEn ? 'Share Link' : '分享链接'}</label>
                         <div className={styles.shareInputGroup}>
-                            <Input
-                                value={shareLink}
-                                readOnly
-                                className={styles.shareInput}
-                            />
+                            <Input value={shareLink} readOnly className={styles.shareInput} />
                             <Button
                                 type="primary"
                                 className={styles.copyButton}
@@ -929,6 +1154,16 @@ const CanvasBoardInner: React.FC = () => {
                     </div>
                 </div>
             </Modal>
+
+            <VersionHistoryModal
+                isEn={isEn}
+                open={showVersionModal}
+                snapshots={snapshots}
+                onClose={() => setShowVersionModal(false)}
+                onCreateSnapshot={handleCreateManualSnapshot}
+                onDeleteSnapshot={handleDeleteSnapshot}
+                onRestoreSnapshot={handleRestoreSnapshot}
+            />
         </Layout>
     );
 };

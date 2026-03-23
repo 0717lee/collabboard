@@ -236,7 +236,7 @@ export const useAuthStore = create<AuthState>()(
 );
 
 // Listen for auth state changes
-supabase.auth.onAuthStateChange(async (event, session) => {
+supabase.auth.onAuthStateChange(async (event: string, session: { user: { id: string; email?: string; created_at: string } } | null) => {
     if (event === 'SIGNED_OUT') {
         useAuthStore.setState({
             user: null,

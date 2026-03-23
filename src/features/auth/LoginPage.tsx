@@ -97,6 +97,7 @@ const LoginPage: React.FC = () => {
                             htmlType="submit"
                             loading={isLoading}
                             block
+                            aria-label="登录"
                             className={styles.submitButton}
                         >
                             登录

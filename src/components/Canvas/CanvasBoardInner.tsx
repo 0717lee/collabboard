@@ -9,7 +9,6 @@ import {
     Input,
     Layout,
     Modal,
-    Segmented,
     Tooltip,
     Typography,
     message,
@@ -163,6 +162,13 @@ const CanvasBoardInner: React.FC = () => {
         () => (boardId ? snapshotMap[boardId] || EMPTY_SNAPSHOTS : EMPTY_SNAPSHOTS),
         [boardId, snapshotMap]
     );
+    const displayBoardName = useMemo(() => {
+        if (currentBoard?.name) return currentBoard.name;
+        if (!boardId) return '';
+
+        const boardSummary = [...boards, ...sharedBoards].find((item) => item.id === boardId);
+        return boardSummary?.name || '';
+    }, [boardId, boards, currentBoard?.name, sharedBoards]);
     const cachedRole = boardId ? entries[boardId]?.role : undefined;
     const resolvedRole: BoardRole = currentBoard?.ownerId === user?.id
         ? 'owner'
@@ -963,7 +969,7 @@ const CanvasBoardInner: React.FC = () => {
                         aria-label={isEn ? 'Back to dashboard' : '返回白板列表'}
                     />
                     <Text strong className={styles.boardName}>
-                        {currentBoard?.name || (isEn ? 'Untitled Board' : '未命名白板')}
+                        {displayBoardName || (isEn ? 'Untitled Board' : '未命名白板')}
                     </Text>
                 </div>
 
@@ -1009,7 +1015,7 @@ const CanvasBoardInner: React.FC = () => {
                         />
                     </Tooltip>
                     <Divider type="vertical" />
-                    <Dropdown menu={{ items: exportItems }} overlayClassName={styles.exportDropdown}>
+                    <Dropdown menu={{ items: exportItems }} overlayClassName={styles.exportDropdown} placement="bottomCenter">
                         <Button
                             type="text"
                             icon={<DownloadOutlined />}
@@ -1174,16 +1180,24 @@ const CanvasBoardInner: React.FC = () => {
 
                     <div className={styles.shareSection}>
                         <label>{isEn ? 'Share mode' : '分享权限'}</label>
-                        <Segmented
-                            className={styles.shareModeToggle}
-                            value={shareRole}
-                            options={[
-                                { label: isEn ? 'Can edit' : '可编辑', value: 'editor' },
-                                { label: isEn ? 'View only' : '只读', value: 'viewer' },
-                            ]}
-                            onChange={(value) => setShareRole(value as 'editor' | 'viewer')}
-                            block
-                        />
+                        <div className={styles.shareModeToggle} role="tablist" aria-label={isEn ? 'Share mode' : '分享权限'}>
+                            <button
+                                type="button"
+                                className={`${styles.shareModeOption} ${shareRole === 'editor' ? styles.shareModeOptionActive : ''}`}
+                                onClick={() => setShareRole('editor')}
+                                aria-pressed={shareRole === 'editor'}
+                            >
+                                {isEn ? 'Can edit' : '可编辑'}
+                            </button>
+                            <button
+                                type="button"
+                                className={`${styles.shareModeOption} ${shareRole === 'viewer' ? styles.shareModeOptionActive : ''}`}
+                                onClick={() => setShareRole('viewer')}
+                                aria-pressed={shareRole === 'viewer'}
+                            >
+                                {isEn ? 'View only' : '只读'}
+                            </button>
+                        </div>
                         <div className={`${styles.shareModePanel} ${shareRoleMeta.accent}`}>
                             <div className={styles.shareModeContent}>
                                 <div className={styles.shareModeIcon}>{shareRoleMeta.icon}</div>

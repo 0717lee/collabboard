@@ -1,6 +1,7 @@
 import React from 'react';
 import { createClient } from '@liveblocks/client';
 import { createRoomContext } from '@liveblocks/react';
+import { liveblocksConfigWarning, shouldUseMockLiveblocks } from './lib/runtimeConfig';
 
 export type Presence = {
     cursor: { x: number; y: number } | null;
@@ -25,8 +26,6 @@ export type UserMeta = {
         avatar?: string;
     };
 };
-
-const useMockLiveblocks = import.meta.env.VITE_E2E_MOCK_MODE === 'true' || !import.meta.env.VITE_LIVEBLOCKS_PUBLIC_KEY;
 
 const realContext = createRoomContext<Presence, Storage, UserMeta>(createClient({
     publicApiKey: import.meta.env.VITE_LIVEBLOCKS_PUBLIC_KEY || 'pk_dev_placeholder',
@@ -59,8 +58,10 @@ const createMockMutationHelpers = () => ({
     },
 });
 
-if (useMockLiveblocks) {
-    console.warn('Liveblocks key missing or mock mode enabled. Using local collaboration mock.');
+if (shouldUseMockLiveblocks) {
+    console.warn('E2E mock mode enabled. Using local collaboration mock.');
+} else if (liveblocksConfigWarning) {
+    console.warn(liveblocksConfigWarning);
 }
 
 const mockRoomProvider: typeof realContext.RoomProvider = ({ children }) => React.createElement(React.Fragment, null, children);
@@ -82,14 +83,16 @@ const useMockMutation: typeof realContext.useMutation = ((callback: (context: Re
 const mockUseBroadcastEvent: typeof realContext.useBroadcastEvent = () => () => undefined;
 const mockUseEventListener: typeof realContext.useEventListener = () => undefined;
 
-export const RoomProvider = useMockLiveblocks ? mockRoomProvider : realContext.RoomProvider;
-export const useRoom = useMockLiveblocks ? mockUseRoom : realContext.useRoom;
-export const useMyPresence = useMockLiveblocks ? mockUseMyPresence : realContext.useMyPresence;
-export const useUpdateMyPresence = useMockLiveblocks ? useMockUpdateMyPresence : realContext.useUpdateMyPresence;
-export const useOthersMapped = useMockLiveblocks ? mockUseOthersMapped : realContext.useOthersMapped;
-export const useOthers = useMockLiveblocks ? mockUseOthers : realContext.useOthers;
-export const useSelf = useMockLiveblocks ? mockUseSelf : realContext.useSelf;
-export const useStorage = useMockLiveblocks ? mockUseStorage : realContext.useStorage;
-export const useMutation = useMockLiveblocks ? useMockMutation : realContext.useMutation;
-export const useBroadcastEvent = useMockLiveblocks ? mockUseBroadcastEvent : realContext.useBroadcastEvent;
-export const useEventListener = useMockLiveblocks ? mockUseEventListener : realContext.useEventListener;
+const useFallbackLiveblocks = shouldUseMockLiveblocks || Boolean(liveblocksConfigWarning);
+
+export const RoomProvider = useFallbackLiveblocks ? mockRoomProvider : realContext.RoomProvider;
+export const useRoom = useFallbackLiveblocks ? mockUseRoom : realContext.useRoom;
+export const useMyPresence = useFallbackLiveblocks ? mockUseMyPresence : realContext.useMyPresence;
+export const useUpdateMyPresence = useFallbackLiveblocks ? useMockUpdateMyPresence : realContext.useUpdateMyPresence;
+export const useOthersMapped = useFallbackLiveblocks ? mockUseOthersMapped : realContext.useOthersMapped;
+export const useOthers = useFallbackLiveblocks ? mockUseOthers : realContext.useOthers;
+export const useSelf = useFallbackLiveblocks ? mockUseSelf : realContext.useSelf;
+export const useStorage = useFallbackLiveblocks ? mockUseStorage : realContext.useStorage;
+export const useMutation = useFallbackLiveblocks ? useMockMutation : realContext.useMutation;
+export const useBroadcastEvent = useFallbackLiveblocks ? mockUseBroadcastEvent : realContext.useBroadcastEvent;
+export const useEventListener = useFallbackLiveblocks ? mockUseEventListener : realContext.useEventListener;

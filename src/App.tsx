@@ -1,7 +1,8 @@
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { ConfigProvider, Spin, theme } from 'antd';
+import { Alert, ConfigProvider, Spin, theme } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
+import { liveblocksConfigWarning, supabaseConfigError } from '@/lib/runtimeConfig';
 import { useAuthStore } from '@/stores/authStore';
 import './styles/global.css';
 
@@ -52,6 +53,21 @@ const App: React.FC = () => {
   React.useEffect(() => {
     document.documentElement.classList.remove('dark');
   }, []);
+
+  if (supabaseConfigError) {
+    return (
+      <div className="page-loader" style={{ padding: 24 }}>
+        <div style={{ width: 'min(720px, 100%)' }}>
+          <Alert
+            type="error"
+            showIcon
+            message="Deployment Configuration Required"
+            description={supabaseConfigError}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <ConfigProvider
@@ -110,6 +126,11 @@ const App: React.FC = () => {
       }}
     >
       <div className="aurora-bg" />
+      {liveblocksConfigWarning && (
+        <div style={{ position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 1000, width: 'min(720px, calc(100vw - 32px))' }}>
+          <Alert type="warning" showIcon message="Live Collaboration Warning" description={liveblocksConfigWarning} />
+        </div>
+      )}
       <BrowserRouter>
         <Suspense fallback={<PageLoader />}>
           <Routes>

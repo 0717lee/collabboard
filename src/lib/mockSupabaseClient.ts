@@ -37,6 +37,14 @@ const STORAGE_KEYS = {
     session: 'mock-supabase-session',
 };
 
+export const clearMockSupabaseStorage = () => {
+    if (typeof window === 'undefined') return;
+
+    Object.values(STORAGE_KEYS).forEach((key) => {
+        window.localStorage.removeItem(key);
+    });
+};
+
 const createId = () => globalThis.crypto?.randomUUID?.()
     || `mock-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 

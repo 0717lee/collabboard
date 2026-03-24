@@ -51,7 +51,7 @@ const formatLocaleDate = (date: string, locale: 'zh-CN' | 'en-US') =>
 
 const DashboardPage: React.FC = () => {
     const navigate = useNavigate();
-    const { user, logout } = useAuthStore();
+    const { user, logout, hasInitialized, isAuthenticated } = useAuthStore();
     const { boards, sharedBoards, createBoard, deleteBoard, loadBoards } = useBoardStore();
     const {
         entries,
@@ -72,10 +72,10 @@ const DashboardPage: React.FC = () => {
     const isEn = language === 'en-US';
 
     useEffect(() => {
-        if (user?.id) {
+        if (hasInitialized && isAuthenticated && user?.id) {
             loadBoards(user.id);
         }
-    }, [user?.id, loadBoards]);
+    }, [hasInitialized, isAuthenticated, user?.id, loadBoards]);
 
     useEffect(() => {
         if (boards.length > 0) {

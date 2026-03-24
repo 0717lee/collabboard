@@ -1,57 +1,84 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useAuthStore } from '@/stores/authStore';
 
+const authMocks = vi.hoisted(() => ({
+    signInWithPassword: vi.fn(),
+    signUp: vi.fn(),
+    signOut: vi.fn(),
+    getUser: vi.fn(),
+    onAuthStateChange: vi.fn(),
+    profileSingle: vi.fn(),
+    profileInsert: vi.fn(),
+}));
+
 // Mock Supabase client
 vi.mock('@/lib/supabaseClient', () => ({
     supabase: {
         auth: {
-            signInWithPassword: vi.fn(() => Promise.resolve({
-                data: {
-                    user: {
-                        id: 'mock-user-id',
-                        email: 'test@example.com',
-                        created_at: new Date().toISOString(),
-                    },
-                    session: { access_token: 'mock-token' },
-                },
-                error: null,
-            })),
-            signUp: vi.fn(() => Promise.resolve({
-                data: {
-                    user: {
-                        id: 'mock-user-id',
-                        email: 'test@example.com',
-                        created_at: new Date().toISOString(),
-                    },
-                    session: { access_token: 'mock-token' },
-                },
-                error: null,
-            })),
-            signOut: vi.fn(() => Promise.resolve({ error: null })),
-            getSession: vi.fn(() => Promise.resolve({ data: { session: null } })),
-            onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
+            signInWithPassword: authMocks.signInWithPassword,
+            signUp: authMocks.signUp,
+            signOut: authMocks.signOut,
+            getUser: authMocks.getUser,
+            onAuthStateChange: authMocks.onAuthStateChange,
         },
         from: () => ({
             select: () => ({
                 eq: () => ({
-                    single: () => Promise.resolve({
-                        data: { name: 'Test User', email: 'test@example.com' },
-                        error: null,
-                    }),
+                    single: authMocks.profileSingle,
                 }),
             }),
-            insert: () => Promise.resolve({ error: null }),
+            insert: authMocks.profileInsert,
         }),
     },
 }));
 
 describe('authStore', () => {
+    const mockAuthUser = {
+        id: 'mock-user-id',
+        email: 'test@example.com',
+        created_at: new Date().toISOString(),
+    };
+
     beforeEach(() => {
+        authMocks.signInWithPassword.mockResolvedValue({
+            data: {
+                user: mockAuthUser,
+                session: { access_token: 'mock-token' },
+            },
+            error: null,
+        });
+        authMocks.signUp.mockResolvedValue({
+            data: {
+                user: mockAuthUser,
+                session: { access_token: 'mock-token' },
+            },
+            error: null,
+        });
+        authMocks.signOut.mockResolvedValue({ error: null });
+        authMocks.getUser.mockResolvedValue({
+            data: { user: mockAuthUser },
+            error: null,
+        });
+        authMocks.profileSingle.mockResolvedValue({
+            data: { name: 'Test User', email: 'test@example.com' },
+            error: null,
+        });
+        authMocks.profileInsert.mockReturnValue({
+            select: () => ({
+                single: () => Promise.resolve({
+                    data: { name: 'Test User', email: 'test@example.com' },
+                    error: null,
+                }),
+            }),
+        });
+        authMocks.onAuthStateChange.mockReturnValue({ data: { subscription: { unsubscribe: vi.fn() } } });
+
         // Reset store state before each test
         useAuthStore.setState({
             user: null,
             isAuthenticated: false,
             isLoading: false,
+            hasInitialized: false,
             error: null,
         });
     });
@@ -68,6 +95,7 @@ describe('authStore', () => {
             expect(state.isAuthenticated).toBe(true);
             expect(state.user).not.toBeNull();
             expect(state.error).toBeNull();
+            expect(state.hasInitialized).toBe(true);
         });
     });
 
@@ -82,6 +110,7 @@ describe('authStore', () => {
             const state = useAuthStore.getState();
             expect(state.isAuthenticated).toBe(true);
             expect(state.user).not.toBeNull();
+            expect(state.hasInitialized).toBe(true);
         });
     });
 
@@ -99,6 +128,7 @@ describe('authStore', () => {
             const state = useAuthStore.getState();
             expect(state.isAuthenticated).toBe(false);
             expect(state.user).toBeNull();
+            expect(state.hasInitialized).toBe(true);
         });
     });
 
@@ -109,6 +139,39 @@ describe('authStore', () => {
             useAuthStore.getState().clearError();
 
             expect(useAuthStore.getState().error).toBeNull();
+        });
+    });
+
+    describe('initializeAuth', () => {
+        it('should finish initialization and keep authenticated user when session is valid', async () => {
+            await useAuthStore.getState().initializeAuth();
+
+            const state = useAuthStore.getState();
+            expect(state.hasInitialized).toBe(true);
+            expect(state.isAuthenticated).toBe(true);
+            expect(state.user?.id).toBe('mock-user-id');
+        });
+
+        it('should finish initialization and clear stale auth state when session is missing', async () => {
+            authMocks.getUser.mockResolvedValueOnce({
+                data: { user: null },
+                error: null,
+            });
+
+            useAuthStore.setState({
+                user: { id: 'stale-id', email: 'stale@example.com', name: 'Stale', createdAt: '' },
+                isAuthenticated: true,
+                isLoading: false,
+                hasInitialized: false,
+                error: null,
+            });
+
+            await useAuthStore.getState().initializeAuth();
+
+            const state = useAuthStore.getState();
+            expect(state.hasInitialized).toBe(true);
+            expect(state.isAuthenticated).toBe(false);
+            expect(state.user).toBeNull();
         });
     });
 });

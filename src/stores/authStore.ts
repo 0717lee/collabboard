@@ -7,6 +7,7 @@ interface AuthState {
     user: User | null;
     isAuthenticated: boolean;
     isLoading: boolean;
+    hasInitialized: boolean;
     error: string | null;
 
     login: (email: string, password: string) => Promise<boolean>;
@@ -22,6 +23,7 @@ export const useAuthStore = create<AuthState>()(
             user: null,
             isAuthenticated: false,
             isLoading: false,
+            hasInitialized: false,
             error: null,
 
             login: async (email: string, password: string) => {
@@ -80,16 +82,17 @@ export const useAuthStore = create<AuthState>()(
                             user,
                             isAuthenticated: true,
                             isLoading: false,
+                            hasInitialized: true,
                             error: null,
                         });
 
                         return true;
                     }
 
-                    set({ isLoading: false, error: '登录失败' });
+                    set({ isLoading: false, hasInitialized: true, error: '登录失败' });
                     return false;
                 } catch {
-                    set({ isLoading: false, error: '网络错误，请稍后重试' });
+                    set({ isLoading: false, hasInitialized: true, error: '网络错误，请稍后重试' });
                     return false;
                 }
             },
@@ -132,16 +135,17 @@ export const useAuthStore = create<AuthState>()(
                             user,
                             isAuthenticated: true,
                             isLoading: false,
+                            hasInitialized: true,
                             error: null,
                         });
 
                         return true;
                     }
 
-                    set({ isLoading: false, error: '注册失败' });
+                    set({ isLoading: false, hasInitialized: true, error: '注册失败' });
                     return false;
                 } catch {
-                    set({ isLoading: false, error: '网络错误，请稍后重试' });
+                    set({ isLoading: false, hasInitialized: true, error: '网络错误，请稍后重试' });
                     return false;
                 }
             },
@@ -156,6 +160,7 @@ export const useAuthStore = create<AuthState>()(
                     set({
                         user: null,
                         isAuthenticated: false,
+                        hasInitialized: true,
                         error: null,
                     });
                     // Clear any local storage manually if needed
@@ -181,10 +186,11 @@ export const useAuthStore = create<AuthState>()(
                             set({
                                 user: null,
                                 isAuthenticated: false,
-                                isLoading: false
+                                isLoading: false,
+                                hasInitialized: true,
                             });
                         } else {
-                            set({ isLoading: false });
+                            set({ isLoading: false, hasInitialized: true });
                         }
                         return;
                     }
@@ -207,13 +213,15 @@ export const useAuthStore = create<AuthState>()(
                         user,
                         isAuthenticated: true,
                         isLoading: false,
+                        hasInitialized: true,
                     });
                 } catch (e) {
                     console.error('Initialize auth error:', e);
                     set({
                         user: null,
                         isAuthenticated: false,
-                        isLoading: false
+                        isLoading: false,
+                        hasInitialized: true,
                     });
                 }
             },
@@ -229,6 +237,7 @@ export const useAuthStore = create<AuthState>()(
                 // Ensure isLoading is always false after rehydration
                 if (state) {
                     state.isLoading = false;
+                    state.hasInitialized = false;
                 }
             },
         }
@@ -241,6 +250,7 @@ supabase.auth.onAuthStateChange(async (event: string, session: { user: { id: str
         useAuthStore.setState({
             user: null,
             isAuthenticated: false,
+            hasInitialized: true,
         });
     } else if (event === 'SIGNED_IN' && session?.user) {
         const { data: profile } = await supabase
@@ -257,6 +267,7 @@ supabase.auth.onAuthStateChange(async (event: string, session: { user: { id: str
                 createdAt: session.user.created_at,
             },
             isAuthenticated: true,
+            hasInitialized: true,
         });
     }
 });

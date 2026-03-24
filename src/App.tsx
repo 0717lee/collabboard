@@ -22,8 +22,12 @@ const PageLoader: React.FC = () => (
 
 // Protected route wrapper
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, hasInitialized } = useAuthStore();
   const location = useLocation();
+
+  if (!hasInitialized) {
+    return <PageLoader />;
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
@@ -33,7 +37,11 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 // Public route wrapper (redirect if authenticated)
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, hasInitialized } = useAuthStore();
+
+  if (!hasInitialized) {
+    return <PageLoader />;
+  }
 
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />;

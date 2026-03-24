@@ -3,7 +3,7 @@
 <div align="center">
   <img src="public/favicon.svg" alt="CollabBoard Logo" width="80" height="80">
 
-  **Professional Real-time Collaboration Whiteboard** | [中文](./README.md)
+  **Real-time collaborative whiteboard with role-based sharing, snapshots, and chart embeds** | [中文](./README.md)
 
   [![React](https://img.shields.io/badge/React-19-61dafb?logo=react)](https://react.dev/)
   [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178c6?logo=typescript)](https://www.typescriptlang.org/)
@@ -16,9 +16,10 @@
 ## ✨ Features
 
 ### Core Features
-- 🎨 **Whiteboard Drawing** - Free draw, shapes (rect/circle/line), text, sticky notes
+- 🎨 **Whiteboard Drawing** - Free draw, shapes (rect/circle/line), and text editing
 - 👥 **Real-time Collaboration** - Multi-user editing via Liveblocks with live cursors & presence
-- 🔗 **One-click Invite** - Generate share links to invite collaborators instantly
+- 🔗 **Role-based Sharing** - Generate edit or view-only links so collaborators join with the right permission
+- 🕓 **Version Snapshots** - Manual snapshots plus automatic checkpoints for recovery and review
 - 📊 **Data Visualization** - Built-in ECharts (bar/line/pie), embeddable on canvas
 - 📁 **Export** - PNG/SVG export support
 - ⌨️ **Keyboard Shortcuts** - Ctrl+Z undo / Ctrl+Y redo / Delete remove
@@ -28,9 +29,10 @@
 - 🎨 **Organic Color Palette** - Sage Green and warm linen aesthetics applied systematically to all components.
 - 📊 **Customizable Charts** - ECharts integration with a bespoke UI allowing color palette selection that matches the organic theme.
 - 🔐 **Authentication** - Full registration/login via Supabase Auth
+- ⭐ **Board Library** - Favorites, recent visits, and separate entry points for owned vs shared boards
 - 🌐 **Bilingual** - Chinese & English interface
 - 📱 **Responsive** - Adapts to desktop, tablet & mobile
-- ⚡ **Performant** - Code splitting, lazy loading, debounced Liveblocks sync
+- ⚡ **Performant** - Code splitting, chart lazy loading, unified save scheduling, and debounced Liveblocks sync
 
 ## 🛠️ Tech Stack
 
@@ -93,6 +95,8 @@ npm run test:e2e     # Run E2E tests
 
 Before running E2E tests for the first time: `npx playwright install`
 
+The Playwright suite now runs against local mock auth/collaboration services by default, so core flows can be verified without live Supabase or Liveblocks credentials.
+
 ## 📁 Project Structure
 
 ```
@@ -124,8 +128,10 @@ e2e/                     # E2E tests
 
 ### Performance
 - **Code Splitting** - Route-based lazy loading
+- **On-demand Charts** - Chart editor loads only when the modal is opened
 - **Debounced Sync** - 300ms debounce on Liveblocks pushes
 - **Data Compression** - LZString chunked storage (5×80KB)
+- **Unified Save Pipeline** - Fewer duplicate serializations, thumbnail updates, and persistence writes
 - **State Selectors** - Precise Zustand subscriptions
 
 ### Real-time Collaboration

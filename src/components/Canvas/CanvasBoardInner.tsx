@@ -173,6 +173,27 @@ const CanvasBoardInner: React.FC = () => {
         if (!boardId || typeof window === 'undefined') return '';
         return buildBoardShareLink(window.location.origin, boardId, shareRole);
     }, [boardId, shareRole]);
+    const shareRoleMeta = useMemo(() => {
+        if (shareRole === 'editor') {
+            return {
+                icon: <EditOutlined />,
+                title: isEn ? 'Can edit' : '可编辑',
+                description: isEn
+                    ? 'Collaborators can draw, move objects, export, and create version snapshots.'
+                    : '协作者可以绘制、移动对象、导出内容，并创建版本快照。',
+                accent: styles.shareModeEditor,
+            };
+        }
+
+        return {
+            icon: <EyeOutlined />,
+            title: isEn ? 'View only' : '只读',
+            description: isEn
+                ? 'Collaborators can inspect, zoom, export, and browse snapshots, but editing tools stay locked.'
+                : '协作者可以查看、缩放、导出和浏览快照，但编辑工具会保持锁定。',
+            accent: styles.shareModeViewer,
+        };
+    }, [isEn, shareRole]);
 
     const chunk1 = useStorage((root) => root.canvasData);
     const chunk2 = useStorage((root) => root.canvasData_2);
@@ -1103,6 +1124,7 @@ const CanvasBoardInner: React.FC = () => {
                     <div className={styles.shareSection}>
                         <label>{isEn ? 'Share mode' : '分享权限'}</label>
                         <Segmented
+                            className={styles.shareModeToggle}
                             value={shareRole}
                             options={[
                                 { label: isEn ? 'Can edit' : '可编辑', value: 'editor' },
@@ -1111,6 +1133,15 @@ const CanvasBoardInner: React.FC = () => {
                             onChange={(value) => setShareRole(value as 'editor' | 'viewer')}
                             block
                         />
+                        <div className={`${styles.shareModePanel} ${shareRoleMeta.accent}`}>
+                            <div key={shareRole} className={styles.shareModeContent}>
+                                <div className={styles.shareModeIcon}>{shareRoleMeta.icon}</div>
+                                <div className={styles.shareModeText}>
+                                    <strong>{shareRoleMeta.title}</strong>
+                                    <span>{shareRoleMeta.description}</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div className={styles.shareSection}>

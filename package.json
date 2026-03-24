@@ -2,7 +2,7 @@
   "name": "collabboard",
   "private": true,
   "version": "1.0.0",
-  "description": "A professional real-time collaboration whiteboard application built with React 19, Fabric.js, and Liveblocks.",
+  "description": "A real-time collaborative whiteboard with role-based sharing, snapshots, and chart embeds, built with React 19, Supabase, Fabric.js, and Liveblocks.",
   "keywords": [
     "react",
     "typescript",

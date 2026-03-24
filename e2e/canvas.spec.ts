@@ -31,7 +31,7 @@ test.describe('Canvas Board', () => {
     });
 
     test('should navigate back to dashboard', async ({ page }) => {
-        await page.getByRole('button').first().click(); // Back button
+        await page.locator('[class*="headerLeft"] button').first().click();
 
         await expect(page).toHaveURL(/.*dashboard/);
     });

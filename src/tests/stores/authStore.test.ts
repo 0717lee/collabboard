@@ -6,6 +6,7 @@ const authMocks = vi.hoisted(() => ({
     signUp: vi.fn(),
     signOut: vi.fn(),
     getUser: vi.fn(),
+    getSession: vi.fn(),
     onAuthStateChange: vi.fn(),
     profileSingle: vi.fn(),
     profileInsert: vi.fn(),
@@ -19,6 +20,7 @@ vi.mock('@/lib/supabaseClient', () => ({
             signUp: authMocks.signUp,
             signOut: authMocks.signOut,
             getUser: authMocks.getUser,
+            getSession: authMocks.getSession,
             onAuthStateChange: authMocks.onAuthStateChange,
         },
         from: () => ({
@@ -57,6 +59,20 @@ describe('authStore', () => {
         authMocks.signOut.mockResolvedValue({ error: null });
         authMocks.getUser.mockResolvedValue({
             data: { user: mockAuthUser },
+            error: null,
+        });
+        authMocks.getSession.mockResolvedValue({
+            data: {
+                session: {
+                    user: {
+                        ...mockAuthUser,
+                        user_metadata: {
+                            name: 'Test User',
+                        },
+                    },
+                    access_token: 'mock-token',
+                },
+            },
             error: null,
         });
         authMocks.profileSingle.mockResolvedValue({
@@ -153,8 +169,8 @@ describe('authStore', () => {
         });
 
         it('should finish initialization and clear stale auth state when session is missing', async () => {
-            authMocks.getUser.mockResolvedValueOnce({
-                data: { user: null },
+            authMocks.getSession.mockResolvedValueOnce({
+                data: { session: null },
                 error: null,
             });
 
@@ -172,6 +188,22 @@ describe('authStore', () => {
             expect(state.hasInitialized).toBe(true);
             expect(state.isAuthenticated).toBe(false);
             expect(state.user).toBeNull();
+        });
+
+        it('should hydrate the profile name after restoring the session user', async () => {
+            authMocks.profileSingle.mockImplementationOnce(
+                () => new Promise((resolve) => setTimeout(() => resolve({
+                    data: { name: 'Profile Name', email: 'test@example.com' },
+                    error: null,
+                }), 20))
+            );
+
+            await useAuthStore.getState().initializeAuth();
+
+            const state = useAuthStore.getState();
+            expect(state.hasInitialized).toBe(true);
+            expect(state.isAuthenticated).toBe(true);
+            expect(state.user?.name).toBe('Profile Name');
         });
     });
 });

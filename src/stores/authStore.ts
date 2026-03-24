@@ -176,10 +176,10 @@ export const useAuthStore = create<AuthState>()(
                 set({ isLoading: true });
 
                 try {
-                    // Start by checking if we have a valid user on the server (validates token)
-                    const { data: { user: authUser }, error } = await supabase.auth.getUser();
+                    // Restore the local session first so protected routes do not block on a network round-trip.
+                    const { data: { session }, error } = await supabase.auth.getSession();
 
-                    if (error || !authUser) {
+                    if (error || !session?.user) {
                         // If no session found, or error occurred, make sure we clear local state
                         if (get().isAuthenticated) {
                             console.warn('Session expired or missing, logging out');
@@ -195,26 +195,39 @@ export const useAuthStore = create<AuthState>()(
                         return;
                     }
 
-                    // Get profile
-                    const { data: profile } = await supabase
-                        .from('profiles')
-                        .select('*')
-                        .eq('id', authUser.id)
-                        .single();
-
-                    const user: User = {
+                    const authUser = session.user;
+                    const fallbackUser: User = {
                         id: authUser.id,
                         email: authUser.email || '',
-                        name: profile?.name || authUser.email?.split('@')[0] || 'User',
+                        name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User',
                         createdAt: authUser.created_at,
                     };
 
                     set({
-                        user,
+                        user: fallbackUser,
                         isAuthenticated: true,
                         isLoading: false,
                         hasInitialized: true,
                     });
+
+                    // Hydrate the richer profile name asynchronously after the route is already usable.
+                    try {
+                        const { data: profile } = await supabase
+                            .from('profiles')
+                            .select('*')
+                            .eq('id', authUser.id)
+                            .single();
+
+                        if (profile?.name) {
+                            set((state) => ({
+                                user: state.user
+                                    ? { ...state.user, name: profile.name }
+                                    : state.user,
+                            }));
+                        }
+                    } catch (profileError) {
+                        console.warn('Initialize profile lookup failed:', profileError);
+                    }
                 } catch (e) {
                     console.error('Initialize auth error:', e);
                     set({

@@ -250,7 +250,6 @@ export const useAuthStore = create<AuthState>()(
                 // Ensure isLoading is always false after rehydration
                 if (state) {
                     state.isLoading = false;
-                    state.hasInitialized = false;
                 }
             },
         }

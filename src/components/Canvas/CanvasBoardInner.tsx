@@ -141,6 +141,7 @@ const CanvasBoardInner: React.FC = () => {
     const [fabricLoaded, setFabricLoaded] = useState(false);
     const [canvasReady, setCanvasReady] = useState(false);
     const [shareRole, setShareRole] = useState<'editor' | 'viewer'>('editor');
+    const [selectedObjectCount, setSelectedObjectCount] = useState(0);
 
     const historyRef = useRef<HistoryState>({ past: [], future: [] });
     const presentStateRef = useRef('');
@@ -530,6 +531,9 @@ const CanvasBoardInner: React.FC = () => {
         const handleModification = () => {
             processLocalCanvasChange();
         };
+        const updateSelectionState = () => {
+            setSelectedObjectCount(canvas.getActiveObjects().length);
+        };
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const handleMouseMove = (options: any) => {
@@ -544,6 +548,9 @@ const CanvasBoardInner: React.FC = () => {
         canvas.on('object:removed', handleModification);
         canvas.on('mouse:move', handleMouseMove);
         canvas.on('mouse:out', () => updateMyPresence({ cursor: null }));
+        canvas.on('selection:created', updateSelectionState);
+        canvas.on('selection:updated', updateSelectionState);
+        canvas.on('selection:cleared', updateSelectionState);
 
         loadBoardData();
         resizeCanvas();
@@ -561,6 +568,9 @@ const CanvasBoardInner: React.FC = () => {
             canvas.off('object:added', handleModification);
             canvas.off('object:removed', handleModification);
             canvas.off('mouse:move', handleMouseMove);
+            canvas.off('selection:created', updateSelectionState);
+            canvas.off('selection:updated', updateSelectionState);
+            canvas.off('selection:cleared', updateSelectionState);
             canvas.dispose();
             fabricRef.current = null;
 
@@ -769,6 +779,8 @@ const CanvasBoardInner: React.FC = () => {
         }
     }, [isEn, isReadOnly]);
 
+    const hasSelection = selectedObjectCount > 0;
+
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
             const tagName = (event.target as HTMLElement)?.tagName;
@@ -943,7 +955,13 @@ const CanvasBoardInner: React.FC = () => {
         <Layout className={styles.canvasLayout}>
             <Header className={styles.header}>
                 <div className={styles.headerLeft}>
-                    <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate('/dashboard')} />
+                    <Button
+                        type="text"
+                        icon={<ArrowLeftOutlined />}
+                        onClick={() => navigate('/dashboard')}
+                        className={styles.headerIconButton}
+                        aria-label={isEn ? 'Back to dashboard' : '返回白板列表'}
+                    />
                     <Text strong className={styles.boardName}>
                         {currentBoard?.name || (isEn ? 'Untitled Board' : '未命名白板')}
                     </Text>
@@ -951,21 +969,53 @@ const CanvasBoardInner: React.FC = () => {
 
                 <div className={styles.headerCenter}>
                     <Tooltip title={isEn ? 'Undo' : '撤销'}>
-                        <Button type="text" icon={<UndoOutlined />} onClick={undo} disabled={history.past.length === 0 || isReadOnly} />
+                        <Button
+                            type="text"
+                            icon={<UndoOutlined />}
+                            onClick={undo}
+                            disabled={history.past.length === 0 || isReadOnly}
+                            className={styles.headerIconButton}
+                            aria-label={isEn ? 'Undo' : '撤销'}
+                        />
                     </Tooltip>
                     <Tooltip title={isEn ? 'Redo' : '重做'}>
-                        <Button type="text" icon={<RedoOutlined />} onClick={redo} disabled={history.future.length === 0 || isReadOnly} />
+                        <Button
+                            type="text"
+                            icon={<RedoOutlined />}
+                            onClick={redo}
+                            disabled={history.future.length === 0 || isReadOnly}
+                            className={styles.headerIconButton}
+                            aria-label={isEn ? 'Redo' : '重做'}
+                        />
                     </Tooltip>
                     <Divider type="vertical" />
-                    <Tooltip title={isEn ? 'Delete Selected' : '删除选中'}>
-                        <Button type="text" icon={<DeleteOutlined />} onClick={deleteSelected} disabled={isReadOnly} />
+                    <Tooltip title={hasSelection ? (isEn ? 'Delete Selected' : '删除选中') : (isEn ? 'Select an object first' : '请先选中对象')}>
+                        <Button
+                            type="text"
+                            icon={<DeleteOutlined />}
+                            onClick={deleteSelected}
+                            disabled={isReadOnly || !hasSelection}
+                            className={styles.headerIconButton}
+                            aria-label={isEn ? 'Delete selected' : '删除选中'}
+                        />
                     </Tooltip>
                     <Tooltip title={isEn ? 'Version History' : '版本历史'}>
-                        <Button type="text" icon={<HistoryOutlined />} onClick={() => setShowVersionModal(true)} />
+                        <Button
+                            type="text"
+                            icon={<HistoryOutlined />}
+                            onClick={() => setShowVersionModal(true)}
+                            className={styles.headerIconButton}
+                            aria-label={isEn ? 'Version history' : '版本历史'}
+                        />
                     </Tooltip>
                     <Divider type="vertical" />
-                    <Dropdown menu={{ items: exportItems }}>
-                        <Button type="text" icon={<DownloadOutlined />}>
+                    <Dropdown menu={{ items: exportItems }} overlayClassName={styles.exportDropdown}>
+                        <Button
+                            type="text"
+                            icon={<DownloadOutlined />}
+                            className={styles.headerTextButton}
+                            aria-label={isEn ? 'Export options' : '导出选项'}
+                        >
                             {isEn ? 'Export' : '导出'}
                         </Button>
                     </Dropdown>
@@ -998,6 +1048,7 @@ const CanvasBoardInner: React.FC = () => {
                             icon={isReadOnly ? <EyeOutlined /> : <ShareAltOutlined />}
                             onClick={() => setShowInviteModal(true)}
                             className={styles.inviteButton}
+                            aria-label={isEn ? 'Invite collaborators' : '邀请协作者'}
                         >
                             {isEn ? 'Invite' : '邀请'}
                         </Button>
@@ -1134,7 +1185,7 @@ const CanvasBoardInner: React.FC = () => {
                             block
                         />
                         <div className={`${styles.shareModePanel} ${shareRoleMeta.accent}`}>
-                            <div key={shareRole} className={styles.shareModeContent}>
+                            <div className={styles.shareModeContent}>
                                 <div className={styles.shareModeIcon}>{shareRoleMeta.icon}</div>
                                 <div className={styles.shareModeText}>
                                     <strong>{shareRoleMeta.title}</strong>

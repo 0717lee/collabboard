@@ -54,4 +54,9 @@ test.describe('Canvas Board', () => {
         await expect(page.locator('text=当前在线 (1 人)')).toBeVisible();
         await expect(page.locator('text=我 (你)')).toBeVisible();
     });
+
+    test('should open version history modal', async ({ page }) => {
+        await page.getByRole('button', { name: /版本历史/ }).click();
+        await expect(page.getByRole('dialog', { name: '版本历史' })).toBeVisible();
+    });
 });

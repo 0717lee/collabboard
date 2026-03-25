@@ -1,5 +1,6 @@
 .authContainer {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -145,7 +146,8 @@
   .authContainer {
     padding: 12px;
     align-items: flex-start;
-    padding-top: 10vh;
+    padding-top: max(56px, 10vh);
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
   }
 
   .authCard {

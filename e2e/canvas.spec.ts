@@ -37,7 +37,12 @@ test.describe('Canvas Board', () => {
     });
 
     test('should show export dropdown', async ({ page }, testInfo) => {
-        test.skip(testInfo.project.name === 'Mobile Chrome', 'Export control is intentionally hidden on mobile header.');
+        if (testInfo.project.name === 'Mobile Chrome') {
+            await page.getByRole('button', { name: /更多操作/ }).click();
+            await expect(page.locator('text=导出 PNG')).toBeVisible();
+            await expect(page.locator('text=导出 SVG')).toBeVisible();
+            return;
+        }
 
         await page.getByRole('button', { name: /导出/ }).click();
 
@@ -55,8 +60,14 @@ test.describe('Canvas Board', () => {
         await expect(page.locator('text=我 (你)')).toBeVisible();
     });
 
-    test('should open version history modal', async ({ page }) => {
-        await page.getByRole('button', { name: /版本历史/ }).click();
+    test('should open version history modal', async ({ page }, testInfo) => {
+        if (testInfo.project.name === 'Mobile Chrome') {
+            await page.getByRole('button', { name: /更多操作/ }).click();
+            await page.getByText('版本历史').click();
+        } else {
+            await page.getByRole('button', { name: /版本历史/ }).click();
+        }
+
         await expect(page.getByRole('dialog', { name: '版本历史' })).toBeVisible();
     });
 });

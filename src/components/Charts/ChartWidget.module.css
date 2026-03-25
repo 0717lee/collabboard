@@ -15,6 +15,7 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
+    min-width: 0;
 }
 
 .formRow {
@@ -27,6 +28,21 @@
     font-size: 13px;
     font-weight: 500;
     color: #666;
+}
+
+.colorPalette {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.colorSwatch {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .dataSection {
@@ -60,6 +76,16 @@
     align-items: center;
 }
 
+.dataLabelInput {
+    flex: 1;
+    min-width: 0;
+}
+
+.dataValueInput {
+    width: 96px;
+    flex-shrink: 0;
+}
+
 .addButton {
     margin-top: auto;
     height: 40px;
@@ -77,5 +103,19 @@
 @media (max-width: 600px) {
     .chartWidget {
         grid-template-columns: 1fr;
+    }
+
+    .preview {
+        min-height: 260px;
+        padding: 12px;
+    }
+
+    .dataItem {
+        flex-wrap: wrap;
+    }
+
+    .dataLabelInput,
+    .dataValueInput {
+        width: 100%;
     }
 }

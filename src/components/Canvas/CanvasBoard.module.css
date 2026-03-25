@@ -1,5 +1,6 @@
 .canvasLayout {
-    height: 100vh;
+    min-height: 100vh;
+    height: 100dvh;
     width: 100vw;
     overflow: hidden;
     position: relative;
@@ -8,6 +9,7 @@
 
 .boardArea {
     height: 100%;
+    position: relative;
 }
 
 .canvasContainer {
@@ -65,6 +67,7 @@
     display: flex;
     align-items: center;
     gap: 16px;
+    min-width: 0;
 }
 
 .boardName {
@@ -119,6 +122,10 @@
 .headerTextButton:hover {
     background: rgba(139, 121, 94, 0.08) !important;
     color: var(--text-primary) !important;
+}
+
+.mobileActionsToggle {
+    display: none !important;
 }
 
 .headerRight {
@@ -394,6 +401,27 @@
 }
 
 .exportDropdown :global(.ant-dropdown-menu-item:hover) {
+    background: rgba(139, 121, 94, 0.08);
+}
+
+.mobileActionsMenu :global(.ant-dropdown-menu) {
+    padding: 10px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(18px);
+    border: 1px solid rgba(139, 121, 94, 0.08);
+    box-shadow: 0 18px 36px rgba(110, 100, 85, 0.12);
+}
+
+.mobileActionsMenu :global(.ant-dropdown-menu-item) {
+    border-radius: 16px;
+    min-height: 42px;
+    padding: 10px 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.mobileActionsMenu :global(.ant-dropdown-menu-item:hover) {
     background: rgba(139, 121, 94, 0.08);
 }
 
@@ -744,22 +772,70 @@
         top: 12px;
         left: 12px;
         right: 12px;
-        padding: 0 16px;
-        height: 60px;
+        padding: 10px 12px;
+        min-height: 60px;
+        height: auto;
+        gap: 12px;
+        border-radius: 28px;
     }
 
     .headerCenter {
         display: none;
     }
 
+    .mobileActionsToggle {
+        display: flex !important;
+    }
+
+    .headerRight {
+        margin-left: auto;
+        gap: 8px;
+    }
+
+    .collaborators,
+    .readOnlyBadge {
+        display: none;
+    }
+
     .boardName {
-        max-width: 120px;
+        max-width: min(38vw, 180px);
+        padding: 6px 12px;
+        font-size: 14px;
+    }
+
+    .inviteButton {
+        width: 42px;
+        min-width: 42px;
+        height: 42px;
+        padding: 0 !important;
+        justify-content: center;
+    }
+
+    .inviteButton :global(.ant-btn-icon + span) {
+        display: none;
     }
 
     .toolbar {
-        left: 12px;
-        padding: 12px 8px;
-        gap: 6px;
+        top: auto;
+        left: 50%;
+        bottom: calc(16px + env(safe-area-inset-bottom));
+        transform: translateX(-50%);
+        width: calc(100% - 24px) !important;
+        max-width: 460px !important;
+        min-width: 0 !important;
+        flex: none !important;
+        padding: 10px 12px;
+        gap: 0;
+        border-radius: 28px;
+    }
+
+    .toolbar :global(.ant-layout-sider-children) {
+        flex-direction: row;
+        justify-content: flex-start;
+        width: 100%;
+        overflow-x: auto;
+        gap: 10px;
+        padding-bottom: 2px;
     }
 
     .toolButton {
@@ -768,8 +844,112 @@
         font-size: 18px;
     }
 
+    .toolDivider {
+        width: 1px;
+        height: 24px;
+        margin: 0 2px;
+        flex-shrink: 0;
+    }
+
+    .colorControls {
+        margin-top: 0;
+        flex-direction: row;
+        gap: 10px;
+        flex-shrink: 0;
+    }
+
+    .brushWidth {
+        margin-top: 0;
+    }
+
+    .zoomControls {
+        position: fixed;
+        right: 16px;
+        bottom: calc(96px + env(safe-area-inset-bottom));
+        z-index: 110;
+        background: var(--glass-bg);
+        backdrop-filter: var(--glass-backdrop);
+        -webkit-backdrop-filter: var(--glass-backdrop);
+        border: var(--glass-border);
+        box-shadow: var(--glass-shadow);
+    }
+
+    .canvasNotice {
+        top: 84px;
+        width: calc(100% - 24px);
+    }
+
     .shareModeContent {
         gap: 12px;
+    }
+
+    .chartModal :global(.ant-modal),
+    .inviteModal :global(.ant-modal),
+    .versionModal :global(.ant-modal) {
+        width: calc(100vw - 24px) !important;
+        max-width: calc(100vw - 24px) !important;
+        margin: 0 auto;
+    }
+
+    .chartModal :global(.ant-modal-content),
+    .inviteModal :global(.ant-modal-content),
+    .versionModal :global(.ant-modal-content) {
+        padding: 20px 16px !important;
+        border-radius: 28px;
+    }
+
+    .inviteContent {
+        gap: 20px;
+    }
+
+    .shareSection,
+    .collaboratorsList {
+        padding: 18px;
+    }
+
+    .shareInputGroup {
+        flex-direction: column;
+    }
+
+    .shareInput {
+        width: 100%;
+    }
+
+    .copyButton {
+        width: 100%;
+    }
+
+    .onlineUser {
+        padding: 10px 14px;
+        gap: 12px;
+    }
+
+    .versionToolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .versionItem {
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .versionItem :global(.ant-list-item-action) {
+        margin-inline-start: 0;
+        width: 100%;
+        display: flex;
+        justify-content: flex-end;
+    }
+
+    .versionThumb {
+        width: 88px;
+        height: 60px;
+    }
+
+    .versionBody {
+        padding-left: 0;
+        min-width: 0;
+        flex: 1;
     }
 }
 
@@ -778,8 +958,8 @@
         top: 8px;
         left: 8px;
         right: 8px;
-        height: 52px;
-        padding: 0 12px;
+        min-height: 52px;
+        padding: 8px 10px;
     }
 
     .backButton {
@@ -788,13 +968,15 @@
     }
 
     .boardName {
-        max-width: 90px;
-        font-size: 14px;
+        max-width: 38vw;
+        font-size: 13px;
+        padding: 6px 10px;
     }
 
     .toolbar {
-        left: 8px;
-        padding: 8px 6px;
+        width: calc(100% - 16px) !important;
+        bottom: calc(10px + env(safe-area-inset-bottom));
+        padding: 8px 10px;
     }
 
     .toolButton {
@@ -804,13 +986,106 @@
     }
 
     .zoomControls {
-        bottom: 16px;
         right: 12px;
-        padding: 6px;
+        bottom: calc(78px + env(safe-area-inset-bottom));
+        padding: 4px 6px;
+        gap: 4px;
+    }
+
+    .canvasNotice {
+        top: 72px;
+        width: calc(100% - 16px);
+    }
+
+    .inviteButton {
+        width: 38px;
+        min-width: 38px;
+        height: 38px;
+    }
+
+    .shareModeContent {
+        align-items: flex-start;
+    }
+
+    .onlineUser {
+        border-radius: 20px;
+        padding: 10px 12px;
+    }
+
+    .versionThumb {
+        width: 76px;
+        height: 52px;
+        border-radius: 14px;
+    }
+
+    .versionTitleRow {
+        flex-wrap: wrap;
+    }
+
+    .versionMetaRow {
+        flex-wrap: wrap;
+    }
+
+    .versionItem :global(.ant-list-item-action) {
+        justify-content: flex-start;
+    }
+
+    .versionItem :global(.ant-list-item-action > li) {
+        padding: 0;
+    }
+
+    .versionItem :global(.ant-list-item-action > li:not(:last-child)) {
+        margin-right: 12px;
+    }
+
+    .chartModal :global(.ant-modal-content),
+    .inviteModal :global(.ant-modal-content),
+    .versionModal :global(.ant-modal-content) {
+        padding: 18px 14px !important;
+        border-radius: 24px;
+    }
+
+    .inviteIcon {
+        width: 72px;
+        height: 72px;
+        font-size: 40px;
+        margin-bottom: 18px;
+    }
+
+    .inviteTitle {
+        font-size: 22px;
+    }
+
+    .inviteDescription {
+        font-size: 14px;
+    }
+
+    .shareSection,
+    .collaboratorsList {
+        padding: 16px;
+    }
+
+    .copyButton {
+        height: 44px;
+    }
+
+    .onlineUsers {
+        gap: 12px;
+    }
+
+    .userAvatar {
+        width: 32px;
+        height: 32px;
+        font-size: 13px;
+    }
+
+    .statusDot {
+        width: 8px;
+        height: 8px;
     }
 
     .zoomText {
         font-size: 12px;
-        min-width: 40px;
+        min-width: 42px;
     }
 }

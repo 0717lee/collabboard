@@ -165,16 +165,18 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({ onAdd }) => {
 
                 <div className={styles.formRow}>
                     <label>主题颜色</label>
-                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <div className={styles.colorPalette}>
                         {['#6B8068', '#8B795E', '#C2A38F', '#8EB4B1', '#B4A29A', '#D08C60'].map(c => (
-                            <div
+                            <button
+                                type="button"
                                 key={c}
                                 onClick={() => setThemeColor(c)}
+                                className={styles.colorSwatch}
                                 style={{
-                                    width: 24, height: 24, borderRadius: '50%', backgroundColor: c,
-                                    cursor: 'pointer', border: themeColor === c ? '2px solid #333' : '2px solid transparent',
-                                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                    backgroundColor: c,
+                                    borderColor: themeColor === c ? 'rgba(66, 62, 58, 0.75)' : 'transparent',
                                 }}
+                                aria-label={`选择颜色 ${c}`}
                             />
                         ))}
                     </div>
@@ -200,13 +202,13 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({ onAdd }) => {
                                     value={point.label}
                                     onChange={(e) => updateDataPoint(index, 'label', e.target.value)}
                                     placeholder="标签"
-                                    style={{ width: 100 }}
+                                    className={styles.dataLabelInput}
                                 />
                                 <InputNumber
                                     value={point.value}
                                     onChange={(val) => updateDataPoint(index, 'value', val || 0)}
                                     placeholder="数值"
-                                    style={{ width: 80 }}
+                                    className={styles.dataValueInput}
                                 />
                                 {dataPoints.length > 2 && (
                                     <Button

@@ -71,7 +71,7 @@ const SettingsPage: React.FC = () => {
                             <Select
                                 value={language}
                                 onChange={(value) => setLanguage(value)}
-                                style={{ width: 140 }}
+                                className={styles.settingSelect}
                             >
                                 {languageOptions.map((option) => (
                                     <Select.Option key={option.value} value={option.value}>

@@ -27,6 +27,7 @@ import {
     FontSizeOutlined,
     HistoryOutlined,
     LockOutlined,
+    MenuOutlined,
     MinusOutlined,
     RedoOutlined,
     SelectOutlined,
@@ -882,6 +883,49 @@ const CanvasBoardInner: React.FC = () => {
         { key: 'png', label: isEn ? 'Export as PNG' : '导出为 PNG', onClick: exportPNG },
         { key: 'svg', label: isEn ? 'Export as SVG' : '导出为 SVG', onClick: exportSVG },
     ];
+    const mobileActionItems = [
+        {
+            key: 'undo',
+            icon: <UndoOutlined />,
+            label: isEn ? 'Undo' : '撤销',
+            onClick: undo,
+            disabled: history.past.length === 0 || isReadOnly,
+        },
+        {
+            key: 'redo',
+            icon: <RedoOutlined />,
+            label: isEn ? 'Redo' : '重做',
+            onClick: redo,
+            disabled: history.future.length === 0 || isReadOnly,
+        },
+        {
+            key: 'delete-selected',
+            icon: <DeleteOutlined />,
+            label: isEn ? 'Delete selected' : '删除选中',
+            onClick: deleteSelected,
+            disabled: isReadOnly || !hasSelection,
+        },
+        { type: 'divider' as const },
+        {
+            key: 'version-history',
+            icon: <HistoryOutlined />,
+            label: isEn ? 'Version history' : '版本历史',
+            onClick: () => setShowVersionModal(true),
+        },
+        { type: 'divider' as const },
+        {
+            key: 'export-png',
+            icon: <DownloadOutlined />,
+            label: isEn ? 'Export PNG' : '导出 PNG',
+            onClick: exportPNG,
+        },
+        {
+            key: 'export-svg',
+            icon: <DownloadOutlined />,
+            label: isEn ? 'Export SVG' : '导出 SVG',
+            onClick: exportSVG,
+        },
+    ];
 
     const addChart = async () => {
         if (isReadOnly) return;
@@ -1060,6 +1104,20 @@ const CanvasBoardInner: React.FC = () => {
                         </Button>
                     </Tooltip>
 
+                    <Dropdown
+                        menu={{ items: mobileActionItems }}
+                        placement="bottomRight"
+                        trigger={['click']}
+                        overlayClassName={styles.mobileActionsMenu}
+                    >
+                        <Button
+                            type="text"
+                            icon={<MenuOutlined />}
+                            className={`${styles.headerIconButton} ${styles.mobileActionsToggle}`}
+                            aria-label={isEn ? 'More actions' : '更多操作'}
+                        />
+                    </Dropdown>
+
                     <div className={styles.zoomControls}>
                         <Button type="text" size="small" icon={<ZoomOutOutlined />} onClick={() => handleZoom(-10)} />
                         <Text className={styles.zoomText}>{zoom}%</Text>
@@ -1149,6 +1207,7 @@ const CanvasBoardInner: React.FC = () => {
                 onCancel={() => setShowChartModal(false)}
                 footer={null}
                 width={800}
+                className={styles.chartModal}
             >
                 {showChartModal && (
                     <Suspense fallback={<div className={styles.modalLoader}>{isEn ? 'Loading chart tools...' : '图表工具加载中...'}</div>}>

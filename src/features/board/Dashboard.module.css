@@ -1,6 +1,6 @@
 .dashboardLayout {
     min-height: 100vh;
-    padding-bottom: 40px;
+    padding-bottom: calc(40px + env(safe-area-inset-bottom));
     background: transparent;
 }
 
@@ -422,6 +422,12 @@
         align-items: flex-start;
     }
 
+    .sectionHeader {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
     .createButton {
         width: 100%;
     }
@@ -472,6 +478,10 @@
 
     .boardGrid {
         gap: 20px;
+    }
+
+    .boardCard :global(.ant-card-body) {
+        padding: 20px 16px;
     }
 
     .emptyState {

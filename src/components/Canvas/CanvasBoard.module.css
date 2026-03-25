@@ -5,7 +5,6 @@
     overflow: hidden;
     position: relative;
     background: transparent;
-    --mobile-badge-clearance: 0px;
 }
 
 .boardArea {
@@ -769,10 +768,6 @@
 }
 
 @media (max-width: 768px) {
-    .canvasLayout {
-        --mobile-badge-clearance: 56px;
-    }
-
     .header {
         top: 12px;
         left: 12px;
@@ -823,7 +818,7 @@
     .toolbar {
         top: auto;
         left: 50%;
-        bottom: calc(16px + env(safe-area-inset-bottom) + var(--mobile-badge-clearance));
+        bottom: calc(16px + env(safe-area-inset-bottom));
         transform: translateX(-50%);
         width: calc(100% - 24px) !important;
         max-width: 460px !important;
@@ -870,13 +865,19 @@
     .zoomControls {
         position: fixed;
         right: 16px;
-        bottom: calc(96px + env(safe-area-inset-bottom) + var(--mobile-badge-clearance));
+        bottom: calc(96px + env(safe-area-inset-bottom));
         z-index: 110;
         background: var(--glass-bg);
         backdrop-filter: var(--glass-backdrop);
         -webkit-backdrop-filter: var(--glass-backdrop);
         border: var(--glass-border);
         box-shadow: var(--glass-shadow);
+    }
+
+    :global(#liveblocks-badge) {
+        left: 12px !important;
+        right: auto !important;
+        bottom: calc(86px + env(safe-area-inset-bottom)) !important;
     }
 
     .canvasNotice {
@@ -959,10 +960,6 @@
 }
 
 @media (max-width: 480px) {
-    .canvasLayout {
-        --mobile-badge-clearance: 56px;
-    }
-
     .header {
         top: 8px;
         left: 8px;
@@ -984,7 +981,7 @@
 
     .toolbar {
         width: calc(100% - 16px) !important;
-        bottom: calc(10px + env(safe-area-inset-bottom) + var(--mobile-badge-clearance));
+        bottom: calc(10px + env(safe-area-inset-bottom));
         padding: 8px 10px;
     }
 
@@ -996,9 +993,15 @@
 
     .zoomControls {
         right: 12px;
-        bottom: calc(78px + env(safe-area-inset-bottom) + var(--mobile-badge-clearance));
+        bottom: calc(78px + env(safe-area-inset-bottom));
         padding: 4px 6px;
         gap: 4px;
+    }
+
+    :global(#liveblocks-badge) {
+        left: 10px !important;
+        right: auto !important;
+        bottom: calc(80px + env(safe-area-inset-bottom)) !important;
     }
 
     .canvasNotice {

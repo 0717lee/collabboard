@@ -42,6 +42,7 @@ describe('authStore', () => {
     };
 
     beforeEach(() => {
+        vi.useRealTimers();
         authMocks.signInWithPassword.mockResolvedValue({
             data: {
                 user: mockAuthUser,
@@ -204,6 +205,31 @@ describe('authStore', () => {
             expect(state.hasInitialized).toBe(true);
             expect(state.isAuthenticated).toBe(true);
             expect(state.user?.name).toBe('Profile Name');
+        });
+
+        it('should stop the global loader if session restoration hangs', async () => {
+            vi.useFakeTimers();
+            authMocks.getSession.mockImplementationOnce(
+                () => new Promise(() => undefined)
+            );
+
+            useAuthStore.setState({
+                user: { id: 'stale-id', email: 'stale@example.com', name: 'Stale', createdAt: '' },
+                isAuthenticated: true,
+                isLoading: false,
+                hasInitialized: false,
+                error: null,
+            });
+
+            const initPromise = useAuthStore.getState().initializeAuth();
+            await vi.advanceTimersByTimeAsync(4000);
+            await initPromise;
+
+            const state = useAuthStore.getState();
+            expect(state.hasInitialized).toBe(true);
+            expect(state.isAuthenticated).toBe(true);
+            expect(state.user?.id).toBe('stale-id');
+            expect(state.isLoading).toBe(false);
         });
     });
 });

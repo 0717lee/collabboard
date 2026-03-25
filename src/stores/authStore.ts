@@ -17,6 +17,8 @@ interface AuthState {
     initializeAuth: () => Promise<void>;
 }
 
+const AUTH_INIT_TIMEOUT_MS = 4000;
+
 export const useAuthStore = create<AuthState>()(
     persist(
         (set, get) => ({
@@ -176,8 +178,39 @@ export const useAuthStore = create<AuthState>()(
                 set({ isLoading: true });
 
                 try {
+                    const sessionResult = await Promise.race([
+                        supabase.auth.getSession()
+                            .then((result: { data: { session: { user: User } | null }; error: { message: string } | null }) => ({
+                                type: 'session' as const,
+                                result,
+                            }))
+                            .catch((error: unknown) => ({
+                                type: 'error' as const,
+                                error,
+                            })),
+                        new Promise<{ type: 'timeout' }>((resolve) => {
+                            setTimeout(() => resolve({ type: 'timeout' }), AUTH_INIT_TIMEOUT_MS);
+                        }),
+                    ]);
+
+                    if (sessionResult.type === 'timeout') {
+                        const { isAuthenticated, user } = get();
+                        console.warn('Auth initialization timed out, falling back to cached auth state.');
+                        set({
+                            user: isAuthenticated ? user : null,
+                            isAuthenticated,
+                            isLoading: false,
+                            hasInitialized: true,
+                        });
+                        return;
+                    }
+
+                    if (sessionResult.type === 'error') {
+                        throw sessionResult.error;
+                    }
+
                     // Restore the local session first so protected routes do not block on a network round-trip.
-                    const { data: { session }, error } = await supabase.auth.getSession();
+                    const { data: { session }, error } = sessionResult.result;
 
                     if (error || !session?.user) {
                         // If no session found, or error occurred, make sure we clear local state

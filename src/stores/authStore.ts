@@ -1,12 +1,12 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase } from '@/lib/supabaseClient';
-import { useBoardStore } from '@/stores/boardStore';
 import type { User } from '@/types';
 
 interface AuthState {
     user: User | null;
     isAuthenticated: boolean;
+    hasValidatedSession: boolean;
     isLoading: boolean;
     hasInitialized: boolean;
     error: string | null;
@@ -37,6 +37,7 @@ export const useAuthStore = create<AuthState>()(
         (set, get) => ({
             user: null,
             isAuthenticated: false,
+            hasValidatedSession: false,
             isLoading: false,
             hasInitialized: false,
             error: null,
@@ -96,6 +97,7 @@ export const useAuthStore = create<AuthState>()(
                         set({
                             user,
                             isAuthenticated: true,
+                            hasValidatedSession: true,
                             isLoading: false,
                             hasInitialized: true,
                             error: null,
@@ -149,6 +151,7 @@ export const useAuthStore = create<AuthState>()(
                         set({
                             user,
                             isAuthenticated: true,
+                            hasValidatedSession: true,
                             isLoading: false,
                             hasInitialized: true,
                             error: null,
@@ -175,6 +178,7 @@ export const useAuthStore = create<AuthState>()(
                     set({
                         user: null,
                         isAuthenticated: false,
+                        hasValidatedSession: false,
                         hasInitialized: true,
                         error: null,
                     });
@@ -212,6 +216,7 @@ export const useAuthStore = create<AuthState>()(
                         set({
                             user: isAuthenticated ? user : null,
                             isAuthenticated,
+                            hasValidatedSession: false,
                             isLoading: false,
                             hasInitialized: true,
                         });
@@ -232,11 +237,12 @@ export const useAuthStore = create<AuthState>()(
                             set({
                                 user: null,
                                 isAuthenticated: false,
+                                hasValidatedSession: false,
                                 isLoading: false,
                                 hasInitialized: true,
                             });
                         } else {
-                            set({ isLoading: false, hasInitialized: true });
+                            set({ isLoading: false, hasInitialized: true, hasValidatedSession: false });
                         }
                         return;
                     }
@@ -247,6 +253,7 @@ export const useAuthStore = create<AuthState>()(
                     set({
                         user: fallbackUser,
                         isAuthenticated: true,
+                        hasValidatedSession: true,
                         isLoading: false,
                         hasInitialized: true,
                     });
@@ -274,6 +281,7 @@ export const useAuthStore = create<AuthState>()(
                     set({
                         user: null,
                         isAuthenticated: false,
+                        hasValidatedSession: false,
                         isLoading: false,
                         hasInitialized: true,
                     });
@@ -306,6 +314,7 @@ supabase.auth.onAuthStateChange(async (
         useAuthStore.setState({
             user: null,
             isAuthenticated: false,
+            hasValidatedSession: false,
             hasInitialized: true,
         });
     } else if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
@@ -318,11 +327,8 @@ supabase.auth.onAuthStateChange(async (
         useAuthStore.setState({
             user: buildUserFromSessionUser(session.user, profile?.name),
             isAuthenticated: true,
+            hasValidatedSession: true,
             hasInitialized: true,
         });
-
-        if (event === 'INITIAL_SESSION') {
-            void useBoardStore.getState().loadBoards(session.user.id);
-        }
     }
 });

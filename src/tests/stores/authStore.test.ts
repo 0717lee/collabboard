@@ -1,10 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useAuthStore } from '@/stores/authStore';
 
-const boardStoreMocks = vi.hoisted(() => ({
-    loadBoards: vi.fn(),
-}));
-
 const authMocks = vi.hoisted(() => ({
     signInWithPassword: vi.fn(),
     signUp: vi.fn(),
@@ -14,14 +10,6 @@ const authMocks = vi.hoisted(() => ({
     onAuthStateChange: vi.fn(),
     profileSingle: vi.fn(),
     profileInsert: vi.fn(),
-}));
-
-vi.mock('@/stores/boardStore', () => ({
-    useBoardStore: {
-        getState: () => ({
-            loadBoards: boardStoreMocks.loadBoards,
-        }),
-    },
 }));
 
 // Mock Supabase client
@@ -55,7 +43,6 @@ describe('authStore', () => {
 
     beforeEach(() => {
         vi.useRealTimers();
-        boardStoreMocks.loadBoards.mockResolvedValue(undefined);
         authMocks.signInWithPassword.mockResolvedValue({
             data: {
                 user: mockAuthUser,
@@ -107,6 +94,7 @@ describe('authStore', () => {
         useAuthStore.setState({
             user: null,
             isAuthenticated: false,
+            hasValidatedSession: false,
             isLoading: false,
             hasInitialized: false,
             error: null,
@@ -126,6 +114,7 @@ describe('authStore', () => {
             expect(state.user).not.toBeNull();
             expect(state.error).toBeNull();
             expect(state.hasInitialized).toBe(true);
+            expect(state.hasValidatedSession).toBe(true);
         });
     });
 
@@ -141,6 +130,7 @@ describe('authStore', () => {
             expect(state.isAuthenticated).toBe(true);
             expect(state.user).not.toBeNull();
             expect(state.hasInitialized).toBe(true);
+            expect(state.hasValidatedSession).toBe(true);
         });
     });
 
@@ -159,6 +149,7 @@ describe('authStore', () => {
             expect(state.isAuthenticated).toBe(false);
             expect(state.user).toBeNull();
             expect(state.hasInitialized).toBe(true);
+            expect(state.hasValidatedSession).toBe(false);
         });
     });
 
@@ -180,6 +171,7 @@ describe('authStore', () => {
             expect(state.hasInitialized).toBe(true);
             expect(state.isAuthenticated).toBe(true);
             expect(state.user?.id).toBe('mock-user-id');
+            expect(state.hasValidatedSession).toBe(true);
         });
 
         it('should finish initialization and clear stale auth state when session is missing', async () => {
@@ -191,6 +183,7 @@ describe('authStore', () => {
             useAuthStore.setState({
                 user: { id: 'stale-id', email: 'stale@example.com', name: 'Stale', createdAt: '' },
                 isAuthenticated: true,
+                hasValidatedSession: false,
                 isLoading: false,
                 hasInitialized: false,
                 error: null,
@@ -202,6 +195,7 @@ describe('authStore', () => {
             expect(state.hasInitialized).toBe(true);
             expect(state.isAuthenticated).toBe(false);
             expect(state.user).toBeNull();
+            expect(state.hasValidatedSession).toBe(false);
         });
 
         it('should hydrate the profile name after restoring the session user', async () => {
@@ -218,6 +212,7 @@ describe('authStore', () => {
             expect(state.hasInitialized).toBe(true);
             expect(state.isAuthenticated).toBe(true);
             expect(state.user?.name).toBe('Profile Name');
+            expect(state.hasValidatedSession).toBe(true);
         });
 
         it('should stop the global loader if session restoration hangs', async () => {
@@ -229,6 +224,7 @@ describe('authStore', () => {
             useAuthStore.setState({
                 user: { id: 'stale-id', email: 'stale@example.com', name: 'Stale', createdAt: '' },
                 isAuthenticated: true,
+                hasValidatedSession: false,
                 isLoading: false,
                 hasInitialized: false,
                 error: null,
@@ -242,10 +238,11 @@ describe('authStore', () => {
             expect(state.hasInitialized).toBe(true);
             expect(state.isAuthenticated).toBe(true);
             expect(state.user?.id).toBe('stale-id');
+            expect(state.hasValidatedSession).toBe(false);
             expect(state.isLoading).toBe(false);
         });
 
-        it('should recover boards when INITIAL_SESSION arrives after timeout fallback', async () => {
+        it('should validate the session again when INITIAL_SESSION arrives after timeout fallback', async () => {
             vi.useFakeTimers();
             authMocks.getSession.mockImplementationOnce(
                 () => new Promise(() => undefined)
@@ -254,6 +251,7 @@ describe('authStore', () => {
             useAuthStore.setState({
                 user: { id: 'stale-id', email: 'stale@example.com', name: 'Stale', createdAt: '' },
                 isAuthenticated: true,
+                hasValidatedSession: false,
                 isLoading: false,
                 hasInitialized: false,
                 error: null,
@@ -279,7 +277,7 @@ describe('authStore', () => {
             expect(state.hasInitialized).toBe(true);
             expect(state.isAuthenticated).toBe(true);
             expect(state.user?.id).toBe('mock-user-id');
-            expect(boardStoreMocks.loadBoards).toHaveBeenCalledWith('mock-user-id');
+            expect(state.hasValidatedSession).toBe(true);
         });
     });
 });

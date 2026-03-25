@@ -49,9 +49,20 @@ const formatLocaleDate = (date: string, locale: 'zh-CN' | 'en-US') =>
         year: 'numeric',
     });
 
+const mapEntryToBoard = (entry: import('@/types').BoardLibraryEntry): Board => ({
+    id: entry.id,
+    name: entry.name,
+    ownerId: entry.ownerId,
+    createdAt: entry.createdAt,
+    updatedAt: entry.updatedAt,
+    thumbnail: entry.thumbnail,
+    accessRole: entry.role || 'owner',
+    source: entry.source,
+});
+
 const DashboardPage: React.FC = () => {
     const navigate = useNavigate();
-    const { user, logout, hasInitialized, isAuthenticated } = useAuthStore();
+    const { user, logout, hasInitialized, isAuthenticated, hasValidatedSession } = useAuthStore();
     const { boards, sharedBoards, createBoard, deleteBoard, loadBoards } = useBoardStore();
     const {
         entries,
@@ -70,12 +81,27 @@ const DashboardPage: React.FC = () => {
     const [form] = Form.useForm();
 
     const isEn = language === 'en-US';
+    const cachedEntries = useMemo(() => Object.values(entries), [entries]);
+    const ownedBoardsForDisplay = useMemo(() => (
+        boards.length > 0 || hasValidatedSession
+            ? boards
+            : cachedEntries
+                .filter((entry) => entry.source === 'owned' && entry.ownerId === user?.id)
+                .map(mapEntryToBoard)
+    ), [boards, cachedEntries, hasValidatedSession, user?.id]);
+    const sharedBoardsForDisplay = useMemo(() => (
+        sharedBoards.length > 0 || hasValidatedSession
+            ? sharedBoards
+            : cachedEntries
+                .filter((entry) => entry.source === 'shared')
+                .map(mapEntryToBoard)
+    ), [cachedEntries, hasValidatedSession, sharedBoards]);
 
     useEffect(() => {
-        if (hasInitialized && isAuthenticated && user?.id) {
+        if (hasInitialized && hasValidatedSession && isAuthenticated && user?.id) {
             loadBoards(user.id);
         }
-    }, [hasInitialized, isAuthenticated, user?.id, loadBoards]);
+    }, [hasInitialized, hasValidatedSession, isAuthenticated, user?.id, loadBoards]);
 
     useEffect(() => {
         if (boards.length > 0) {
@@ -88,16 +114,19 @@ const DashboardPage: React.FC = () => {
     }, [boards, sharedBoards, syncBoards]);
 
     const filteredOwnedBoards = useMemo(() => {
-        const sorted = sortBoardsForDisplay(boards, entries);
+        const sorted = sortBoardsForDisplay(ownedBoardsForDisplay, entries);
         return sorted.filter((board) => board.name.toLowerCase().includes(searchQuery.toLowerCase()));
-    }, [boards, entries, searchQuery]);
+    }, [entries, ownedBoardsForDisplay, searchQuery]);
 
     const filteredSharedBoards = useMemo(() => {
-        const sorted = sortBoardsForDisplay(sharedBoards, entries);
+        const sorted = sortBoardsForDisplay(sharedBoardsForDisplay, entries);
         return sorted.filter((board) => board.name.toLowerCase().includes(searchQuery.toLowerCase()));
-    }, [entries, searchQuery, sharedBoards]);
+    }, [entries, searchQuery, sharedBoardsForDisplay]);
 
-    const totalBoardCount = boards.length + sharedBoards.length;
+    const ownedBoardCount = ownedBoardsForDisplay.length;
+    const sharedBoardCount = sharedBoardsForDisplay.length;
+    const totalBoardCount = ownedBoardCount + sharedBoardCount;
+    const isSyncingBoards = hasInitialized && isAuthenticated && !hasValidatedSession;
 
     const handleCreateBoard = async (values: { name: string }) => {
         if (!user) return;
@@ -347,6 +376,8 @@ const DashboardPage: React.FC = () => {
 
     const emptyDescription = searchQuery
         ? (isEn ? 'No matching boards found' : '没有找到匹配的白板')
+        : isSyncingBoards
+            ? (isEn ? 'Syncing your boards...' : '正在同步你的白板...')
         : totalBoardCount === 0
             ? (isEn ? 'No boards yet. Click the button above to create one.' : '还没有白板，点击上方按钮创建第一个')
             : (isEn ? 'No boards in this view yet.' : '当前分类下还没有白板');
@@ -389,7 +420,9 @@ const DashboardPage: React.FC = () => {
                             <AppstoreOutlined /> {isEn ? 'Boards Library' : '白板总览'}
                         </Title>
                         <Text type="secondary">
-                            {isEn ? `${totalBoardCount} boards across owned and shared spaces` : `共 ${totalBoardCount} 个白板，含我的白板与协作白板`}
+                            {isSyncingBoards
+                                ? (isEn ? 'Restoring your session and refreshing boards...' : '正在恢复登录状态并刷新白板...')
+                                : (isEn ? `${totalBoardCount} boards across owned and shared spaces` : `共 ${totalBoardCount} 个白板，含我的白板与协作白板`)}
                         </Text>
                     </div>
 
@@ -412,13 +445,13 @@ const DashboardPage: React.FC = () => {
                     <>
                         {renderSection(
                             isEn ? 'My Boards' : '我的白板',
-                            isEn ? `${boards.length} owned boards` : `${boards.length} 个我创建的白板`,
+                            isEn ? `${ownedBoardCount} owned boards` : `${ownedBoardCount} 个我创建的白板`,
                             filteredOwnedBoards,
                             'owned'
                         )}
                         {renderSection(
                             isEn ? 'Shared With Me' : '协作白板',
-                            isEn ? `${sharedBoards.length} recently opened shared boards` : `${sharedBoards.length} 个最近访问的协作白板`,
+                            isEn ? `${sharedBoardCount} recently opened shared boards` : `${sharedBoardCount} 个最近访问的协作白板`,
                             filteredSharedBoards,
                             'shared'
                         )}

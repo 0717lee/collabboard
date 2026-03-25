@@ -1,51 +1,37 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useBoardStore } from '@/stores/boardStore';
 
+const boardMocks = vi.hoisted(() => ({
+    insertSingle: vi.fn(),
+    orderBoards: vi.fn(),
+    updateEq: vi.fn(),
+    deleteEq: vi.fn(),
+    getUser: vi.fn(),
+}));
+
 // Mock Supabase client
 vi.mock('@/lib/supabaseClient', () => ({
     supabase: {
         from: () => ({
             insert: () => ({
                 select: () => ({
-                    single: () => Promise.resolve({
-                        data: {
-                            id: 'mock-board-id',
-                            name: 'Test Board',
-                            owner_id: 'test-user-id-123',
-                            data: { objects: [], version: '1.0' },
-                            created_at: new Date().toISOString(),
-                            updated_at: new Date().toISOString(),
-                        },
-                        error: null,
-                    }),
+                    single: boardMocks.insertSingle,
                 }),
             }),
             select: () => ({
                 eq: () => ({
-                    order: () => Promise.resolve({
-                        data: [],
-                        error: null,
-                    }),
+                    order: boardMocks.orderBoards,
                 }),
             }),
             update: () => ({
-                eq: () => Promise.resolve({ error: null }),
+                eq: boardMocks.updateEq,
             }),
             delete: () => ({
-                eq: () => Promise.resolve({ error: null }),
+                eq: boardMocks.deleteEq,
             }),
         }),
         auth: {
-            getUser: () => Promise.resolve({
-                data: {
-                    user: {
-                        id: 'test-user-id-123',
-                        email: 'test@example.com',
-                        created_at: new Date().toISOString(),
-                    },
-                },
-                error: null,
-            }),
+            getUser: boardMocks.getUser,
         },
     },
 }));
@@ -54,6 +40,34 @@ describe('boardStore', () => {
     const mockUserId = 'test-user-id-123';
 
     beforeEach(() => {
+        boardMocks.insertSingle.mockResolvedValue({
+            data: {
+                id: 'mock-board-id',
+                name: 'Test Board',
+                owner_id: 'test-user-id-123',
+                data: { objects: [], version: '1.0' },
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+            },
+            error: null,
+        });
+        boardMocks.orderBoards.mockResolvedValue({
+            data: [],
+            error: null,
+        });
+        boardMocks.updateEq.mockResolvedValue({ error: null });
+        boardMocks.deleteEq.mockResolvedValue({ error: null });
+        boardMocks.getUser.mockResolvedValue({
+            data: {
+                user: {
+                    id: 'test-user-id-123',
+                    email: 'test@example.com',
+                    created_at: new Date().toISOString(),
+                },
+            },
+            error: null,
+        });
+
         // Reset store state before each test
         useBoardStore.setState({
             boards: [],
@@ -103,6 +117,56 @@ describe('boardStore', () => {
             const state = useBoardStore.getState();
             expect(state.isLoading).toBe(false);
             expect(Array.isArray(state.boards)).toBe(true);
+        });
+
+        it('should ignore stale load results when a newer request finishes first', async () => {
+            const now = new Date().toISOString();
+            let resolveFirstLoad: ((value: {
+                data: Array<{
+                    id: string;
+                    name: string;
+                    owner_id: string;
+                    created_at: string;
+                    updated_at: string;
+                }>;
+                error: null;
+            }) => void) | undefined;
+
+            boardMocks.orderBoards
+                .mockImplementationOnce(() => new Promise((resolve) => {
+                    resolveFirstLoad = resolve;
+                }))
+                .mockResolvedValueOnce({
+                    data: [
+                        {
+                            id: 'latest-board-id',
+                            name: 'Recovered Board',
+                            owner_id: mockUserId,
+                            created_at: now,
+                            updated_at: now,
+                        },
+                    ],
+                    error: null,
+                });
+
+            const store = useBoardStore.getState();
+            const firstLoad = store.loadBoards(mockUserId);
+            const secondLoad = store.loadBoards(mockUserId);
+
+            await secondLoad;
+            expect(useBoardStore.getState().boards).toHaveLength(1);
+            expect(useBoardStore.getState().boards[0]?.name).toBe('Recovered Board');
+
+            resolveFirstLoad?.({
+                data: [],
+                error: null,
+            });
+            await firstLoad;
+
+            const state = useBoardStore.getState();
+            expect(state.boards).toHaveLength(1);
+            expect(state.boards[0]?.name).toBe('Recovered Board');
+            expect(state.isLoading).toBe(false);
         });
     });
 });

@@ -19,6 +19,8 @@ interface BoardState {
     loadBoards: (userId: string) => Promise<void>;
 }
 
+let latestLoadBoardsRequestId = 0;
+
 export const useBoardStore = create<BoardState>()((set, get) => ({
     boards: [],
     sharedBoards: [],
@@ -212,6 +214,7 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
     },
 
     loadBoards: async (userId: string) => {
+        const requestId = ++latestLoadBoardsRequestId;
         set({ isLoading: true, error: null });
 
         try {
@@ -220,6 +223,10 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
                 .select('id, name, owner_id, created_at, updated_at')
                 .eq('owner_id', userId)
                 .order('updated_at', { ascending: false });
+
+            if (requestId !== latestLoadBoardsRequestId) {
+                return;
+            }
 
             if (error) {
                 set({ isLoading: false, error: error.message });
@@ -257,6 +264,10 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
 
             set({ boards, sharedBoards, isLoading: false });
         } catch {
+            if (requestId !== latestLoadBoardsRequestId) {
+                return;
+            }
+
             set({ isLoading: false, error: '加载白板失败' });
         }
     },

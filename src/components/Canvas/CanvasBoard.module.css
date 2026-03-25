@@ -5,6 +5,7 @@
     overflow: hidden;
     position: relative;
     background: transparent;
+    --mobile-badge-clearance: 0px;
 }
 
 .boardArea {
@@ -768,6 +769,10 @@
 }
 
 @media (max-width: 768px) {
+    .canvasLayout {
+        --mobile-badge-clearance: 56px;
+    }
+
     .header {
         top: 12px;
         left: 12px;
@@ -818,7 +823,7 @@
     .toolbar {
         top: auto;
         left: 50%;
-        bottom: calc(16px + env(safe-area-inset-bottom));
+        bottom: calc(16px + env(safe-area-inset-bottom) + var(--mobile-badge-clearance));
         transform: translateX(-50%);
         width: calc(100% - 24px) !important;
         max-width: 460px !important;
@@ -865,7 +870,7 @@
     .zoomControls {
         position: fixed;
         right: 16px;
-        bottom: calc(96px + env(safe-area-inset-bottom));
+        bottom: calc(96px + env(safe-area-inset-bottom) + var(--mobile-badge-clearance));
         z-index: 110;
         background: var(--glass-bg);
         backdrop-filter: var(--glass-backdrop);
@@ -954,6 +959,10 @@
 }
 
 @media (max-width: 480px) {
+    .canvasLayout {
+        --mobile-badge-clearance: 56px;
+    }
+
     .header {
         top: 8px;
         left: 8px;
@@ -975,7 +984,7 @@
 
     .toolbar {
         width: calc(100% - 16px) !important;
-        bottom: calc(10px + env(safe-area-inset-bottom));
+        bottom: calc(10px + env(safe-area-inset-bottom) + var(--mobile-badge-clearance));
         padding: 8px 10px;
     }
 
@@ -987,7 +996,7 @@
 
     .zoomControls {
         right: 12px;
-        bottom: calc(78px + env(safe-area-inset-bottom));
+        bottom: calc(78px + env(safe-area-inset-bottom) + var(--mobile-badge-clearance));
         padding: 4px 6px;
         gap: 4px;
     }

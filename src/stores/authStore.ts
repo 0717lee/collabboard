@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase } from '@/lib/supabaseClient';
+import { useBoardStore } from '@/stores/boardStore';
 import type { User } from '@/types';
 
 interface AuthState {
@@ -18,6 +19,18 @@ interface AuthState {
 }
 
 const AUTH_INIT_TIMEOUT_MS = 4000;
+
+const buildUserFromSessionUser = (sessionUser: {
+    id: string;
+    email?: string;
+    created_at: string;
+    user_metadata?: { name?: string };
+}, profileName?: string): User => ({
+    id: sessionUser.id,
+    email: sessionUser.email || '',
+    name: profileName || sessionUser.user_metadata?.name || sessionUser.email?.split('@')[0] || 'User',
+    createdAt: sessionUser.created_at,
+});
 
 export const useAuthStore = create<AuthState>()(
     persist(
@@ -229,12 +242,7 @@ export const useAuthStore = create<AuthState>()(
                     }
 
                     const authUser = session.user;
-                    const fallbackUser: User = {
-                        id: authUser.id,
-                        email: authUser.email || '',
-                        name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User',
-                        createdAt: authUser.created_at,
-                    };
+                    const fallbackUser = buildUserFromSessionUser(authUser);
 
                     set({
                         user: fallbackUser,
@@ -290,14 +298,17 @@ export const useAuthStore = create<AuthState>()(
 );
 
 // Listen for auth state changes
-supabase.auth.onAuthStateChange(async (event: string, session: { user: { id: string; email?: string; created_at: string } } | null) => {
+supabase.auth.onAuthStateChange(async (
+    event: string,
+    session: { user: { id: string; email?: string; created_at: string; user_metadata?: { name?: string } } } | null
+) => {
     if (event === 'SIGNED_OUT') {
         useAuthStore.setState({
             user: null,
             isAuthenticated: false,
             hasInitialized: true,
         });
-    } else if (event === 'SIGNED_IN' && session?.user) {
+    } else if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
         const { data: profile } = await supabase
             .from('profiles')
             .select('*')
@@ -305,14 +316,13 @@ supabase.auth.onAuthStateChange(async (event: string, session: { user: { id: str
             .single();
 
         useAuthStore.setState({
-            user: {
-                id: session.user.id,
-                email: session.user.email || '',
-                name: profile?.name || session.user.email?.split('@')[0] || 'User',
-                createdAt: session.user.created_at,
-            },
+            user: buildUserFromSessionUser(session.user, profile?.name),
             isAuthenticated: true,
             hasInitialized: true,
         });
+
+        if (event === 'INITIAL_SESSION') {
+            void useBoardStore.getState().loadBoards(session.user.id);
+        }
     }
 });

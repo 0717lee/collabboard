@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useAuthStore } from '@/stores/authStore';
 
+const boardStoreMocks = vi.hoisted(() => ({
+    loadBoards: vi.fn(),
+}));
+
 const authMocks = vi.hoisted(() => ({
     signInWithPassword: vi.fn(),
     signUp: vi.fn(),
@@ -10,6 +14,14 @@ const authMocks = vi.hoisted(() => ({
     onAuthStateChange: vi.fn(),
     profileSingle: vi.fn(),
     profileInsert: vi.fn(),
+}));
+
+vi.mock('@/stores/boardStore', () => ({
+    useBoardStore: {
+        getState: () => ({
+            loadBoards: boardStoreMocks.loadBoards,
+        }),
+    },
 }));
 
 // Mock Supabase client
@@ -43,6 +55,7 @@ describe('authStore', () => {
 
     beforeEach(() => {
         vi.useRealTimers();
+        boardStoreMocks.loadBoards.mockResolvedValue(undefined);
         authMocks.signInWithPassword.mockResolvedValue({
             data: {
                 user: mockAuthUser,
@@ -230,6 +243,43 @@ describe('authStore', () => {
             expect(state.isAuthenticated).toBe(true);
             expect(state.user?.id).toBe('stale-id');
             expect(state.isLoading).toBe(false);
+        });
+
+        it('should recover boards when INITIAL_SESSION arrives after timeout fallback', async () => {
+            vi.useFakeTimers();
+            authMocks.getSession.mockImplementationOnce(
+                () => new Promise(() => undefined)
+            );
+
+            useAuthStore.setState({
+                user: { id: 'stale-id', email: 'stale@example.com', name: 'Stale', createdAt: '' },
+                isAuthenticated: true,
+                isLoading: false,
+                hasInitialized: false,
+                error: null,
+            });
+
+            const initPromise = useAuthStore.getState().initializeAuth();
+            await vi.advanceTimersByTimeAsync(4000);
+            await initPromise;
+
+            const authChangeCallback = authMocks.onAuthStateChange.mock.calls[0]?.[0];
+            expect(authChangeCallback).toBeTypeOf('function');
+
+            await authChangeCallback('INITIAL_SESSION', {
+                user: {
+                    ...mockAuthUser,
+                    user_metadata: {
+                        name: 'Recovered User',
+                    },
+                },
+            });
+
+            const state = useAuthStore.getState();
+            expect(state.hasInitialized).toBe(true);
+            expect(state.isAuthenticated).toBe(true);
+            expect(state.user?.id).toBe('mock-user-id');
+            expect(boardStoreMocks.loadBoards).toHaveBeenCalledWith('mock-user-id');
         });
     });
 });

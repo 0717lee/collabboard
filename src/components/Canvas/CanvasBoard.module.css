@@ -717,6 +717,8 @@
     gap: 16px;
     max-height: 240px;
     overflow-y: auto;
+    overflow-x: hidden;
+    padding: 4px;
 }
 
 .onlineUser {
@@ -733,7 +735,7 @@
 }
 
 .onlineUser:hover {
-    transform: translateX(4px);
+    transform: translateY(-2px);
     box-shadow: 0 8px 16px rgba(110, 100, 85, 0.06);
 }
 

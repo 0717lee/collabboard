@@ -25,6 +25,7 @@ import {
     DownloadOutlined,
     EditOutlined,
     EyeOutlined,
+    FileTextOutlined,
     FontSizeOutlined,
     HistoryOutlined,
     LockOutlined,
@@ -906,12 +907,12 @@ const CanvasBoardInner: React.FC = () => {
     }, [applyCanvasState, boardId, brushColor, brushWidth, canvasData, fabricLoaded, processLocalCanvasChange, resetHistory, resolveBoard, scheduleThumbnailCapture, snapObjectToGrid, syncCanvasState, updateMyPresence]);
 
     useEffect(() => {
-        if (!canvasReady || !canvasData || canvasData === lastSyncedDataRef.current) return;
+        if (!canvasReady || !canvasData) return;
 
         const decoded = decodeCanvasData(canvasData);
-        if (!decoded?.parsed?.objects) return;
+        if (!decoded?.json || decoded.json === lastSyncedDataRef.current) return;
 
-        lastSyncedDataRef.current = canvasData;
+        lastSyncedDataRef.current = decoded.json;
         applyCanvasState(decoded.json, {
             resetHistory: true,
             markPersisted: true,
@@ -1467,7 +1468,7 @@ const CanvasBoardInner: React.FC = () => {
         { key: 'circle', icon: <span style={{ fontSize: 18 }}>○</span>, title: isEn ? 'Circle' : '圆形', disabled: isReadOnly },
         { key: 'line', icon: <MinusOutlined />, title: isEn ? 'Line' : '直线', disabled: isReadOnly },
         { key: 'text', icon: <FontSizeOutlined />, title: isEn ? 'Text' : '文本', disabled: isReadOnly },
-        { key: 'stickyNote', icon: <span style={{ fontSize: 18 }}>📝</span>, title: isEn ? 'Sticky Note' : '便签', disabled: isReadOnly },
+        { key: 'stickyNote', icon: <FileTextOutlined />, title: isEn ? 'Sticky Note' : '便签', disabled: isReadOnly },
     ];
 
     if (!fabricLoaded) {

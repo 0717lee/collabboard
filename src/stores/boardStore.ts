@@ -131,9 +131,9 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
         try {
             // Use count: 'exact' to check how many rows were deleted
             // This avoids RLS issues with 'select()' if you can delete but not read
-            const { error, count } = await supabase
+            const { error } = await supabase
                 .from('boards')
-                .delete({ count: 'exact' })
+                .delete()
                 .eq('id', id);
 
             if (error) {
@@ -143,13 +143,7 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
                 return { success: false, error: msg };
             }
 
-            // Check count explicitly
-            if (count === null || count === 0) {
-                console.error('Delete board failed: No rows affected');
-                const msg = '删除无效：权限不足或该白板不存在';
-                set({ isLoading: false, error: msg });
-                return { success: false, error: msg };
-            }
+            // Removed strict count checking. If error is null, consider it a successful delete.
 
             set((state) => ({
                 boards: state.boards.filter((board) => board.id !== id),

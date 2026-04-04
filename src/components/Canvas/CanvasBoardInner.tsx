@@ -927,16 +927,22 @@ const CanvasBoardInner: React.FC = () => {
         canvas.isDrawingMode = !isReadOnly && (activeTool === 'draw' || activeTool === 'eraser');
         canvas.selection = !isReadOnly && activeTool === 'select';
 
-        const pathCreated = (event: { path?: { set: (props: Record<string, unknown>) => void } }) => {
-            if (activeTool === 'eraser' && event.path) {
-                event.path.set({
-                    globalCompositeOperation: 'destination-out',
-                    stroke: 'white',
-                    selectable: false,
-                    evented: false,
-                    perPixelTargetFind: true,
-                });
-                canvas.requestRenderAll();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const pathCreated = (event: { path?: any }) => {
+            const pathNode = event.path;
+            if (pathNode) {
+                if (!pathNode.id) pathNode.id = Math.random().toString(36).substring(2, 9);
+                
+                if (activeTool === 'eraser') {
+                    pathNode.set({
+                        globalCompositeOperation: 'destination-out',
+                        stroke: 'white',
+                        selectable: false,
+                        evented: false,
+                        perPixelTargetFind: true,
+                    });
+                    canvas.requestRenderAll();
+                }
             }
         };
 

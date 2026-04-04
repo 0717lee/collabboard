@@ -53,6 +53,28 @@ test.describe('Dashboard', () => {
         await expect(page.locator('text=搜索测试白板')).toBeVisible();
     });
 
+    test('should delete an owned board', async ({ page }, testInfo) => {
+        test.skip(testInfo.project.name === 'Mobile Chrome', 'Delete action is not exposed in the mobile dashboard layout.');
+
+        await page.getByRole('button', { name: /新建白板/ }).click();
+        const createDialog = page.getByRole('dialog', { name: '新建白板' });
+        await createDialog.getByPlaceholder('输入白板名称').fill('删除测试白板');
+        await createDialog.getByRole('button', { name: /创\s*建/ }).click();
+        await expect(page).toHaveURL(/.*board\/.+/);
+
+        await page.goto('/dashboard');
+
+        const boardCard = page.locator('[class*="boardCard"]').filter({ hasText: '删除测试白板' }).first();
+        await expect(boardCard).toBeVisible();
+        await boardCard.getByRole('button', { name: '删除白板' }).click();
+
+        const deleteDialog = page.getByRole('dialog', { name: '删除白板' });
+        await expect(deleteDialog).toBeVisible();
+        await deleteDialog.getByRole('button', { name: /删\s*除/ }).click();
+
+        await expect(boardCard).not.toBeVisible();
+    });
+
     test('should navigate to settings', async ({ page }) => {
         await page.locator('[class*="userInfo"]').click();
         await page.getByText('设置').click();

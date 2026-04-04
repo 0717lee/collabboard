@@ -175,6 +175,10 @@ export const createMockSupabaseClient = () => {
                     data: filteredRows[0] ? selectColumns(filteredRows[0], columns) : null,
                     error: filteredRows[0] ? null : { message: 'Not found' },
                 }),
+                maybeSingle: async () => ({
+                    data: filteredRows[0] ? selectColumns(filteredRows[0], columns) : null,
+                    error: null,
+                }),
                 order: async (fieldName: string, options?: { ascending?: boolean }) => {
                     const orderedRows = filteredRows
                         .slice()

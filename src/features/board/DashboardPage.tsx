@@ -10,7 +10,6 @@ import {
     Layout,
     Modal,
     Tag,
-    Tooltip,
     Typography,
     message,
 } from 'antd';
@@ -79,6 +78,8 @@ const DashboardPage: React.FC = () => {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [form] = Form.useForm();
+    const [messageApi, messageContextHolder] = message.useMessage();
+    const [modal, modalContextHolder] = Modal.useModal();
 
     const isEn = language === 'en-US';
     const cachedEntries = useMemo(() => Object.values(entries), [entries]);
@@ -136,13 +137,13 @@ const DashboardPage: React.FC = () => {
         if (newBoard) {
             syncBoards([newBoard], 'owned');
             touchBoard(newBoard, 'owner');
-            message.success(isEn ? 'Board created!' : '白板创建成功！');
+            messageApi.success(isEn ? 'Board created!' : '白板创建成功！');
             setIsCreateModalOpen(false);
             form.resetFields();
             navigate(`/board/${newBoard.id}`);
         } else {
             const error = useBoardStore.getState().error;
-            message.error(error || (isEn ? 'Failed to create, please retry' : '创建失败，请重试'));
+            messageApi.error(error || (isEn ? 'Failed to create, please retry' : '创建失败，请重试'));
         }
     };
 
@@ -177,7 +178,7 @@ const DashboardPage: React.FC = () => {
                 updatedAt: new Date().toISOString(),
             },
         ], 'owned');
-        message.success(isEn ? 'Board updated' : '白板已更新');
+        messageApi.success(isEn ? 'Board updated' : '白板已更新');
         setIsEditModalOpen(false);
         setEditingBoard(null);
         form.resetFields();
@@ -193,18 +194,18 @@ const DashboardPage: React.FC = () => {
         event.stopPropagation();
 
         if (user?.id !== boardOwnerId) {
-            message.error(isEn ? 'Permission denied: You are not the owner' : '权限不足：您不是该白板的创建者');
+            messageApi.error(isEn ? 'Permission denied: You are not the owner' : '权限不足：您不是该白板的创建者');
             return;
         }
 
-        Modal.confirm({
+        modal.confirm({
             title: isEn ? 'Delete Board' : '删除白板',
             content: isEn ? 'Are you sure you want to delete this board? This action cannot be undone.' : '确定要删除这个白板吗？删除后无法恢复。',
             okText: isEn ? 'Delete' : '删除',
             okType: 'danger',
             cancelText: isEn ? 'Cancel' : '取消',
             onOk: async () => {
-                const hideHelper = message.loading(isEn ? 'Deleting...' : '正在删除...', 0);
+                const hideHelper = messageApi.loading(isEn ? 'Deleting...' : '正在删除...', 0);
 
                 try {
                     const timeoutPromise = new Promise<{ success: boolean; error: string }>((_, reject) =>
@@ -217,14 +218,14 @@ const DashboardPage: React.FC = () => {
 
                     if (result.success) {
                         removeBoard(boardId);
-                        message.success(isEn ? 'Deleted successfully' : '白板已删除');
+                        messageApi.success(isEn ? 'Deleted successfully' : '白板已删除');
                     } else {
-                        message.error(result.error || (isEn ? 'Delete failed' : '删除失败'));
+                        messageApi.error(result.error || (isEn ? 'Delete failed' : '删除失败'));
                     }
                 } catch (error) {
                     hideHelper();
                     console.error('Delete error:', error);
-                    message.error(isEn ? 'An error occurred' : '操作超时或失败');
+                    messageApi.error(isEn ? 'An error occurred' : '操作超时或失败');
                 }
             },
         });
@@ -234,7 +235,7 @@ const DashboardPage: React.FC = () => {
         try {
             await logout();
             navigate('/login');
-            message.info(isEn ? 'Logged out' : '已退出登录');
+            messageApi.info(isEn ? 'Logged out' : '已退出登录');
         } catch (error) {
             console.error('Logout failed', error);
         }
@@ -251,26 +252,44 @@ const DashboardPage: React.FC = () => {
                 : null;
 
         const actions = [
-            <Tooltip title={isFavorite ? (isEn ? 'Remove favorite' : '取消收藏') : (isEn ? 'Favorite' : '收藏')} key="favorite">
+            <button
+                type="button"
+                className={styles.cardActionButton}
+                onClick={(event) => handleToggleFavorite(board, event)}
+                aria-label={isFavorite ? (isEn ? 'Remove favorite' : '取消收藏') : (isEn ? 'Favorite' : '收藏')}
+                title={isFavorite ? (isEn ? 'Remove favorite' : '取消收藏') : (isEn ? 'Favorite' : '收藏')}
+                key="favorite"
+            >
                 {isFavorite ? (
-                    <StarFilled className={styles.favoriteActionActive} onClick={(event) => handleToggleFavorite(board, event)} />
+                    <StarFilled className={styles.favoriteActionActive} />
                 ) : (
-                    <StarOutlined className={styles.favoriteAction} onClick={(event) => handleToggleFavorite(board, event)} />
+                    <StarOutlined className={styles.favoriteAction} />
                 )}
-            </Tooltip>,
+            </button>,
         ];
 
         if (section === 'owned') {
             actions.push(
-                <Tooltip title={isEn ? 'Rename' : '编辑名称'} key="edit">
-                    <EditOutlined onClick={(event) => handleEditStart(board, event)} />
-                </Tooltip>,
-                <Tooltip title={isEn ? 'Delete' : '删除'} key="delete">
-                    <DeleteOutlined
-                        onClick={(event) => handleDeleteBoard(board.id, board.ownerId, event)}
-                        style={{ color: 'red' }}
-                    />
-                </Tooltip>
+                <button
+                    type="button"
+                    className={styles.cardActionButton}
+                    onClick={(event) => handleEditStart(board, event)}
+                    aria-label={isEn ? 'Rename board' : '重命名白板'}
+                    title={isEn ? 'Rename' : '编辑名称'}
+                    key="edit"
+                >
+                    <EditOutlined />
+                </button>,
+                <button
+                    type="button"
+                    className={`${styles.cardActionButton} ${styles.deleteActionButton}`}
+                    onClick={(event) => handleDeleteBoard(board.id, board.ownerId, event)}
+                    aria-label={isEn ? 'Delete board' : '删除白板'}
+                    title={isEn ? 'Delete' : '删除'}
+                    key="delete"
+                >
+                    <DeleteOutlined />
+                </button>
             );
         }
 
@@ -386,7 +405,10 @@ const DashboardPage: React.FC = () => {
             : (isEn ? 'No boards in this view yet.' : '当前分类下还没有白板');
 
     return (
-        <Layout className={styles.dashboardLayout}>
+        <>
+            {messageContextHolder}
+            {modalContextHolder}
+            <Layout className={styles.dashboardLayout}>
             <Header className={styles.header}>
                 <div className={styles.headerLeft}>
                     <div className={styles.logo}>
@@ -527,7 +549,8 @@ const DashboardPage: React.FC = () => {
                     </Form.Item>
                 </Form>
             </Modal>
-        </Layout>
+            </Layout>
+        </>
     );
 };
 

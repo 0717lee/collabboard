@@ -330,6 +330,30 @@
     transition: transform 0.2s ease;
 }
 
+.cardActionButton {
+    appearance: none;
+    border: none;
+    background: transparent;
+    padding: 6px;
+    margin: -6px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: inherit;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.2s ease, color 0.2s ease;
+}
+
+.cardActionButton:hover {
+    background: rgba(139, 121, 94, 0.08);
+}
+
+.cardActionButton:focus-visible {
+    outline: 2px solid rgba(107, 128, 104, 0.35);
+    outline-offset: 2px;
+}
+
 .favoriteAction:hover,
 .favoriteActionActive:hover {
     transform: scale(1.08);
@@ -337,6 +361,14 @@
 
 .favoriteActionActive {
     color: #d08c60;
+}
+
+.deleteActionButton {
+    color: #d9363e;
+}
+
+.deleteActionButton:hover {
+    color: #ff4d4f;
 }
 
 

@@ -84,12 +84,14 @@ const useMockUpdateMyPresence: typeof realContext.useUpdateMyPresence = () => Re
 const mockUseOthersMapped: typeof realContext.useOthersMapped = () => [];
 const mockUseOthers: typeof realContext.useOthers = () => [];
 const mockUseSelf: typeof realContext.useSelf = () => null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockUseStorage: typeof realContext.useStorage = ((selector: (root: Storage) => unknown) => selector(mockStorage)) as any as typeof realContext.useStorage;
 const useMockMutation: typeof realContext.useMutation = ((callback: (context: ReturnType<typeof createMockMutationHelpers>, ...args: unknown[]) => unknown) => {
     const callbackRef = React.useRef(callback);
     callbackRef.current = callback;
 
     return React.useCallback((...args: unknown[]) => callbackRef.current(createMockMutationHelpers(), ...args), []);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 }) as any as typeof realContext.useMutation;
 const mockUseBroadcastEvent: typeof realContext.useBroadcastEvent = () => () => undefined;
 const mockUseEventListener: typeof realContext.useEventListener = () => undefined;

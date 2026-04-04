@@ -6,6 +6,7 @@ import type { Board, BoardLibraryEntry, BoardRole, BoardSource } from '@/types';
 interface BoardLibraryState {
     entries: Record<string, BoardLibraryEntry>;
     syncBoards: (boards: Board[], source: BoardSource) => void;
+    reconcileBoards: (boards: Board[], source: BoardSource) => void;
     touchBoard: (board: Board, role?: BoardRole) => void;
     setThumbnail: (boardId: string, thumbnail?: string) => void;
     toggleFavorite: (boardId: string) => void;
@@ -96,6 +97,20 @@ export const useBoardLibraryStore = create<BoardLibraryState>()(
 
                     boards.forEach((board) => {
                         nextEntries[board.id] = mergeBoardEntry(nextEntries[board.id], board, source);
+                    });
+
+                    return { entries: limitEntries(nextEntries) };
+                });
+            },
+
+            reconcileBoards: (boards, source) => {
+                set((state) => {
+                    const nextEntries = Object.fromEntries(
+                        Object.entries(state.entries).filter(([, entry]) => entry.source !== source)
+                    );
+
+                    boards.forEach((board) => {
+                        nextEntries[board.id] = mergeBoardEntry(state.entries[board.id], board, source);
                     });
 
                     return { entries: limitEntries(nextEntries) };

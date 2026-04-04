@@ -84,7 +84,7 @@ const DashboardPage: React.FC = () => {
     const { boards, sharedBoards, createBoard, deleteBoard, loadBoards } = useBoardStore();
     const {
         entries,
-        removeBoard,
+        reconcileBoards,
         setThumbnail,
         syncBoards,
         toggleFavorite,
@@ -135,14 +135,9 @@ const DashboardPage: React.FC = () => {
     }, [hasInitialized, hasValidatedSession, isAuthenticated, user?.id, loadBoards]);
 
     useEffect(() => {
-        if (boards.length > 0) {
-            syncBoards(boards, 'owned');
-        }
-
-        if (sharedBoards.length > 0) {
-            syncBoards(sharedBoards, 'shared');
-        }
-    }, [boards, sharedBoards, syncBoards]);
+        reconcileBoards(boards, 'owned');
+        reconcileBoards(sharedBoards, 'shared');
+    }, [boards, sharedBoards, reconcileBoards]);
 
     const filteredOwnedBoards = useMemo(() => {
         const sorted = sortBoardsForDisplay(ownedBoardsForDisplay, entries);
@@ -247,7 +242,6 @@ const DashboardPage: React.FC = () => {
                     hideHelper();
 
                     if (result.success) {
-                        removeBoard(boardId);
                         messageApi.success(isEn ? 'Deleted successfully' : '白板已删除');
                     } else {
                         messageApi.error(result.error || (isEn ? 'Delete failed' : '删除失败'));

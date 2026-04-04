@@ -62,7 +62,7 @@ export const useAuthStore = create<AuthState>()(
                             .from('profiles')
                             .select('*')
                             .eq('id', data.user.id)
-                            .single();
+                            .maybeSingle();
 
                         // If no profile exists, create one
                         if (!profile) {
@@ -264,7 +264,7 @@ export const useAuthStore = create<AuthState>()(
                             .from('profiles')
                             .select('*')
                             .eq('id', authUser.id)
-                            .single();
+                            .maybeSingle();
 
                         if (profile?.name) {
                             set((state) => ({
@@ -295,6 +295,7 @@ export const useAuthStore = create<AuthState>()(
                 user: state.user,
                 isAuthenticated: state.isAuthenticated,
             }),
+            migrate: (persistedState: unknown) => persistedState as Partial<AuthState>,
             onRehydrateStorage: () => (state) => {
                 // Ensure isLoading is always false after rehydration
                 if (state) {
@@ -318,14 +319,20 @@ supabase.auth.onAuthStateChange(async (
             hasInitialized: true,
         });
     } else if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
+        let profileName: string | undefined;
+        try {
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', session.user.id)
+                .maybeSingle();
+            profileName = profile?.name;
+        } catch (err) {
+            console.warn('onAuthStateChange: profile lookup failed, continuing without profile name:', err);
+        }
 
         useAuthStore.setState({
-            user: buildUserFromSessionUser(session.user, profile?.name),
+            user: buildUserFromSessionUser(session.user, profileName),
             isAuthenticated: true,
             hasValidatedSession: true,
             hasInitialized: true,

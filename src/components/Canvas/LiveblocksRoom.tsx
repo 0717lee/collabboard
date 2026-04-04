@@ -1,5 +1,7 @@
 import React, { ReactNode } from 'react';
+import { LiveList } from '@liveblocks/client';
 import { RoomProvider } from '@/liveblocks.config';
+import type { ChatMessage } from '@/liveblocks.config';
 import { useAuthStore } from '@/stores/authStore';
 
 interface LiveblocksRoomProps {
@@ -33,6 +35,7 @@ export const LiveblocksRoom: React.FC<LiveblocksRoomProps> = ({ roomId, children
                 canvasData_4: '',
                 canvasData_5: '',
                 version: 0,
+                chatMessages: new LiveList<ChatMessage>([]),
             }}
         >
             {children}

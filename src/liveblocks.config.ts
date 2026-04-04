@@ -1,5 +1,5 @@
 import React from 'react';
-import { createClient } from '@liveblocks/client';
+import { createClient, LiveList } from '@liveblocks/client';
 import { createRoomContext } from '@liveblocks/react';
 import { liveblocksConfigWarning, shouldUseMockLiveblocks } from './lib/runtimeConfig';
 
@@ -9,6 +9,15 @@ export type Presence = {
     color: string;
 };
 
+export type ChatMessage = {
+    id: string;
+    userId: string;
+    userName: string;
+    userColor: string;
+    text: string;
+    timestamp: number;
+};
+
 export type Storage = {
     canvasData: string;
     canvasData_2?: string;
@@ -16,6 +25,7 @@ export type Storage = {
     canvasData_4?: string;
     canvasData_5?: string;
     version: number;
+    chatMessages: LiveList<ChatMessage>;
 };
 
 export type UserMeta = {
@@ -39,6 +49,7 @@ const mockStorage: Storage = {
     canvasData_4: '',
     canvasData_5: '',
     version: 0,
+    chatMessages: new LiveList<ChatMessage>([]),
 };
 
 const mockPresence: Presence = {

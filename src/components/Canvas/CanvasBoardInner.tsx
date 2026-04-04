@@ -45,8 +45,11 @@ import { useLanguageStore } from '@/stores/languageStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { buildBoardShareLink, decompressSnapshotData, extractBoardRoleFromUrl } from '@/lib/boardUtils';
 import { useMutation, useOthers, useStorage, useUpdateMyPresence } from '@/liveblocks.config';
+import { createStickyNote, findNearestAnchor, getAnchorPoints, handleStickyNoteDoubleClick, initAligningGuidelines } from './canvasUtils';
 import { CircularSlider } from './CircularSlider';
 import { LiveblocksCursors } from './LiveblocksCursors';
+import { ChatSidebar } from './ChatSidebar';
+import { ShortcutsPanel } from './ShortcutsPanel';
 import { VersionHistoryModal } from './VersionHistoryModal';
 import styles from './CanvasBoard.module.css';
 import type { Board, BoardRole, BoardSnapshot } from '@/types';
@@ -59,7 +62,7 @@ let fabric: any = null;
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
 
-type ToolType = 'select' | 'draw' | 'eraser' | 'rect' | 'circle' | 'line' | 'text';
+type ToolType = 'select' | 'draw' | 'eraser' | 'rect' | 'circle' | 'line' | 'text' | 'stickyNote';
 
 interface HistoryState {
     past: string[];
@@ -154,6 +157,13 @@ const CanvasBoardInner: React.FC = () => {
     const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const thumbnailTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const lastAutoSnapshotAtRef = useRef(0);
+    const lastMouseEventRef = useRef<any>(null);
+    const hoveredAnchorRef = useRef<{ obj: any; anchor: string; point: { x: number; y: number } } | null>(null);
+    const activeLineRef = useRef<any>(null);
+    const isDrawingLineRef = useRef(false);
+    const clipboardRef = useRef<any>(null);
+    const [contextMenuVisible, setContextMenuVisible] = useState(false);
+    const [contextMenuPos, setContextMenuPos] = useState({ x: 0, y: 0 });
 
     const sharedRoleFromUrl = useMemo(
         () => extractBoardRoleFromUrl(location.search),
@@ -480,6 +490,25 @@ const CanvasBoardInner: React.FC = () => {
 
         fabricRef.current = canvas;
         setCanvasReady(true);
+        initAligningGuidelines(canvas, fabric);
+
+        // Global Locking Visuals
+        if (!fabric.Object.prototype._renderOriginal) {
+            fabric.Object.prototype._renderOriginal = fabric.Object.prototype.render;
+            fabric.Object.prototype.render = function (ctx: CanvasRenderingContext2D) {
+                this._renderOriginal(ctx);
+                if (this.data?.locked) {
+                    ctx.save();
+                    // Draw in local coordinates. 0,0 is the object center in Fabric
+                    const halfW = (this.width * this.scaleX) / 2;
+                    const halfH = (this.height * this.scaleY) / 2;
+                    ctx.font = '16px serif';
+                    ctx.fillStyle = '#000';
+                    ctx.fillText('🔒', halfW - 22, -halfH + 24);
+                    ctx.restore();
+                }
+            };
+        }
 
         canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
         canvas.freeDrawingBrush.color = brushColor;
@@ -531,8 +560,37 @@ const CanvasBoardInner: React.FC = () => {
             }
         };
 
-        const handleObjectMoving = ({ target }: { target?: { left?: number; top?: number; set: (key: string, value: number) => void; setCoords?: () => void; type?: string; x1?: number; y1?: number; x2?: number; y2?: number } }) => {
+        const updateConnectors = (obj: any) => {
+            const canvas = fabricRef.current;
+            if (!canvas) return;
+            const objId = obj.data?.id;
+            if (!objId) return;
+
+            const connectors = canvas.getObjects().filter((o: any) => o.data?.type === 'connector');
+            connectors.forEach((connector: any) => {
+                if (connector.data.start?.id === objId) {
+                    const anchors = getAnchorPoints(obj);
+                    const point = (anchors as any)[connector.data.start.anchor];
+                    connector.set({ x1: point.x, y1: point.y });
+                }
+                if (connector.data.end?.id === objId) {
+                    const anchors = getAnchorPoints(obj);
+                    const point = (anchors as any)[connector.data.end.anchor];
+                    connector.set({ x2: point.x, y2: point.y });
+                }
+                connector.setCoords();
+            });
+        };
+
+        const handleObjectMoving = ({ target }: any) => {
+            if (!target) return;
             snapObjectToGrid(target);
+            updateConnectors(target);
+        };
+        
+        const handleObjectScaling = ({ target }: any) => {
+            if (!target) return;
+            updateConnectors(target);
         };
 
         const handleModification = () => {
@@ -542,19 +600,272 @@ const CanvasBoardInner: React.FC = () => {
             setSelectedObjectCount(canvas.getActiveObjects().length);
         };
 
+        // Panning state
+        let isDragging = false;
+        let lastPosX = 0;
+        let lastPosY = 0;
+
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const handleMouseMove = (options: any) => {
-            if (options.pointer) {
+            if (isDragging) {
+                const e = options.e;
+                const vpt = canvas.viewportTransform;
+                if (!vpt) return;
+                vpt[4] += e.clientX - lastPosX;
+                vpt[5] += e.clientY - lastPosY;
+                canvas.requestRenderAll();
+                lastPosX = e.clientX;
+                lastPosY = e.clientY;
+            } else if (options.pointer) {
                 updateMyPresence({ cursor: options.pointer });
+                lastMouseEventRef.current = options;
+
+                if (activeTool === 'line' && fabricRef.current) {
+                    const canvas = fabricRef.current;
+                    const pointer = options.pointer;
+                    
+                    if (isDrawingLineRef.current && activeLineRef.current) {
+                        // Update line end position
+                        let endX = pointer.x;
+                        let endY = pointer.y;
+                        
+                        // Try to find a target anchor for snapping while drawing
+                        const nearest = findNearestAnchor(pointer, canvas.getObjects(), 30);
+                        if (nearest && nearest.obj !== activeLineRef.current && nearest.obj.data?.id !== activeLineRef.current.data?.start?.id) {
+                            endX = nearest.point.x;
+                            endY = nearest.point.y;
+                            hoveredAnchorRef.current = nearest;
+                        } else {
+                            hoveredAnchorRef.current = null;
+                        }
+                        
+                        activeLineRef.current.set({ x2: endX, y2: endY });
+                        canvas.requestRenderAll();
+                    } else {
+                        // Just hovering - find nearest anchor to highlight
+                        const nearest = findNearestAnchor(pointer, canvas.getObjects(), 30);
+                        if (nearest) {
+                            hoveredAnchorRef.current = nearest;
+                            canvas.requestRenderAll();
+                        } else if (hoveredAnchorRef.current) {
+                            hoveredAnchorRef.current = null;
+                            canvas.requestRenderAll();
+                        }
+                    }
+                }
+            }
+        };
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const handleMouseDown = (opt: any) => {
+            const evt = opt.e;
+            if (evt.altKey || evt.button === 1) { // Alt+Drag or Middle-Click
+                isDragging = true;
+                canvas.selection = false;
+                lastPosX = evt.clientX;
+                lastPosY = evt.clientY;
+            }
+        };
+
+        const handleMouseUp = (opt: any) => {
+            if (isDragging) {
+                isDragging = false;
+                canvas.selection = true;
+            }
+
+            if (isDrawingLineRef.current && activeLineRef.current) {
+                const canvas = fabricRef.current;
+                const pointer = canvas.getPointer(opt.e);
+                const nearest = findNearestAnchor(pointer, canvas.getObjects(), 30);
+                
+                if (nearest && nearest.obj !== activeLineRef.current && nearest.obj.data?.id !== activeLineRef.current.data?.start?.id) {
+                    // Snap and finalize
+                    activeLineRef.current.set({
+                        x2: nearest.point.x,
+                        y2: nearest.point.y,
+                        data: {
+                            ...activeLineRef.current.data,
+                            end: { id: nearest.obj.data?.id, anchor: nearest.anchor }
+                        }
+                    });
+                } else {
+                    // Fallback to static line or remove if too short? 
+                    // Let's keep it but without end binding
+                }
+                
+                isDrawingLineRef.current = false;
+                activeLineRef.current = null;
+                setActiveTool('select');
+                canvas.requestRenderAll();
+                processLocalCanvasChange();
+            }
+        };
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const handleMouseWheel = (opt: any) => {
+            const delta = opt.e.deltaY;
+            let currentZoom = canvas.getZoom();
+            currentZoom *= 0.999 ** delta;
+            if (currentZoom > 2) currentZoom = 2;
+            if (currentZoom < 0.25) currentZoom = 0.25;
+            canvas.zoomToPoint({ x: opt.e.offsetX, y: opt.e.offsetY }, currentZoom);
+            setZoom(Math.round(currentZoom * 100));
+            opt.e.preventDefault();
+            opt.e.stopPropagation();
+        };
+
+        const handleAfterRender = () => {
+            if (activeTool !== 'line' || !fabricRef.current) return;
+            const canvas = fabricRef.current;
+            const ctx = canvas.getContext();
+            const vpt = canvas.viewportTransform;
+            if (!vpt) return;
+            
+            // Re-render anchor highlights if line tool is active
+            const mouseEvent = lastMouseEventRef.current;
+            if (!mouseEvent) return;
+            
+            const target = canvas.findTarget(mouseEvent.e);
+            if (target && !target.isType('line') && !target.isType('guide') && (target.selectable !== false)) {
+                const anchors = getAnchorPoints(target);
+                ctx.save();
+                for (const [key, point] of Object.entries(anchors)) {
+                    const isHovered = hoveredAnchorRef.current?.obj === target && hoveredAnchorRef.current?.anchor === key;
+                    
+                    const screenX = point.x * vpt[0] + vpt[4];
+                    const screenY = point.y * vpt[3] + vpt[5];
+                    
+                    ctx.beginPath();
+                    ctx.arc(screenX, screenY, isHovered ? 6 : 4, 0, Math.PI * 2);
+                    ctx.fillStyle = isHovered ? '#52c41a' : 'rgba(82,196,26,0.3)';
+                    ctx.fill();
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+                }
+                ctx.restore();
             }
         };
 
         canvas.on('object:moving', handleObjectMoving);
+        canvas.on('object:scaling', handleObjectScaling);
         canvas.on('object:modified', handleModification);
         canvas.on('object:added', handleModification);
         canvas.on('object:removed', handleModification);
         canvas.on('mouse:move', handleMouseMove);
-        canvas.on('mouse:out', () => updateMyPresence({ cursor: null }));
+        canvas.on('mouse:down', handleMouseDown);
+        canvas.on('mouse:up', handleMouseUp);
+        canvas.on('mouse:wheel', handleMouseWheel);
+        canvas.on('after:render', handleAfterRender);
+        const handleMouseOut = () => updateMyPresence({ cursor: null });
+        canvas.on('mouse:out', handleMouseOut);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const handleDblClick = (opt: any) => handleStickyNoteDoubleClick(canvas, opt);
+        canvas.on('mouse:dblclick', handleDblClick);
+
+        // P2: Keyboard Shortcuts
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return;
+            if (canvas.getActiveObject()?.isEditing) return;
+
+            const key = e.key.toLowerCase();
+            const hasModifier = e.ctrlKey || e.metaKey;
+
+            // Modifier shortcuts take priority over tool shortcuts
+            if (hasModifier) {
+                switch (key) {
+                    case 'c': e.preventDefault(); copy(); return;
+                    case 'v': e.preventDefault(); paste(); return;
+                    case 'z':
+                        e.preventDefault();
+                        // undo/redo handled by separate useEffect
+                        return;
+                }
+            }
+
+            switch (key) {
+                case 'v': setActiveTool('select'); break;
+                case 'r': setActiveTool('rect'); break;
+                case 'o': setActiveTool('circle'); break;
+                case 'l': setActiveTool('line'); break;
+                case 't': setActiveTool('text'); break;
+                case 's': setActiveTool('stickyNote'); break;
+                case 'backspace':
+                case 'delete': {
+                    const activeObjects = canvas.getActiveObjects();
+                    if (activeObjects.length > 0) {
+                        canvas.discardActiveObject();
+                        activeObjects.forEach((obj: any) => canvas.remove(obj));
+                        canvas.requestRenderAll();
+                    }
+                    break;
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        
+        // P1: Image Paste Support (Already added, making sure to remove in cleanup)
+        const handlePaste = async (e: ClipboardEvent) => {
+            const items = e.clipboardData?.items;
+            if (!items || isReadOnly) return;
+            const canvas = fabricRef.current;
+            if (!canvas) return;
+            
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].type.indexOf('image') !== -1) {
+                    const blob = items[i].getAsFile();
+                    if (!blob) continue;
+                    const reader = new FileReader();
+                    reader.onload = async (event) => {
+                        const dataUrl = event.target?.result as string;
+                        const img = await fabric.FabricImage.fromURL(dataUrl);
+                        img.scale(0.5);
+                        canvas.centerObject(img);
+                        canvas.add(img);
+                        canvas.setActiveObject(img);
+                        canvas.requestRenderAll();
+                        processLocalCanvasChange();
+                    };
+                    reader.readAsDataURL(blob);
+                }
+            }
+        };
+
+        // P1: Image Drag and Drop Support
+        const handleDrop = async (e: DragEvent) => {
+            e.preventDefault();
+            if (isReadOnly) return;
+            const files = e.dataTransfer?.files;
+            if (!files) return;
+
+            for (let i = 0; i < files.length; i++) {
+                if (files[i].type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = async (event) => {
+                        const dataUrl = event.target?.result as string;
+                        const img = await fabric.FabricImage.fromURL(dataUrl);
+                        img.scale(0.5);
+                        // Get pointer position for drop location
+                        const pointer = canvas.getPointer(e);
+                        img.set({ left: pointer.x, top: pointer.y });
+                        canvas.add(img);
+                        canvas.setActiveObject(img);
+                        canvas.requestRenderAll();
+                        processLocalCanvasChange();
+                    };
+                    reader.readAsDataURL(files[i]);
+                }
+            }
+        };
+
+        window.addEventListener('paste', handlePaste);
+        const canvasElement = container.querySelector('canvas');
+        if (canvasElement) {
+            canvasElement.addEventListener('dragover', (e) => e.preventDefault());
+            canvasElement.addEventListener('drop', handleDrop as any);
+        }
+
         canvas.on('selection:created', updateSelectionState);
         canvas.on('selection:updated', updateSelectionState);
         canvas.on('selection:cleared', updateSelectionState);
@@ -571,13 +882,22 @@ const CanvasBoardInner: React.FC = () => {
             window.removeEventListener('resize', resizeCanvas);
             resizeObserver.disconnect();
             canvas.off('object:moving', handleObjectMoving);
+            canvas.off('object:scaling', handleObjectScaling);
             canvas.off('object:modified', handleModification);
             canvas.off('object:added', handleModification);
             canvas.off('object:removed', handleModification);
             canvas.off('mouse:move', handleMouseMove);
+            canvas.off('mouse:down', handleMouseDown);
+            canvas.off('mouse:up', handleMouseUp);
+            canvas.off('mouse:wheel', handleMouseWheel);
+            canvas.off('after:render', handleAfterRender);
+            canvas.off('mouse:out', handleMouseOut);
+            canvas.off('mouse:dblclick', handleDblClick);
             canvas.off('selection:created', updateSelectionState);
             canvas.off('selection:updated', updateSelectionState);
             canvas.off('selection:cleared', updateSelectionState);
+            window.removeEventListener('paste', handlePaste);
+            window.removeEventListener('keydown', handleKeyDown);
             canvas.dispose();
             fabricRef.current = null;
 
@@ -698,12 +1018,6 @@ const CanvasBoardInner: React.FC = () => {
                     strokeWidth: 2,
                 });
                 break;
-            case 'line':
-                object = new fabric.Line([x, y, x + 100, y], {
-                    stroke: brushColor,
-                    strokeWidth: 2,
-                });
-                break;
             case 'text':
                 object = new fabric.IText(isEn ? 'Double click to edit' : '双击编辑', {
                     left: x,
@@ -713,15 +1027,46 @@ const CanvasBoardInner: React.FC = () => {
                     fontFamily: 'Plus Jakarta Sans, sans-serif',
                 });
                 break;
+            case 'stickyNote':
+                object = createStickyNote(fabric, x, y, brushColor);
+                break;
+            case 'line':
+                if (hoveredAnchorRef.current) {
+                    const { point, obj, anchor } = hoveredAnchorRef.current;
+                    object = new fabric.Line([point.x, point.y, point.x, point.y], {
+                        stroke: brushColor || '#52c41a',
+                        strokeWidth: 2,
+                        selectable: true,
+                        evented: true,
+                        data: {
+                            type: 'connector',
+                            start: { id: obj.data?.id, anchor },
+                            end: null
+                        }
+                    });
+                    activeLineRef.current = object;
+                    isDrawingLineRef.current = true;
+                } else {
+                    object = new fabric.Line([x, y, x + 100, y], {
+                        stroke: brushColor,
+                        strokeWidth: 2,
+                    });
+                }
+                break;
             default:
                 break;
         }
 
         if (object) {
+            if (!object.data) object.data = {};
+            if (!object.data.id) object.data.id = `obj-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            
             canvas.add(object);
-            canvas.setActiveObject(object);
+            if (activeTool !== 'line' || !isDrawingLineRef.current) {
+                canvas.setActiveObject(object);
+                setActiveTool('select');
+            }
             canvas.requestRenderAll();
-            setActiveTool('select');
         }
     }, [activeTool, brushColor, isEn, isReadOnly, settings.snapToGrid, snapCoordinate]);
 
@@ -785,6 +1130,141 @@ const CanvasBoardInner: React.FC = () => {
             message.success(isEn ? 'Deleted' : '已删除');
         }
     }, [isEn, isReadOnly]);
+
+    const copy = useCallback(async () => {
+        const canvas = fabricRef.current;
+        if (!canvas) return;
+        const active = canvas.getActiveObject();
+        if (active) {
+            const cloned = await active.clone(['data']);
+            clipboardRef.current = cloned;
+            message.success(isEn ? 'Copied' : '已复制');
+        }
+    }, [isEn]);
+
+    const paste = useCallback(async () => {
+        const canvas = fabricRef.current;
+        if (!canvas || !clipboardRef.current || isReadOnly) return;
+
+        const cloned = await clipboardRef.current.clone(['data']);
+        canvas.discardActiveObject();
+        cloned.set({
+            left: cloned.left + 20,
+            top: cloned.top + 20,
+            evented: true,
+        });
+        if (cloned.type === 'activeSelection') {
+            cloned.canvas = canvas;
+            cloned.forEachObject((obj: any) => {
+                canvas.add(obj);
+            });
+            cloned.setCoords();
+        } else {
+            canvas.add(cloned);
+        }
+        clipboardRef.current.top += 20;
+        clipboardRef.current.left += 20;
+        canvas.setActiveObject(cloned);
+        canvas.requestRenderAll();
+        processLocalCanvasChange();
+        message.success(isEn ? 'Pasted' : '已粘贴');
+    }, [isEn, isReadOnly, processLocalCanvasChange]);
+
+    const toggleLock = useCallback(() => {
+        const canvas = fabricRef.current;
+        if (!canvas || isReadOnly) return;
+        const active = canvas.getActiveObject();
+        if (!active) return;
+
+        const isLocked = !active.data?.locked;
+        const objects = active.type === 'activeSelection' ? (active as any)._objects : [active];
+
+        objects.forEach((obj: any) => {
+            obj.set({
+                lockMovementX: isLocked,
+                lockMovementY: isLocked,
+                lockRotation: isLocked,
+                lockScalingX: isLocked,
+                lockScalingY: isLocked,
+                hasControls: !isLocked,
+                borderColor: isLocked ? '#999' : '#2196F3',
+                borderDashArray: isLocked ? [4, 3] : null,
+                data: { ...obj.data, locked: isLocked }
+            });
+        });
+
+        canvas.discardActiveObject();
+        canvas.requestRenderAll();
+        processLocalCanvasChange();
+        message.success(isLocked ? (isEn ? 'Locked' : '已锁定') : (isEn ? 'Unlocked' : '已解锁'));
+    }, [isEn, isReadOnly, processLocalCanvasChange]);
+
+    const bringToFront = useCallback(() => {
+        const canvas = fabricRef.current;
+        if (!canvas || isReadOnly) return;
+        const active = canvas.getActiveObject();
+        if (active) {
+            active.bringToFront();
+            canvas.requestRenderAll();
+            processLocalCanvasChange();
+        }
+    }, [isReadOnly, processLocalCanvasChange]);
+
+    const sendToBack = useCallback(() => {
+        const canvas = fabricRef.current;
+        if (!canvas || isReadOnly) return;
+        const active = canvas.getActiveObject();
+        if (active) {
+            active.sendToBack();
+            canvas.requestRenderAll();
+            processLocalCanvasChange();
+        }
+    }, [isReadOnly, processLocalCanvasChange]);
+
+    const handleContextMenu = (e: React.MouseEvent) => {
+        if (isReadOnly) return;
+        e.preventDefault();
+        const canvas = fabricRef.current;
+        if (!canvas) return;
+
+        const target = canvas.findTarget(e.nativeEvent);
+        if (target) {
+            canvas.setActiveObject(target);
+            canvas.requestRenderAll();
+        } else {
+            canvas.discardActiveObject();
+            canvas.requestRenderAll();
+        }
+        
+        setContextMenuPos({ x: e.clientX, y: e.clientY });
+        setContextMenuVisible(true);
+    };
+
+    const contextMenuItems = useMemo(() => {
+        const canvas = fabricRef.current;
+        const active = canvas?.getActiveObject();
+        
+        if (!active) {
+            return [
+                { key: 'paste', label: (isEn ? 'Paste' : '粘贴'), icon: <CopyOutlined />, disabled: !clipboardRef.current, onClick: paste },
+                { type: 'divider' as const },
+                { key: 'select-all', label: (isEn ? 'Select All' : '全选'), onClick: () => { canvas?.setActiveObject(new fabric.ActiveSelection(canvas.getObjects(), { canvas })); canvas?.requestRenderAll(); } },
+            ];
+        }
+
+        const isLocked = active.data?.locked;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const items: any[] = [
+            { key: 'copy', label: (isEn ? 'Copy' : '复制'), icon: <CopyOutlined />, onClick: copy },
+            { key: 'delete', label: (isEn ? 'Delete' : '删除'), icon: <DeleteOutlined />, danger: true, onClick: deleteSelected },
+            { type: 'divider' as const },
+            { key: 'bringFront', label: (isEn ? 'Bring to Front' : '置于顶层'), onClick: bringToFront },
+            { key: 'sendBack', label: (isEn ? 'Send to Back' : '置于底层'), onClick: sendToBack },
+            { type: 'divider' as const },
+            { key: 'lock', label: (isLocked ? (isEn ? 'Unlock' : '解锁') : (isEn ? 'Lock' : '锁定')), icon: <LockOutlined />, onClick: toggleLock },
+        ];
+        return items;
+    }, [isEn, copy, paste, deleteSelected, toggleLock, bringToFront, sendToBack]);
 
     const hasSelection = selectedObjectCount > 0;
 
@@ -991,6 +1471,7 @@ const CanvasBoardInner: React.FC = () => {
         { key: 'circle', icon: <span style={{ fontSize: 18 }}>○</span>, title: isEn ? 'Circle' : '圆形', disabled: isReadOnly },
         { key: 'line', icon: <MinusOutlined />, title: isEn ? 'Line' : '直线', disabled: isReadOnly },
         { key: 'text', icon: <FontSizeOutlined />, title: isEn ? 'Text' : '文本', disabled: isReadOnly },
+        { key: 'stickyNote', icon: <span style={{ fontSize: 18 }}>📝</span>, title: isEn ? 'Sticky Note' : '便签', disabled: isReadOnly },
     ];
 
     if (!fabricLoaded) {
@@ -1196,7 +1677,15 @@ const CanvasBoardInner: React.FC = () => {
                         </div>
                     )}
 
-                    <canvas ref={canvasRef} id="fabric-canvas" />
+                    <Dropdown
+                        menu={{ items: contextMenuItems }}
+                        trigger={['contextMenu']}
+                        onOpenChange={setContextMenuVisible}
+                    >
+                        <div className={styles.canvasDiv} onContextMenu={handleContextMenu}>
+                            <canvas ref={canvasRef} id="fabric-canvas" />
+                        </div>
+                    </Dropdown>
                     <LiveblocksCursors />
                 </Content>
             </Layout>

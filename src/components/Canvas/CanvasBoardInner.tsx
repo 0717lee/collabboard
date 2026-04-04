@@ -927,7 +927,6 @@ const CanvasBoardInner: React.FC = () => {
         canvas.isDrawingMode = !isReadOnly && (activeTool === 'draw' || activeTool === 'eraser');
         canvas.selection = !isReadOnly && activeTool === 'select';
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const pathCreated = (event: { path?: any }) => {
             const pathNode = event.path;
             if (pathNode) {

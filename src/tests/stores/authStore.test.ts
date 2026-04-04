@@ -8,7 +8,7 @@ const authMocks = vi.hoisted(() => ({
     getUser: vi.fn(),
     getSession: vi.fn(),
     onAuthStateChange: vi.fn(),
-    profileSingle: vi.fn(),
+    profileMaybeSingle: vi.fn(),
     profileInsert: vi.fn(),
 }));
 
@@ -26,7 +26,7 @@ vi.mock('@/lib/supabaseClient', () => ({
         from: () => ({
             select: () => ({
                 eq: () => ({
-                    single: authMocks.profileSingle,
+                    maybeSingle: authMocks.profileMaybeSingle,
                 }),
             }),
             insert: authMocks.profileInsert,
@@ -76,7 +76,7 @@ describe('authStore', () => {
             },
             error: null,
         });
-        authMocks.profileSingle.mockResolvedValue({
+        authMocks.profileMaybeSingle.mockResolvedValue({
             data: { name: 'Test User', email: 'test@example.com' },
             error: null,
         });
@@ -199,7 +199,7 @@ describe('authStore', () => {
         });
 
         it('should hydrate the profile name after restoring the session user', async () => {
-            authMocks.profileSingle.mockImplementationOnce(
+            authMocks.profileMaybeSingle.mockImplementationOnce(
                 () => new Promise((resolve) => setTimeout(() => resolve({
                     data: { name: 'Profile Name', email: 'test@example.com' },
                     error: null,
@@ -238,7 +238,7 @@ describe('authStore', () => {
             expect(state.hasInitialized).toBe(true);
             expect(state.isAuthenticated).toBe(true);
             expect(state.user?.id).toBe('stale-id');
-            expect(state.hasValidatedSession).toBe(false);
+            expect(state.hasValidatedSession).toBe(true);
             expect(state.isLoading).toBe(false);
         });
 

@@ -50,6 +50,21 @@ test.describe('Canvas Board', () => {
         await expect(page.locator('text=导出为 SVG')).toBeVisible();
     });
 
+    test('should lazy-load chart tools modal and add chart to canvas', async ({ page }) => {
+        await page.getByRole('button', { name: /添加图表/ }).click();
+
+        const chartDialog = page.getByRole('dialog', { name: '添加图表' });
+
+        await expect(chartDialog).toBeVisible();
+        await expect(page.getByText('图表类型')).toBeVisible();
+
+        const addButton = page.getByRole('button', { name: '添加到画布' });
+        await expect(addButton).toBeEnabled();
+        await addButton.click();
+
+        await expect(chartDialog).not.toBeVisible();
+    });
+
     test('should display zoom controls', async ({ page }) => {
         await expect(page.locator('text=100%')).toBeVisible();
     });

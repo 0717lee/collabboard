@@ -1,19 +1,23 @@
-import React, { useState } from 'react';
-import ReactECharts from 'echarts-for-react';
-import { Input, Button, Segmented, InputNumber } from 'antd';
+import React, { useRef, useState } from 'react';
+import type { EChartsInstance } from 'echarts-for-react';
+import ReactEChartsCore from 'echarts-for-react/lib/core';
+import { Input, Button, Segmented, InputNumber, message } from 'antd';
 import { PlusOutlined, MinusCircleOutlined } from '@ant-design/icons';
+import { echarts } from '@/lib/echarts';
 import styles from './ChartWidget.module.css';
 
 interface ChartWidgetProps {
-    onAdd: () => void;
+    isEn: boolean;
+    onAdd: (chartDataUrl: string) => Promise<void> | void;
 }
 
-
-
-export const ChartWidget: React.FC<ChartWidgetProps> = ({ onAdd }) => {
+export const ChartWidget: React.FC<ChartWidgetProps> = ({ isEn, onAdd }) => {
     const [chartType, setChartType] = useState<'bar' | 'line' | 'pie'>('bar');
     const [chartTitle, setChartTitle] = useState('示例图表');
     const [themeColor, setThemeColor] = useState<string>('#6B8068'); // Default Sage Green
+    const [isChartReady, setIsChartReady] = useState(false);
+    const [isAdding, setIsAdding] = useState(false);
+    const chartInstanceRef = useRef<EChartsInstance | null>(null);
     const [dataPoints, setDataPoints] = useState([
         { label: '一月', value: 120 },
         { label: '二月', value: 200 },
@@ -129,11 +133,43 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({ onAdd }) => {
         setDataPoints(newData);
     };
 
+    const handleChartReady = (instance: EChartsInstance) => {
+        chartInstanceRef.current = instance;
+        setIsChartReady(true);
+    };
+
+    const handleAddChart = async () => {
+        const chartInstance = chartInstanceRef.current;
+        if (!chartInstance) {
+            message.warning(isEn ? 'Chart preview is still loading. Please try again in a moment.' : '图表预览仍在加载，请稍后重试。');
+            return;
+        }
+
+        const chartDataUrl = chartInstance.getDataURL({
+            pixelRatio: 2,
+            backgroundColor: '#ffffff',
+        });
+
+        if (!chartDataUrl) {
+            message.warning(isEn ? 'Unable to capture the chart preview right now.' : '暂时无法捕获图表预览，请稍后重试。');
+            return;
+        }
+
+        setIsAdding(true);
+        try {
+            await onAdd(chartDataUrl);
+        } finally {
+            setIsAdding(false);
+        }
+    };
+
     return (
         <div className={styles.chartWidget}>
             <div className={styles.preview}>
-                <ReactECharts
+                <ReactEChartsCore
+                    echarts={echarts}
                     option={getChartOption()}
+                    onChartReady={handleChartReady}
                     style={{ height: 300, width: '100%' }}
                     className="echarts-for-react"
                 />
@@ -226,10 +262,12 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({ onAdd }) => {
                 <Button
                     type="primary"
                     block
-                    onClick={onAdd}
+                    onClick={handleAddChart}
                     className={styles.addButton}
+                    disabled={!isChartReady}
+                    loading={isAdding}
                 >
-                    添加到画布
+                    {isEn ? 'Add to canvas' : '添加到画布'}
                 </Button>
             </div>
         </div>

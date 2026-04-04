@@ -1409,15 +1409,21 @@ const CanvasBoardInner: React.FC = () => {
         },
     ];
 
-    const addChart = async () => {
+    const addChart = async (chartDataUrl: string) => {
         if (isReadOnly) return;
 
-        const chartCanvas = document.querySelector('.echarts-for-react canvas') as HTMLCanvasElement | null;
-        if (!chartCanvas || !fabricRef.current || !fabric) return;
+        if (!chartDataUrl) {
+            message.warning(isEn ? 'Chart preview is still loading. Please try again.' : '图表预览仍在加载，请稍后重试。');
+            return;
+        }
+
+        if (!fabricRef.current || !fabric) {
+            message.error(isEn ? 'Canvas is not ready yet.' : '画布尚未准备完成。');
+            return;
+        }
 
         try {
-            const dataUrl = chartCanvas.toDataURL();
-            const image = await fabric.FabricImage.fromURL(dataUrl);
+            const image = await fabric.FabricImage.fromURL(chartDataUrl);
             image.scale(0.5);
             fabricRef.current.add(image);
             fabricRef.current.requestRenderAll();
@@ -1632,6 +1638,7 @@ const CanvasBoardInner: React.FC = () => {
                             className={styles.toolButton}
                             onClick={() => setShowChartModal(true)}
                             disabled={isReadOnly}
+                            aria-label={isEn ? 'Add chart' : '添加图表'}
                         />
                     </Tooltip>
 
@@ -1701,7 +1708,7 @@ const CanvasBoardInner: React.FC = () => {
             >
                 {showChartModal && (
                     <Suspense fallback={<div className={styles.modalLoader}>{isEn ? 'Loading chart tools...' : '图表工具加载中...'}</div>}>
-                        <LazyChartWidget onAdd={addChart} />
+                        <LazyChartWidget isEn={isEn} onAdd={addChart} />
                     </Suspense>
                 )}
             </Modal>

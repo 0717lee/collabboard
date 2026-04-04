@@ -189,42 +189,45 @@ const DashboardPage: React.FC = () => {
         toggleFavorite(board.id);
     };
 
-    const handleDeleteBoard = async (boardId: string, boardOwnerId: string, event: React.MouseEvent) => {
-        if (event.nativeEvent) event.nativeEvent.stopImmediatePropagation();
+    const handleDeleteBoard = (boardId: string, boardOwnerId: string, event: React.MouseEvent) => {
         event.stopPropagation();
-        event.preventDefault();
 
         if (user?.id !== boardOwnerId) {
             message.error(isEn ? 'Permission denied: You are not the owner' : '权限不足：您不是该白板的创建者');
             return;
         }
 
-        if (!window.confirm(isEn ? 'Are you sure you want to delete this board?' : '确定要删除这个白板吗？\n删除后无法恢复。')) {
-            return;
-        }
+        Modal.confirm({
+            title: isEn ? 'Delete Board' : '删除白板',
+            content: isEn ? 'Are you sure you want to delete this board? This action cannot be undone.' : '确定要删除这个白板吗？删除后无法恢复。',
+            okText: isEn ? 'Delete' : '删除',
+            okType: 'danger',
+            cancelText: isEn ? 'Cancel' : '取消',
+            onOk: async () => {
+                const hideHelper = message.loading(isEn ? 'Deleting...' : '正在删除...', 0);
 
-        const hideHelper = message.loading(isEn ? 'Deleting...' : '正在删除...', 0);
+                try {
+                    const timeoutPromise = new Promise<{ success: boolean; error: string }>((_, reject) =>
+                        setTimeout(() => reject(new Error('Timeout')), 10000)
+                    );
 
-        try {
-            const timeoutPromise = new Promise<{ success: boolean; error: string }>((_, reject) =>
-                setTimeout(() => reject(new Error('Timeout')), 10000)
-            );
+                    const result = await Promise.race([deleteBoard(boardId), timeoutPromise]) as { success: boolean; error?: string };
 
-            const result = await Promise.race([deleteBoard(boardId), timeoutPromise]) as { success: boolean; error?: string };
+                    hideHelper();
 
-            hideHelper();
-
-            if (result.success) {
-                removeBoard(boardId);
-                message.success(isEn ? 'Deleted successfully' : '白板已删除');
-            } else {
-                message.error(result.error || (isEn ? 'Delete failed' : '删除失败'));
-            }
-        } catch (error) {
-            hideHelper();
-            console.error('Delete error:', error);
-            message.error(isEn ? 'An error occurred' : '操作超时或失败');
-        }
+                    if (result.success) {
+                        removeBoard(boardId);
+                        message.success(isEn ? 'Deleted successfully' : '白板已删除');
+                    } else {
+                        message.error(result.error || (isEn ? 'Delete failed' : '删除失败'));
+                    }
+                } catch (error) {
+                    hideHelper();
+                    console.error('Delete error:', error);
+                    message.error(isEn ? 'An error occurred' : '操作超时或失败');
+                }
+            },
+        });
     };
 
     const handleLogout = async () => {

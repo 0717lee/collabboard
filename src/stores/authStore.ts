@@ -216,7 +216,9 @@ export const useAuthStore = create<AuthState>()(
                         set({
                             user: isAuthenticated ? user : null,
                             isAuthenticated,
-                            hasValidatedSession: false,
+                            // Trust cached auth on timeout so the app remains usable.
+                            // onAuthStateChange will correct state if session is actually invalid.
+                            hasValidatedSession: isAuthenticated,
                             isLoading: false,
                             hasInitialized: true,
                         });

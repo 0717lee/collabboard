@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
@@ -48,15 +49,13 @@ import { useMutation, useOthers, useStorage, useUpdateMyPresence } from '@/liveb
 import { createStickyNote, findNearestAnchor, getAnchorPoints, handleStickyNoteDoubleClick, initAligningGuidelines } from './canvasUtils';
 import { CircularSlider } from './CircularSlider';
 import { LiveblocksCursors } from './LiveblocksCursors';
-import { ChatSidebar } from './ChatSidebar';
-import { ShortcutsPanel } from './ShortcutsPanel';
 import { VersionHistoryModal } from './VersionHistoryModal';
 import styles from './CanvasBoard.module.css';
 import type { Board, BoardRole, BoardSnapshot } from '@/types';
 
 const LazyChartWidget = lazy(() => import('@/components/Charts/ChartWidget'));
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 let fabric: any = null;
 
 const { Header, Sider, Content } = Layout;
@@ -109,7 +108,7 @@ const CanvasBoardInner: React.FC = () => {
 
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const fabricRef = useRef<any>(null);
 
     const { user } = useAuthStore();
@@ -162,8 +161,7 @@ const CanvasBoardInner: React.FC = () => {
     const activeLineRef = useRef<any>(null);
     const isDrawingLineRef = useRef(false);
     const clipboardRef = useRef<any>(null);
-    const [contextMenuVisible, setContextMenuVisible] = useState(false);
-    const [contextMenuPos, setContextMenuPos] = useState({ x: 0, y: 0 });
+
 
     const sharedRoleFromUrl = useMemo(
         () => extractBoardRoleFromUrl(location.search),
@@ -490,7 +488,7 @@ const CanvasBoardInner: React.FC = () => {
 
         fabricRef.current = canvas;
         setCanvasReady(true);
-        initAligningGuidelines(canvas, fabric);
+        initAligningGuidelines(canvas);
 
         // Global Locking Visuals
         if (!fabric.Object.prototype._renderOriginal) {
@@ -605,7 +603,7 @@ const CanvasBoardInner: React.FC = () => {
         let lastPosX = 0;
         let lastPosY = 0;
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         const handleMouseMove = (options: any) => {
             if (isDragging) {
                 const e = options.e;
@@ -656,7 +654,7 @@ const CanvasBoardInner: React.FC = () => {
             }
         };
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         const handleMouseDown = (opt: any) => {
             const evt = opt.e;
             if (evt.altKey || evt.button === 1) { // Alt+Drag or Middle-Click
@@ -701,7 +699,7 @@ const CanvasBoardInner: React.FC = () => {
             }
         };
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         const handleMouseWheel = (opt: any) => {
             const delta = opt.e.deltaY;
             let currentZoom = canvas.getZoom();
@@ -759,7 +757,7 @@ const CanvasBoardInner: React.FC = () => {
         canvas.on('after:render', handleAfterRender);
         const handleMouseOut = () => updateMyPresence({ cursor: null });
         canvas.on('mouse:out', handleMouseOut);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         const handleDblClick = (opt: any) => handleStickyNoteDoubleClick(canvas, opt);
         canvas.on('mouse:dblclick', handleDblClick);
 
@@ -904,6 +902,7 @@ const CanvasBoardInner: React.FC = () => {
             if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
             if (thumbnailTimeoutRef.current) clearTimeout(thumbnailTimeoutRef.current);
         };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [applyCanvasState, boardId, brushColor, brushWidth, canvasData, fabricLoaded, processLocalCanvasChange, resetHistory, resolveBoard, scheduleThumbnailCapture, snapObjectToGrid, syncCanvasState, updateMyPresence]);
 
     useEffect(() => {
@@ -991,7 +990,7 @@ const CanvasBoardInner: React.FC = () => {
         const x = settings.snapToGrid ? snapCoordinate(opt.pointer.x) : opt.pointer.x;
         const y = settings.snapToGrid ? snapCoordinate(opt.pointer.y) : opt.pointer.y;
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         let object: any = null;
 
         switch (activeTool) {
@@ -1123,7 +1122,7 @@ const CanvasBoardInner: React.FC = () => {
 
         const activeObjects = canvas.getActiveObjects();
         if (activeObjects.length > 0) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+             
             activeObjects.forEach((object: any) => canvas.remove(object));
             canvas.discardActiveObject();
             canvas.requestRenderAll();
@@ -1235,9 +1234,6 @@ const CanvasBoardInner: React.FC = () => {
             canvas.discardActiveObject();
             canvas.requestRenderAll();
         }
-        
-        setContextMenuPos({ x: e.clientX, y: e.clientY });
-        setContextMenuVisible(true);
     };
 
     const contextMenuItems = useMemo(() => {
@@ -1253,7 +1249,7 @@ const CanvasBoardInner: React.FC = () => {
         }
 
         const isLocked = active.data?.locked;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         const items: any[] = [
             { key: 'copy', label: (isEn ? 'Copy' : '复制'), icon: <CopyOutlined />, onClick: copy },
             { key: 'delete', label: (isEn ? 'Delete' : '删除'), icon: <DeleteOutlined />, danger: true, onClick: deleteSelected },
@@ -1680,7 +1676,6 @@ const CanvasBoardInner: React.FC = () => {
                     <Dropdown
                         menu={{ items: contextMenuItems }}
                         trigger={['contextMenu']}
-                        onOpenChange={setContextMenuVisible}
                     >
                         <div className={styles.canvasDiv} onContextMenu={handleContextMenu}>
                             <canvas ref={canvasRef} id="fabric-canvas" />

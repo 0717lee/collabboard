@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Canvas Utilities for Collabboard
  * Professional Smart Alignment & Snapping Logic (Fabric.js v6 Compatible)
@@ -50,7 +51,7 @@ export const createStickyNote = (f: any, x: number, y: number, color: string = '
 /**
  * Initialize Professional Aligning Guidelines
  */
-export const initAligningGuidelines = (canvas: any, f: any) => {
+export const initAligningGuidelines = (canvas: any) => {
     canvas.on('object:moving', (e: any) => {
         const actObj = e.transform ? e.transform.target : e.target;
         if (!actObj) return;

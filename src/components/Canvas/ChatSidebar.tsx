@@ -3,7 +3,7 @@ import { useMutation, useStorage, useSelf } from '@/liveblocks.config';
 import { Button, Input, List, Typography, Drawer } from 'antd';
 import { SendOutlined, MessageOutlined } from '@ant-design/icons';
 import { useLanguageStore } from '@/stores/languageStore';
-import styles from './CanvasBoard.module.css';
+
 
 const { Text } = Typography;
 

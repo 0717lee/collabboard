@@ -1,8 +1,10 @@
 import { test, expect } from '@playwright/test';
 
-const login = async (page: import('@playwright/test').Page) => {
+const login = async (page: import('@playwright/test').Page, options?: { clearStorage?: boolean }) => {
     await page.goto('/login');
-    await page.evaluate(() => localStorage.clear());
+    if (options?.clearStorage !== false) {
+        await page.evaluate(() => localStorage.clear());
+    }
     await page.getByPlaceholder('邮箱地址').fill('demo@collabboard.com');
     await page.getByPlaceholder('密码').fill('demo123');
     await page.getByRole('button', { name: '登录' }).click();
@@ -35,6 +37,22 @@ test.describe('Dashboard', () => {
 
         // Should navigate to board page
         await expect(page).toHaveURL(/.*board\/.+/);
+    });
+
+    test('should show previously created boards after logging in again', async ({ page }) => {
+        await page.getByRole('button', { name: /新建白板/ }).click();
+        const createDialog = page.getByRole('dialog', { name: '新建白板' });
+        await createDialog.getByPlaceholder('输入白板名称').fill('持久化测试白板');
+        await createDialog.getByRole('button', { name: /创\s*建/ }).click();
+        await expect(page).toHaveURL(/.*board\/.+/);
+
+        await page.goto('/dashboard');
+        await page.locator('[class*="userInfo"]').click();
+        await page.getByText('退出登录').click();
+        await expect(page).toHaveURL(/.*login/);
+
+        await login(page, { clearStorage: false });
+        await expect(page.locator('text=持久化测试白板')).toBeVisible();
     });
 
     test('should search boards', async ({ page }, testInfo) => {

@@ -61,6 +61,30 @@ const mergeBoardEntry = (
     source,
 });
 
+const normalizeEntry = (entry: Partial<BoardLibraryEntry>): BoardLibraryEntry => {
+    const normalizedSource: BoardSource = entry.source
+        || (entry.role ? 'shared' : 'owned');
+
+    return {
+        id: entry.id || '',
+        name: entry.name || 'Untitled Board',
+        ownerId: entry.ownerId || '',
+        createdAt: entry.createdAt || entry.updatedAt || new Date(0).toISOString(),
+        updatedAt: entry.updatedAt || entry.createdAt || new Date(0).toISOString(),
+        thumbnail: entry.thumbnail,
+        lastOpenedAt: entry.lastOpenedAt,
+        isFavorite: entry.isFavorite ?? false,
+        role: entry.role,
+        source: normalizedSource,
+    };
+};
+
+const normalizeEntries = (entries: Record<string, Partial<BoardLibraryEntry>> | undefined) =>
+    Object.entries(entries || {}).reduce<Record<string, BoardLibraryEntry>>((result, [boardId, entry]) => {
+        result[boardId] = normalizeEntry({ ...entry, id: entry?.id || boardId });
+        return result;
+    }, {});
+
 export const useBoardLibraryStore = create<BoardLibraryState>()(
     persist(
         (set) => ({
@@ -159,10 +183,16 @@ export const useBoardLibraryStore = create<BoardLibraryState>()(
         }),
         {
             name: 'board-library-storage',
-            version: 1,
+            version: 2,
             partialize: (state) => ({
                 entries: state.entries,
             }),
+            migrate: (persistedState) => {
+                const state = persistedState as { entries?: Record<string, Partial<BoardLibraryEntry>> } | undefined;
+                return {
+                    entries: normalizeEntries(state?.entries),
+                };
+            },
         }
     )
 );

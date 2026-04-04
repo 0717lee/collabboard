@@ -59,6 +59,25 @@ const mapEntryToBoard = (entry: import('@/types').BoardLibraryEntry): Board => (
     source: entry.source,
 });
 
+const mergeBoardsWithCachedEntries = (boards: Board[], cachedBoards: Board[]) => {
+    const merged = new Map<string, Board>();
+
+    boards.forEach((board) => {
+        merged.set(board.id, board);
+    });
+
+    cachedBoards.forEach((board) => {
+        if (!merged.has(board.id)) {
+            merged.set(board.id, board);
+        }
+    });
+
+    return Array.from(merged.values());
+};
+
+const resolveEntrySource = (entry: import('@/types').BoardLibraryEntry) =>
+    entry.source || (entry.role ? 'shared' : 'owned');
+
 const DashboardPage: React.FC = () => {
     const navigate = useNavigate();
     const { user, logout, hasInitialized, isAuthenticated, hasValidatedSession } = useAuthStore();
@@ -83,20 +102,31 @@ const DashboardPage: React.FC = () => {
 
     const isEn = language === 'en-US';
     const cachedEntries = useMemo(() => Object.values(entries), [entries]);
-    const ownedBoardsForDisplay = useMemo(() => (
-        boards.length > 0 || hasValidatedSession
-            ? boards
-            : cachedEntries
-                .filter((entry) => entry.source === 'owned' && entry.ownerId === user?.id)
-                .map(mapEntryToBoard)
-    ), [boards, cachedEntries, hasValidatedSession, user?.id]);
-    const sharedBoardsForDisplay = useMemo(() => (
-        sharedBoards.length > 0 || hasValidatedSession
-            ? sharedBoards
-            : cachedEntries
-                .filter((entry) => entry.source === 'shared')
-                .map(mapEntryToBoard)
-    ), [cachedEntries, hasValidatedSession, sharedBoards]);
+    const ownedCachedBoards = useMemo(() => (
+        cachedEntries
+            .filter((entry) => resolveEntrySource(entry) === 'owned' && (!entry.ownerId || entry.ownerId === user?.id))
+            .map((entry) => mapEntryToBoard({
+                ...entry,
+                ownerId: entry.ownerId || user?.id || '',
+                source: 'owned',
+            }))
+    ), [cachedEntries, user?.id]);
+    const sharedCachedBoards = useMemo(() => (
+        cachedEntries
+            .filter((entry) => resolveEntrySource(entry) === 'shared')
+            .map((entry) => mapEntryToBoard({
+                ...entry,
+                source: 'shared',
+            }))
+    ), [cachedEntries]);
+    const ownedBoardsForDisplay = useMemo(
+        () => mergeBoardsWithCachedEntries(boards, ownedCachedBoards),
+        [boards, ownedCachedBoards]
+    );
+    const sharedBoardsForDisplay = useMemo(
+        () => mergeBoardsWithCachedEntries(sharedBoards, sharedCachedBoards),
+        [sharedBoards, sharedCachedBoards]
+    );
 
     useEffect(() => {
         if (hasInitialized && hasValidatedSession && isAuthenticated && user?.id) {

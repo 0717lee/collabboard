@@ -154,6 +154,7 @@ const CanvasBoardInner: React.FC = () => {
     const lastSyncedDataRef = useRef<string | null>(null);
     const isRemoteUpdateRef = useRef(false);
     const isRestoringRef = useRef(false);
+    const isCommittingStickyTextRef = useRef(false);
     const dirtyRef = useRef(false);
     const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const thumbnailTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -460,7 +461,7 @@ const CanvasBoardInner: React.FC = () => {
     resolveBoardRef.current = resolveBoard;
 
     const processLocalCanvasChange = useCallback(() => {
-        if (!fabricRef.current || isRemoteUpdateRef.current || isRestoringRef.current || isReadOnly) {
+        if (!fabricRef.current || isRemoteUpdateRef.current || isRestoringRef.current || isReadOnly || isCommittingStickyTextRef.current) {
             return;
         }
 
@@ -469,7 +470,7 @@ const CanvasBoardInner: React.FC = () => {
         }
 
         syncTimeoutRef.current = setTimeout(() => {
-            if (!fabricRef.current || isRemoteUpdateRef.current || isRestoringRef.current) return;
+            if (!fabricRef.current || isRemoteUpdateRef.current || isRestoringRef.current || isCommittingStickyTextRef.current) return;
 
             const json = JSON.stringify(fabricRef.current.toJSON());
             latestSerializedRef.current = json;
@@ -644,6 +645,10 @@ const CanvasBoardInner: React.FC = () => {
             processLocalCanvasChangeRef.current();
         };
         const handleTextEditingExited = () => {
+            if (isCommittingStickyTextRef.current) {
+                isCommittingStickyTextRef.current = false;
+                return;
+            }
             processLocalCanvasChangeRef.current();
         };
         const updateSelectionState = () => {
@@ -816,7 +821,10 @@ const CanvasBoardInner: React.FC = () => {
         const handleMouseOut = () => updateMyPresence({ cursor: null });
         canvas.on('mouse:out', handleMouseOut);
          
-        const handleDblClick = (opt: any) => handleStickyNoteDoubleClick(canvas, opt);
+        const handleDblClick = (opt: any) => handleStickyNoteDoubleClick(canvas, opt, () => {
+            isCommittingStickyTextRef.current = true;
+            processLocalCanvasChangeRef.current();
+        });
         canvas.on('mouse:dblclick', handleDblClick);
 
         // P1: Image Paste Support (Already added, making sure to remove in cleanup)
@@ -919,7 +927,7 @@ const CanvasBoardInner: React.FC = () => {
             if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
             if (thumbnailTimeoutRef.current) clearTimeout(thumbnailTimeoutRef.current);
         };
-    }, [boardId, fabricLoaded]);
+    }, [boardId, fabricLoaded]); // eslint-disable-line react-hooks/exhaustive-deps -- brushColor/brushWidth/resetHistory/updateMyPresence are init-time values only; including them would cause unnecessary canvas recreation
 
     useEffect(() => {
         if (!canvasReady || !canvasData) return;
@@ -1096,7 +1104,10 @@ const CanvasBoardInner: React.FC = () => {
                 canvas.requestRenderAll();
                 // Use a microtask to let the tool switch settle, then open editing
                 queueMicrotask(() => {
-                    handleStickyNoteDoubleClick(canvas, { target: object });
+                    handleStickyNoteDoubleClick(canvas, { target: object }, () => {
+                        isCommittingStickyTextRef.current = true;
+                        processLocalCanvasChangeRef.current();
+                    });
                 });
             } else if (activeTool !== 'line' || !isDrawingLineRef.current) {
                 canvas.setActiveObject(object);

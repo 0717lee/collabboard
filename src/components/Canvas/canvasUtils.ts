@@ -271,15 +271,27 @@ export const isAnyTextEditing = (canvas: any): boolean => {
     return false;
 };
 
-export const handleStickyNoteDoubleClick = (canvas: any, opt: any) => {
+export const handleStickyNoteDoubleClick = (canvas: any, opt: any, onEditCommitted?: () => void) => {
     const target = opt.target;
     if (target && target.data?.type === 'stickyNote') {
         const textObj = target._objects?.find((obj: any) => obj.type === 'i-text' || obj.type === 'text');
         if (!textObj) return;
 
+        const stickyNoteId = target.data?.id || `sticky-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+        if (!target.data?.id) {
+            target.set('data', { ...(target.data || {}), id: stickyNoteId });
+            target.setCoords?.();
+        }
+
+        if (!textObj.data?.id) {
+            textObj.set('data', { ...(textObj.data || {}), id: `sticky-text-${Date.now()}-${Math.random().toString(36).substring(2, 9)}` });
+        }
+
         // Record Group position for later re-grouping
         const groupLeft = target.left;
         const groupTop = target.top;
+
+        (canvas as any).__stickyNoteEditingText = true;
 
         // Remove textObj from Group and add it to canvas as an independent object
         // so Fabric.js can properly enter editing mode on it
@@ -297,8 +309,12 @@ export const handleStickyNoteDoubleClick = (canvas: any, opt: any) => {
             evented: true,
             selectable: true,
             editable: true,
-            // Mark it so we know it belongs to a sticky note being edited
-            data: { ...(textObj.data || {}), _editingStickyGroup: target },
+            // Mark it so we can avoid persisting a detached intermediate state
+            data: {
+                ...(textObj.data || {}),
+                isEditingStickyNote: true,
+                stickyNoteId,
+            },
         });
 
         canvas.add(textObj);
@@ -312,19 +328,35 @@ export const handleStickyNoteDoubleClick = (canvas: any, opt: any) => {
             textObj.off('editing:exited', onEditingExit);
 
             canvas.remove(textObj);
+            
+            // Set text strictly back to the center of the group
             textObj.set({
                 originX: 'center',
                 originY: 'center',
                 left: 0,
                 top: 0,
-                data: { ...(textObj.data || {}), _editingStickyGroup: undefined },
+                data: {
+                    ...(textObj.data || {}),
+                    isEditingStickyNote: false,
+                    stickyNoteId,
+                },
             });
 
             target.add(textObj);
+            
+            // Safety measure: Ensure the background rectangle remains strictly centered
+            const rectObj = target._objects?.find((obj: any) => obj.type === 'rect');
+            if (rectObj) {
+                rectObj.set({ left: 0, top: 0, originX: 'center', originY: 'center' });
+            }
+
             target.set({ left: groupLeft, top: groupTop });
             target.setCoords();
             canvas.setActiveObject(target);
             canvas.requestRenderAll();
+            (canvas as any).__stickyNoteEditingText = false;
+
+            onEditCommitted?.();
         };
 
         textObj.on('editing:exited', onEditingExit);

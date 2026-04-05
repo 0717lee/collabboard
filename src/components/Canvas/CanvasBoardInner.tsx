@@ -47,7 +47,7 @@ import { useLanguageStore } from '@/stores/languageStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { buildBoardShareLink, decompressSnapshotData, extractBoardRoleFromUrl } from '@/lib/boardUtils';
 import { useMutation, useOthers, useStorage, useUpdateMyPresence } from '@/liveblocks.config';
-import { createStickyNote, findNearestAnchor, getAnchorPoints, handleStickyNoteDoubleClick, isAnyTextEditing, initAligningGuidelines } from './canvasUtils';
+import { createStickyNote, findNearestAnchor, getAnchorPoints, handleStickyNoteDoubleClick, isAnyTextEditing, initAligningGuidelines, reassembleDetachedStickyNotes } from './canvasUtils';
 import { CircularSlider } from './CircularSlider';
 import { LiveblocksCursors } from './LiveblocksCursors';
 import { VersionHistoryModal } from './VersionHistoryModal';
@@ -406,6 +406,7 @@ const CanvasBoardInner: React.FC = () => {
     const createBoardSnapshot = useCallback((source: 'manual' | 'auto') => {
         if (!boardId || !fabricRef.current) return null;
 
+        reassembleDetachedStickyNotes(fabricRef.current);
         const data = latestSerializedRef.current || JSON.stringify(fabricRef.current.toJSON());
         const createdAt = new Date().toISOString();
         const label = source === 'manual'
@@ -472,6 +473,7 @@ const CanvasBoardInner: React.FC = () => {
         syncTimeoutRef.current = setTimeout(() => {
             if (!fabricRef.current || isRemoteUpdateRef.current || isRestoringRef.current || isCommittingStickyTextRef.current) return;
 
+            reassembleDetachedStickyNotes(fabricRef.current);
             const json = JSON.stringify(fabricRef.current.toJSON());
             latestSerializedRef.current = json;
             dirtyRef.current = true;

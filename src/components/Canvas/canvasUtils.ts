@@ -314,6 +314,7 @@ export const handleStickyNoteDoubleClick = (canvas: any, opt: any, onEditCommitt
                 ...(textObj.data || {}),
                 isEditingStickyNote: true,
                 stickyNoteId,
+                _stickyGroupRef: stickyNoteId,
             },
         });
 
@@ -324,8 +325,11 @@ export const handleStickyNoteDoubleClick = (canvas: any, opt: any, onEditCommitt
         canvas.requestRenderAll();
 
         // When editing is done, put textObj back into the Group
-        const onEditingExit = () => {
-            textObj.off('editing:exited', onEditingExit);
+        const reassembleStickyNote = () => {
+            // Guard: if textObj is no longer on canvas or already reassembled, skip
+            if (!canvas.getObjects().includes(textObj)) return;
+            // Guard: if target group no longer exists, skip
+            if (!canvas.getObjects().includes(target) && target.canvas !== canvas) return;
 
             canvas.remove(textObj);
             
@@ -359,6 +363,79 @@ export const handleStickyNoteDoubleClick = (canvas: any, opt: any, onEditCommitt
             onEditCommitted?.();
         };
 
+        const onEditingExit = () => {
+            textObj.off('editing:exited', onEditingExit);
+            reassembleStickyNote();
+        };
+
         textObj.on('editing:exited', onEditingExit);
+
+        // Safety: also listen for mouse:up outside editing to catch cases
+        // where editing is exited without the event firing properly
+        const onMouseUpHandler = () => {
+            if ((canvas as any).__stickyNoteEditingText && textObj && !textObj.isEditing) {
+                canvas.off('mouse:up', onMouseUpHandler);
+                textObj.off('editing:exited', onEditingExit);
+                reassembleStickyNote();
+            }
+        };
+        canvas.on('mouse:up', onMouseUpHandler);
+    }
+};
+
+/**
+ * Reassemble any detached sticky note text objects back into their parent Groups.
+ * This is a safety net for cases where serialization happens while text is being edited.
+ * Call this before toJSON() or any serialization to ensure sticky notes stay intact.
+ */
+export const reassembleDetachedStickyNotes = (canvas: any) => {
+    if (!canvas) return;
+
+    const detachedTexts = canvas.getObjects().filter((obj: any) =>
+        obj.data?.isEditingStickyNote === true ||
+        (obj.data?._stickyGroupRef && !obj.isEditing)
+    );
+
+    for (const textObj of detachedTexts) {
+        const stickyNoteId = textObj.data?.stickyNoteId;
+        if (!stickyNoteId) continue;
+
+        // Find the parent Group
+        const parentGroup = canvas.getObjects().find((obj: any) =>
+            obj.data?.id === stickyNoteId && obj._objects
+        );
+
+        if (!parentGroup) continue;
+
+        const groupLeft = parentGroup.left;
+        const groupTop = parentGroup.top;
+
+        canvas.remove(textObj);
+
+        textObj.set({
+            originX: 'center',
+            originY: 'center',
+            left: 0,
+            top: 0,
+            data: {
+                ...(textObj.data || {}),
+                isEditingStickyNote: false,
+            },
+        });
+
+        parentGroup.add(textObj);
+
+        const rectObj = parentGroup._objects?.find((obj: any) => obj.type === 'rect');
+        if (rectObj) {
+            rectObj.set({ left: 0, top: 0, originX: 'center', originY: 'center' });
+        }
+
+        parentGroup.set({ left: groupLeft, top: groupTop });
+        parentGroup.setCoords();
+        canvas.setActiveObject(parentGroup);
+    }
+
+    if (detachedTexts.length > 0) {
+        canvas.requestRenderAll();
     }
 };

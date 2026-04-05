@@ -8,11 +8,21 @@ pnpm-debug.log*
 lerna-debug.log*
 *_log.txt
 *_report.json
+*_output.txt
 error_ascii.txt
 lint.txt
 lint_cmd.txt
 lint_output.txt
+lint-results.json
+lint_report.json
+lint_log.txt
+build_log.txt
+vite_build_error.log
+tsc_output.txt
+test_log.txt
 tracked_files.tmp
+task_plan.md
+task.md
 
 node_modules
 dist

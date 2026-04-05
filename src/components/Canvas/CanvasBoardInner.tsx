@@ -47,7 +47,7 @@ import { useLanguageStore } from '@/stores/languageStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { buildBoardShareLink, decompressSnapshotData, extractBoardRoleFromUrl } from '@/lib/boardUtils';
 import { useMutation, useOthers, useStorage, useUpdateMyPresence } from '@/liveblocks.config';
-import { createStickyNote, findNearestAnchor, getAnchorPoints, handleStickyNoteDoubleClick, initAligningGuidelines } from './canvasUtils';
+import { createStickyNote, findNearestAnchor, getAnchorPoints, handleStickyNoteDoubleClick, isAnyTextEditing, initAligningGuidelines } from './canvasUtils';
 import { CircularSlider } from './CircularSlider';
 import { LiveblocksCursors } from './LiveblocksCursors';
 import { VersionHistoryModal } from './VersionHistoryModal';
@@ -667,7 +667,12 @@ const CanvasBoardInner: React.FC = () => {
                 lastPosX = e.clientX;
                 lastPosY = e.clientY;
             } else if (options.pointer) {
-                updateMyPresenceRef.current({ cursor: options.pointer });
+                const vpt = canvas.viewportTransform;
+                if (vpt) {
+                    const screenX = options.pointer.x * vpt[0] + vpt[4];
+                    const screenY = options.pointer.y * vpt[3] + vpt[5];
+                    updateMyPresenceRef.current({ cursor: { x: screenX, y: screenY } });
+                }
                 lastMouseEventRef.current = options;
 
                 if (activeToolRef.current === 'line' && fabricRef.current) {
@@ -1085,10 +1090,14 @@ const CanvasBoardInner: React.FC = () => {
 
             canvas.add(object);
             if (activeTool === 'stickyNote') {
-                const textObj = object._objects?.find((item: any) => item.type === 'i-text');
+                // Switch to select first, then trigger editing via double-click handler
+                setActiveTool('select');
                 canvas.setActiveObject(object);
-                textObj?.enterEditing?.();
-                textObj?.hiddenTextarea?.focus?.();
+                canvas.requestRenderAll();
+                // Use a microtask to let the tool switch settle, then open editing
+                queueMicrotask(() => {
+                    handleStickyNoteDoubleClick(canvas, { target: object });
+                });
             } else if (activeTool !== 'line' || !isDrawingLineRef.current) {
                 canvas.setActiveObject(object);
                 setActiveTool('select');
@@ -1145,7 +1154,7 @@ const CanvasBoardInner: React.FC = () => {
         undoDebugRef.current.futureAfterUndo = historyRef.current.future.length;
         setHistory({ ...historyRef.current });
 
-        await applyCanvasState(previous, { markDirty: true });
+        await applyCanvasState(previous, { markDirty: true, sync: true });
     }, [applyCanvasState, isReadOnly]);
 
     const redo = useCallback(async () => {
@@ -1288,7 +1297,7 @@ const CanvasBoardInner: React.FC = () => {
         }
     };
 
-    const contextMenuItems = useMemo(() => {
+    const contextMenuItems = (() => {
         const canvas = fabricRef.current;
         const active = canvas?.getActiveObject();
         
@@ -1312,7 +1321,7 @@ const CanvasBoardInner: React.FC = () => {
             { key: 'lock', label: (isLocked ? (isEn ? 'Unlock' : '解锁') : (isEn ? 'Lock' : '锁定')), icon: <LockOutlined />, onClick: toggleLock },
         ];
         return items;
-    }, [isEn, copy, paste, deleteSelected, toggleLock, bringToFront, sendToBack]);
+    })();
 
     const hasSelection = selectedObjectCount > 0;
 
@@ -1321,6 +1330,7 @@ const CanvasBoardInner: React.FC = () => {
             const tagName = (e.target as HTMLElement)?.tagName;
             if (tagName === 'INPUT' || tagName === 'TEXTAREA') return;
             if (fabricRef.current?.getActiveObject()?.isEditing) return;
+            if (isAnyTextEditing(fabricRef.current)) return;
 
             const key = e.key.toLowerCase();
             const hasModifier = e.ctrlKey || e.metaKey;
@@ -1370,6 +1380,9 @@ const CanvasBoardInner: React.FC = () => {
                 event.preventDefault();
                 redo();
             } else if (!isReadOnly && (event.key === 'Delete' || event.key === 'Backspace')) {
+                // Don't intercept when editing text (including inside sticky note Groups)
+                if (fabricRef.current?.getActiveObject()?.isEditing) return;
+                if (isAnyTextEditing(fabricRef.current)) return;
                 event.preventDefault();
                 deleteSelected();
             }
@@ -1378,6 +1391,18 @@ const CanvasBoardInner: React.FC = () => {
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [deleteSelected, isReadOnly, redo, undo]);
+
+    useEffect(() => {
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (dirtyRef.current) {
+                persistCurrentCanvas();
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }, [persistCurrentCanvas]);
 
     useEffect(() => {
         const interval = setInterval(() => {

@@ -4,9 +4,17 @@
  * Professional Smart Alignment & Snapping Logic (Fabric.js v6 Compatible)
  */
 
-// Module-level variables for alignment state
-let vLines: any[] = [];
-let hLines: any[] = [];
+// Canvas-specific alignment state to support multiple instances
+const canvasLineState = new WeakMap<any, { vLines: number[]; hLines: number[] }>();
+
+const getLineState = (canvas: any) => {
+    let state = canvasLineState.get(canvas);
+    if (!state) {
+        state = { vLines: [], hLines: [] };
+        canvasLineState.set(canvas, state);
+    }
+    return state;
+};
 const SNAP_THRESHOLD = 5;
 
 /**
@@ -49,6 +57,7 @@ export const createStickyNote = (f: any, x: number, y: number, color: string = '
         top: y,
         data: { stickyNote: true, type: 'stickyNote' },
         subTargetCheck: true,
+        interactive: true,
         objectCaching: false,
     });
 };
@@ -69,8 +78,9 @@ export const initAligningGuidelines = (canvas: any) => {
             obj.data?.type !== 'guide'
         );
 
-        vLines = [];
-        hLines = [];
+        const lineState = getLineState(canvas);
+        lineState.vLines = [];
+        lineState.hLines = [];
 
         const actBounds = actObj.getBoundingRect();
         const actCenter = actObj.getCenterPoint();
@@ -130,7 +140,7 @@ export const initAligningGuidelines = (canvas: any) => {
                 const c = obj.getCenterPoint();
                 [b.left, c.x, b.left + b.width].forEach((tv) => {
                     snappedVAxes.forEach((sv) => {
-                        if (Math.abs(sv - tv) < 1) vLines.push(tv);
+                        if (Math.abs(sv - tv) < 1) lineState.vLines.push(tv);
                     });
                 });
             });
@@ -146,7 +156,7 @@ export const initAligningGuidelines = (canvas: any) => {
                 const c = obj.getCenterPoint();
                 [b.top, c.y, b.top + b.height].forEach((th) => {
                     snappedHAxes.forEach((sh) => {
-                        if (Math.abs(sh - th) < 1) hLines.push(th);
+                        if (Math.abs(sh - th) < 1) lineState.hLines.push(th);
                     });
                 });
             });
@@ -157,7 +167,8 @@ export const initAligningGuidelines = (canvas: any) => {
 
     canvas.on('after:render', (opt: any) => {
         const ctx = opt.ctx;
-        if (!ctx || (vLines.length === 0 && hLines.length === 0)) return;
+        const lineState = getLineState(canvas);
+        if (!ctx || (lineState.vLines.length === 0 && lineState.hLines.length === 0)) return;
 
         const zoom = canvas.getZoom();
         const viewportMatrix = canvas.viewportTransform;
@@ -169,7 +180,7 @@ export const initAligningGuidelines = (canvas: any) => {
         ctx.lineWidth = 1;
         ctx.setLineDash([5, 5]);
 
-        vLines.forEach(x => {
+        lineState.vLines.forEach((x: number) => {
             const screenX = x * zoom + viewportMatrix[4];
             ctx.beginPath();
             ctx.moveTo(screenX, 0);
@@ -177,7 +188,7 @@ export const initAligningGuidelines = (canvas: any) => {
             ctx.stroke();
         });
 
-        hLines.forEach(y => {
+        lineState.hLines.forEach((y: number) => {
             const screenY = y * zoom + viewportMatrix[5];
             ctx.beginPath();
             ctx.moveTo(0, screenY);
@@ -190,8 +201,9 @@ export const initAligningGuidelines = (canvas: any) => {
 
     // Clear lines when transformation ends
     const clearLines = () => {
-        vLines = [];
-        hLines = [];
+        const lineState = getLineState(canvas);
+        lineState.vLines = [];
+        lineState.hLines = [];
         canvas.requestRenderAll();
     };
 
@@ -236,22 +248,85 @@ export const findNearestAnchor = (ptr: { x: number, y: number }, obs: any[], t: 
     return nearest;
 };
 
+/**
+ * Check if any IText on the canvas (including inside Groups) is currently being edited.
+ * This is needed because Fabric.js Group.isEditing is always undefined.
+ */
+export const isAnyTextEditing = (canvas: any): boolean => {
+    if (!canvas) return false;
+    const objects = canvas.getObjects();
+    for (const obj of objects) {
+        if ((obj.type === 'i-text' || obj.type === 'text' || obj.type === 'textbox') && obj.isEditing) {
+            return true;
+        }
+        // Check inside Groups
+        if (obj._objects) {
+            for (const child of obj._objects) {
+                if ((child.type === 'i-text' || child.type === 'text' || child.type === 'textbox') && child.isEditing) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+};
+
 export const handleStickyNoteDoubleClick = (canvas: any, opt: any) => {
     const target = opt.target;
     if (target && target.data?.type === 'stickyNote') {
         const textObj = target._objects?.find((obj: any) => obj.type === 'i-text' || obj.type === 'text');
-        if (textObj) {
-            canvas.setActiveObject(target);
-            target._restoreObjectsState?.();
+        if (!textObj) return;
+
+        // Record Group position for later re-grouping
+        const groupLeft = target.left;
+        const groupTop = target.top;
+
+        // Remove textObj from Group and add it to canvas as an independent object
+        // so Fabric.js can properly enter editing mode on it
+        const absPos = textObj.getAbsoluteCenterPoint?.() || {
+            x: groupLeft + (target.originX === 'center' ? 0 : (target.width || 180) / 2),
+            y: groupTop + (target.originY === 'center' ? 0 : (target.height || 180) / 2),
+        };
+
+        target.remove(textObj);
+        textObj.set({
+            left: absPos.x,
+            top: absPos.y,
+            originX: 'center',
+            originY: 'center',
+            evented: true,
+            selectable: true,
+            editable: true,
+            // Mark it so we know it belongs to a sticky note being edited
+            data: { ...(textObj.data || {}), _editingStickyGroup: target },
+        });
+
+        canvas.add(textObj);
+        canvas.setActiveObject(textObj);
+        textObj.enterEditing();
+        textObj.selectAll();
+        canvas.requestRenderAll();
+
+        // When editing is done, put textObj back into the Group
+        const onEditingExit = () => {
+            textObj.off('editing:exited', onEditingExit);
+
+            canvas.remove(textObj);
             textObj.set({
-                evented: true,
-                selectable: true,
-                editable: true,
+                originX: 'center',
+                originY: 'center',
+                left: 0,
+                top: 0,
+                data: { ...(textObj.data || {}), _editingStickyGroup: undefined },
             });
-            textObj.enterEditing?.();
-            textObj.selectAll?.();
-            textObj.hiddenTextarea?.focus?.();
+
+            target.add(textObj);
+            target.set({ left: groupLeft, top: groupTop });
+            target.setCoords();
+            canvas.setActiveObject(target);
             canvas.requestRenderAll();
-        }
+        };
+
+        textObj.on('editing:exited', onEditingExit);
     }
 };

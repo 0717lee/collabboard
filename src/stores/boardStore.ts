@@ -93,8 +93,8 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
                 updated_at: new Date().toISOString(),
             };
 
-            if (updates.name) dbUpdates.name = updates.name;
-            if (updates.data) dbUpdates.data = JSON.parse(updates.data);
+            if (updates.name !== undefined) dbUpdates.name = updates.name;
+            if (updates.data !== undefined) dbUpdates.data = updates.data ? JSON.parse(updates.data) : null;
 
             const { error } = await supabase
                 .from('boards')

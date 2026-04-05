@@ -28,9 +28,11 @@ export const createStickyNote = (f: any, x: number, y: number, color: string = '
         },
         originX: 'center',
         originY: 'center',
+        rx: 12,
+        ry: 12,
     });
 
-    const text = new f.IText('Hello!', {
+    const text = new f.IText('', {
         fontSize: 18,
         fontFamily: 'Inter, system-ui, sans-serif',
         textAlign: 'center',
@@ -38,6 +40,8 @@ export const createStickyNote = (f: any, x: number, y: number, color: string = '
         originY: 'center',
         width: width - 40,
         splitByGrapheme: true,
+        editable: true,
+        fill: '#2f2a24',
     });
 
     return new f.Group([rect, text], {
@@ -45,6 +49,7 @@ export const createStickyNote = (f: any, x: number, y: number, color: string = '
         top: y,
         data: { stickyNote: true, type: 'stickyNote' },
         subTargetCheck: true,
+        objectCaching: false,
     });
 };
 
@@ -237,8 +242,16 @@ export const handleStickyNoteDoubleClick = (canvas: any, opt: any) => {
         const textObj = target._objects?.find((obj: any) => obj.type === 'i-text' || obj.type === 'text');
         if (textObj) {
             canvas.setActiveObject(target);
-            // In v6, we might need a more specific way to focus sub-objects, 
-            // but usually setting the group active and allowing subTargetCheck handles it.
+            target._restoreObjectsState?.();
+            textObj.set({
+                evented: true,
+                selectable: true,
+                editable: true,
+            });
+            textObj.enterEditing?.();
+            textObj.selectAll?.();
+            textObj.hiddenTextarea?.focus?.();
+            canvas.requestRenderAll();
         }
     }
 };

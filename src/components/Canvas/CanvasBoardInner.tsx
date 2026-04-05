@@ -74,6 +74,7 @@ const MAX_SYNC_SIZE = 400000;
 const AUTO_SAVE_INTERVAL_MS = 5000;
 const AUTO_SNAPSHOT_INTERVAL_MS = 60000;
 const EMPTY_SNAPSHOTS: BoardSnapshot[] = [];
+const DEFAULT_STICKY_NOTE_COLOR = '#FFF3A3';
 
 const decodeCanvasData = (data: string | null) => {
     if (!data) return null;
@@ -162,6 +163,25 @@ const CanvasBoardInner: React.FC = () => {
     const activeLineRef = useRef<any>(null);
     const isDrawingLineRef = useRef(false);
     const clipboardRef = useRef<any>(null);
+    const undoDebugRef = useRef({ calls: 0, blocked: 0, lastReason: '', commitCalls: 0, resetCalls: 0, pastBeforeUndo: -1, pastAfterUndo: -1, futureAfterUndo: -1 });
+    const activeToolRef = useRef<ToolType>('select');
+    const isReadOnlyRef = useRef(false);
+    const canvasDataRef = useRef('');
+    const processLocalCanvasChangeRef = useRef<() => void>(() => undefined);
+    const snapObjectToGridRef = useRef<(target?: { set: (key: string, value: number) => void; setCoords?: () => void; left?: number; top?: number; x1?: number; y1?: number; x2?: number; y2?: number; type?: string }) => void>(() => undefined);
+    const updateMyPresenceRef = useRef(updateMyPresence);
+    const copyRef = useRef<() => Promise<void>>(async () => undefined);
+    const pasteRef = useRef<() => Promise<void>>(async () => undefined);
+    const resolveBoardRef = useRef<() => Promise<Board | null>>(async () => null);
+    const applyCanvasStateRef = useRef<(json: string, options?: {
+        resetHistory?: boolean;
+        markPersisted?: boolean;
+        sync?: boolean;
+        markDirty?: boolean;
+        suppressEvents?: boolean;
+    }) => Promise<void>>(async () => undefined);
+    const syncCanvasStateRef = useRef<(json: string) => boolean>(() => false);
+    const scheduleThumbnailCaptureRef = useRef<() => void>(() => undefined);
 
 
     const sharedRoleFromUrl = useMemo(
@@ -185,6 +205,14 @@ const CanvasBoardInner: React.FC = () => {
         : sharedRoleFromUrl || cachedRole || currentBoard?.accessRole || 'editor';
     const isReadOnly = resolvedRole === 'viewer';
     const gridPixelSize = `${Math.max((GRID_SIZE * zoom) / 100, 12)}px`;
+
+    activeToolRef.current = activeTool;
+    isReadOnlyRef.current = isReadOnly;
+    updateMyPresenceRef.current = updateMyPresence;
+    if (typeof window !== 'undefined') {
+        (window as any).__collabboardHistoryRef = historyRef;
+        (window as any).__collabboardUndoDebugRef = undoDebugRef;
+    }
 
     const shareLink = useMemo(() => {
         if (!boardId || typeof window === 'undefined') return '';
@@ -218,6 +246,7 @@ const CanvasBoardInner: React.FC = () => {
     const chunk4 = useStorage((root) => root.canvasData_4);
     const chunk5 = useStorage((root) => root.canvasData_5);
     const canvasData = (chunk1 || '') + (chunk2 || '') + (chunk3 || '') + (chunk4 || '') + (chunk5 || '');
+    canvasDataRef.current = canvasData;
 
     const updateStorage = useMutation(({ storage }, compressedData: string) => {
         const chunkSize = 80000;
@@ -251,12 +280,15 @@ const CanvasBoardInner: React.FC = () => {
     }, []);
 
     const resetHistory = useCallback((present: string) => {
+        undoDebugRef.current.resetCalls += 1;
         presentStateRef.current = present;
         historyRef.current = { past: [], future: [] };
         setHistory({ ...historyRef.current });
     }, []);
 
     const commitHistory = useCallback((nextState: string) => {
+        undoDebugRef.current.commitCalls += 1;
+
         if (!presentStateRef.current) {
             presentStateRef.current = nextState;
             setHistory({ ...historyRef.current });
@@ -287,6 +319,7 @@ const CanvasBoardInner: React.FC = () => {
         updateStorage(compressed);
         return true;
     }, [isEn, updateStorage]);
+    syncCanvasStateRef.current = syncCanvasState;
 
     const createThumbnail = useCallback(() => {
         if (!fabricRef.current || !boardId) return;
@@ -314,6 +347,7 @@ const CanvasBoardInner: React.FC = () => {
             createThumbnail();
         }, 600);
     }, [createThumbnail]);
+    scheduleThumbnailCaptureRef.current = scheduleThumbnailCapture;
 
     const applyCanvasState = useCallback(async (
         json: string,
@@ -326,6 +360,13 @@ const CanvasBoardInner: React.FC = () => {
         }
     ) => {
         if (!fabricRef.current) return;
+
+        // Cancel any pending processLocalCanvasChange timer to prevent
+        // stale commits from overwriting the state we're about to apply.
+        if (syncTimeoutRef.current) {
+            clearTimeout(syncTimeoutRef.current);
+            syncTimeoutRef.current = null;
+        }
 
         isRestoringRef.current = true;
         isRemoteUpdateRef.current = options?.suppressEvents ?? false;
@@ -359,6 +400,7 @@ const CanvasBoardInner: React.FC = () => {
             isRestoringRef.current = false;
         }
     }, [resetHistory, scheduleThumbnailCapture, syncCanvasState]);
+    applyCanvasStateRef.current = applyCanvasState;
 
     const createBoardSnapshot = useCallback((source: 'manual' | 'auto') => {
         if (!boardId || !fabricRef.current) return null;
@@ -415,6 +457,7 @@ const CanvasBoardInner: React.FC = () => {
 
         return normalizedBoard;
     }, [boardId, boards, cachedRole, fetchBoard, setCurrentBoard, setRole, sharedBoards, sharedRoleFromUrl, touchBoard, user?.id]);
+    resolveBoardRef.current = resolveBoard;
 
     const processLocalCanvasChange = useCallback(() => {
         if (!fabricRef.current || isRemoteUpdateRef.current || isRestoringRef.current || isReadOnly) {
@@ -426,7 +469,7 @@ const CanvasBoardInner: React.FC = () => {
         }
 
         syncTimeoutRef.current = setTimeout(() => {
-            if (!fabricRef.current) return;
+            if (!fabricRef.current || isRemoteUpdateRef.current || isRestoringRef.current) return;
 
             const json = JSON.stringify(fabricRef.current.toJSON());
             latestSerializedRef.current = json;
@@ -436,6 +479,7 @@ const CanvasBoardInner: React.FC = () => {
             scheduleThumbnailCapture();
         }, 300);
     }, [commitHistory, isReadOnly, scheduleThumbnailCapture, syncCanvasState]);
+    processLocalCanvasChangeRef.current = processLocalCanvasChange;
 
     const snapCoordinate = useCallback((value: number) => Math.round(value / GRID_SIZE) * GRID_SIZE, []);
 
@@ -452,6 +496,7 @@ const CanvasBoardInner: React.FC = () => {
         }
         target.setCoords?.();
     }, [settings.snapToGrid, snapCoordinate]);
+    snapObjectToGridRef.current = snapObjectToGrid;
 
     const persistCurrentCanvas = useCallback(async () => {
         if (!boardId || !currentBoard || !latestSerializedRef.current) return;
@@ -477,6 +522,7 @@ const CanvasBoardInner: React.FC = () => {
         if (!canvasRef.current || !containerRef.current || !fabricLoaded || !fabric || !boardId) return;
 
         const container = containerRef.current;
+        const initialCanvasData = canvasDataRef.current;
         fabric.Object.NUM_FRACTION_DIGITS = 2;
 
         const canvas = new fabric.Canvas(canvasRef.current, {
@@ -488,8 +534,14 @@ const CanvasBoardInner: React.FC = () => {
         });
 
         fabricRef.current = canvas;
+        (window as any).__collabboardCanvas = canvas;
         setCanvasReady(true);
         initAligningGuidelines(canvas);
+
+        const initialJson = JSON.stringify(canvas.toJSON());
+        latestSerializedRef.current = initialJson;
+        lastPersistedStateRef.current = initialJson;
+        resetHistory(initialJson);
 
         // Global Locking Visuals
         if (!fabric.Object.prototype._renderOriginal) {
@@ -515,15 +567,15 @@ const CanvasBoardInner: React.FC = () => {
         canvas.freeDrawingBrush.decimate = 5;
 
         const loadBoardData = async () => {
-            const board = await resolveBoard();
+            const board = await resolveBoardRef.current();
             if (!board) return;
 
-            const liveblocksState = decodeCanvasData(canvasData);
+            const liveblocksState = decodeCanvasData(initialCanvasData);
             const boardState = decodeCanvasData(board.data || '');
 
             if (liveblocksState?.parsed?.objects) {
-                lastSyncedDataRef.current = canvasData;
-                await applyCanvasState(liveblocksState.json, {
+                lastSyncedDataRef.current = initialCanvasData;
+                await applyCanvasStateRef.current(liveblocksState.json, {
                     resetHistory: true,
                     markPersisted: true,
                     suppressEvents: true,
@@ -532,21 +584,17 @@ const CanvasBoardInner: React.FC = () => {
             }
 
             if (boardState?.parsed?.objects) {
-                await applyCanvasState(boardState.json, {
+                await applyCanvasStateRef.current(boardState.json, {
                     resetHistory: true,
                     markPersisted: true,
                     suppressEvents: true,
                 });
 
-                syncCanvasState(boardState.json);
+                syncCanvasStateRef.current(boardState.json);
                 return;
             }
 
-            const emptyJson = JSON.stringify(canvas.toJSON());
-            latestSerializedRef.current = emptyJson;
-            lastPersistedStateRef.current = emptyJson;
-            resetHistory(emptyJson);
-            scheduleThumbnailCapture();
+            scheduleThumbnailCaptureRef.current();
         };
 
         const resizeCanvas = () => {
@@ -583,7 +631,7 @@ const CanvasBoardInner: React.FC = () => {
 
         const handleObjectMoving = ({ target }: any) => {
             if (!target) return;
-            snapObjectToGrid(target);
+            snapObjectToGridRef.current(target);
             updateConnectors(target);
         };
         
@@ -593,7 +641,10 @@ const CanvasBoardInner: React.FC = () => {
         };
 
         const handleModification = () => {
-            processLocalCanvasChange();
+            processLocalCanvasChangeRef.current();
+        };
+        const handleTextEditingExited = () => {
+            processLocalCanvasChangeRef.current();
         };
         const updateSelectionState = () => {
             setSelectedObjectCount(canvas.getActiveObjects().length);
@@ -616,10 +667,10 @@ const CanvasBoardInner: React.FC = () => {
                 lastPosX = e.clientX;
                 lastPosY = e.clientY;
             } else if (options.pointer) {
-                updateMyPresence({ cursor: options.pointer });
+                updateMyPresenceRef.current({ cursor: options.pointer });
                 lastMouseEventRef.current = options;
 
-                if (activeTool === 'line' && fabricRef.current) {
+                if (activeToolRef.current === 'line' && fabricRef.current) {
                     const canvas = fabricRef.current;
                     const pointer = options.pointer;
                     
@@ -696,7 +747,7 @@ const CanvasBoardInner: React.FC = () => {
                 activeLineRef.current = null;
                 setActiveTool('select');
                 canvas.requestRenderAll();
-                processLocalCanvasChange();
+                processLocalCanvasChangeRef.current();
             }
         };
 
@@ -714,7 +765,7 @@ const CanvasBoardInner: React.FC = () => {
         };
 
         const handleAfterRender = () => {
-            if (activeTool !== 'line' || !fabricRef.current) return;
+            if (activeToolRef.current !== 'line' || !fabricRef.current) return;
             const canvas = fabricRef.current;
             const ctx = canvas.getContext();
             const vpt = canvas.viewportTransform;
@@ -751,6 +802,7 @@ const CanvasBoardInner: React.FC = () => {
         canvas.on('object:modified', handleModification);
         canvas.on('object:added', handleModification);
         canvas.on('object:removed', handleModification);
+        canvas.on('text:editing:exited', handleTextEditingExited);
         canvas.on('mouse:move', handleMouseMove);
         canvas.on('mouse:down', handleMouseDown);
         canvas.on('mouse:up', handleMouseUp);
@@ -762,55 +814,13 @@ const CanvasBoardInner: React.FC = () => {
         const handleDblClick = (opt: any) => handleStickyNoteDoubleClick(canvas, opt);
         canvas.on('mouse:dblclick', handleDblClick);
 
-        // P2: Keyboard Shortcuts
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return;
-            if (canvas.getActiveObject()?.isEditing) return;
-
-            const key = e.key.toLowerCase();
-            const hasModifier = e.ctrlKey || e.metaKey;
-
-            // Modifier shortcuts take priority over tool shortcuts
-            if (hasModifier) {
-                switch (key) {
-                    case 'c': e.preventDefault(); copy(); return;
-                    case 'v': e.preventDefault(); paste(); return;
-                    case 'z':
-                        e.preventDefault();
-                        // undo/redo handled by separate useEffect
-                        return;
-                }
-            }
-
-            switch (key) {
-                case 'v': setActiveTool('select'); break;
-                case 'r': setActiveTool('rect'); break;
-                case 'o': setActiveTool('circle'); break;
-                case 'l': setActiveTool('line'); break;
-                case 't': setActiveTool('text'); break;
-                case 's': setActiveTool('stickyNote'); break;
-                case 'backspace':
-                case 'delete': {
-                    const activeObjects = canvas.getActiveObjects();
-                    if (activeObjects.length > 0) {
-                        canvas.discardActiveObject();
-                        activeObjects.forEach((obj: any) => canvas.remove(obj));
-                        canvas.requestRenderAll();
-                    }
-                    break;
-                }
-            }
-        };
-
-        window.addEventListener('keydown', handleKeyDown);
-        
         // P1: Image Paste Support (Already added, making sure to remove in cleanup)
         const handlePaste = async (e: ClipboardEvent) => {
             const items = e.clipboardData?.items;
-            if (!items || isReadOnly) return;
+            if (!items || isReadOnlyRef.current) return;
             const canvas = fabricRef.current;
             if (!canvas) return;
-            
+
             for (let i = 0; i < items.length; i++) {
                 if (items[i].type.indexOf('image') !== -1) {
                     const blob = items[i].getAsFile();
@@ -824,7 +834,7 @@ const CanvasBoardInner: React.FC = () => {
                         canvas.add(img);
                         canvas.setActiveObject(img);
                         canvas.requestRenderAll();
-                        processLocalCanvasChange();
+                        processLocalCanvasChangeRef.current();
                     };
                     reader.readAsDataURL(blob);
                 }
@@ -834,7 +844,7 @@ const CanvasBoardInner: React.FC = () => {
         // P1: Image Drag and Drop Support
         const handleDrop = async (e: DragEvent) => {
             e.preventDefault();
-            if (isReadOnly) return;
+            if (isReadOnlyRef.current) return;
             const files = e.dataTransfer?.files;
             if (!files) return;
 
@@ -851,7 +861,7 @@ const CanvasBoardInner: React.FC = () => {
                         canvas.add(img);
                         canvas.setActiveObject(img);
                         canvas.requestRenderAll();
-                        processLocalCanvasChange();
+                        processLocalCanvasChangeRef.current();
                     };
                     reader.readAsDataURL(files[i]);
                 }
@@ -885,6 +895,7 @@ const CanvasBoardInner: React.FC = () => {
             canvas.off('object:modified', handleModification);
             canvas.off('object:added', handleModification);
             canvas.off('object:removed', handleModification);
+            canvas.off('text:editing:exited', handleTextEditingExited);
             canvas.off('mouse:move', handleMouseMove);
             canvas.off('mouse:down', handleMouseDown);
             canvas.off('mouse:up', handleMouseUp);
@@ -896,23 +907,23 @@ const CanvasBoardInner: React.FC = () => {
             canvas.off('selection:updated', updateSelectionState);
             canvas.off('selection:cleared', updateSelectionState);
             window.removeEventListener('paste', handlePaste);
-            window.removeEventListener('keydown', handleKeyDown);
             canvas.dispose();
             fabricRef.current = null;
+            delete (window as any).__collabboardCanvas;
 
             if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
             if (thumbnailTimeoutRef.current) clearTimeout(thumbnailTimeoutRef.current);
         };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [applyCanvasState, boardId, brushColor, brushWidth, canvasData, fabricLoaded, processLocalCanvasChange, resetHistory, resolveBoard, scheduleThumbnailCapture, snapObjectToGrid, syncCanvasState, updateMyPresence]);
+    }, [boardId, fabricLoaded]);
 
     useEffect(() => {
         if (!canvasReady || !canvasData) return;
 
         const decoded = decodeCanvasData(canvasData);
-        if (!decoded?.json || decoded.json === lastSyncedDataRef.current) return;
+        if (!decoded?.json) return;
+        if (canvasData === lastSyncedDataRef.current || decoded.json === latestSerializedRef.current) return;
 
-        lastSyncedDataRef.current = decoded.json;
+        lastSyncedDataRef.current = canvasData;
         applyCanvasState(decoded.json, {
             resetHistory: true,
             markPersisted: true,
@@ -931,7 +942,7 @@ const CanvasBoardInner: React.FC = () => {
             const pathNode = event.path;
             if (pathNode) {
                 if (!pathNode.id) pathNode.id = Math.random().toString(36).substring(2, 9);
-                
+
                 if (activeTool === 'eraser') {
                     pathNode.set({
                         globalCompositeOperation: 'destination-out',
@@ -942,6 +953,13 @@ const CanvasBoardInner: React.FC = () => {
                     });
                     canvas.requestRenderAll();
                 }
+
+                const json = JSON.stringify(canvas.toJSON());
+                latestSerializedRef.current = json;
+                dirtyRef.current = true;
+                commitHistory(json);
+                syncCanvasState(json);
+                scheduleThumbnailCapture();
             }
         };
 
@@ -985,7 +1003,7 @@ const CanvasBoardInner: React.FC = () => {
         return () => {
             canvas.off('path:created', pathCreated);
         };
-    }, [activeTool, brushColor, brushWidth, canvasReady, isReadOnly]);
+    }, [activeTool, brushColor, brushWidth, canvasReady, commitHistory, isReadOnly, scheduleThumbnailCapture, syncCanvasState]);
 
     const handleCanvasMouseDown = useCallback((opt: { pointer?: { x: number; y: number } }) => {
         if (isReadOnly || activeTool === 'select' || activeTool === 'draw' || activeTool === 'eraser' || !fabric) return;
@@ -996,7 +1014,6 @@ const CanvasBoardInner: React.FC = () => {
         const x = settings.snapToGrid ? snapCoordinate(opt.pointer.x) : opt.pointer.x;
         const y = settings.snapToGrid ? snapCoordinate(opt.pointer.y) : opt.pointer.y;
 
-         
         let object: any = null;
 
         switch (activeTool) {
@@ -1033,7 +1050,7 @@ const CanvasBoardInner: React.FC = () => {
                 });
                 break;
             case 'stickyNote':
-                object = createStickyNote(fabric, x, y, brushColor);
+                object = createStickyNote(fabric, x, y, DEFAULT_STICKY_NOTE_COLOR);
                 break;
             case 'line':
                 if (hoveredAnchorRef.current) {
@@ -1065,9 +1082,14 @@ const CanvasBoardInner: React.FC = () => {
         if (object) {
             if (!object.data) object.data = {};
             if (!object.data.id) object.data.id = `obj-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-            
+
             canvas.add(object);
-            if (activeTool !== 'line' || !isDrawingLineRef.current) {
+            if (activeTool === 'stickyNote') {
+                const textObj = object._objects?.find((item: any) => item.type === 'i-text');
+                canvas.setActiveObject(object);
+                textObj?.enterEditing?.();
+                textObj?.hiddenTextarea?.focus?.();
+            } else if (activeTool !== 'line' || !isDrawingLineRef.current) {
                 canvas.setActiveObject(object);
                 setActiveTool('select');
             }
@@ -1088,8 +1110,28 @@ const CanvasBoardInner: React.FC = () => {
     }, [handleCanvasMouseDown]);
 
     const undo = useCallback(async () => {
-        if (!fabricRef.current || historyRef.current.past.length === 0 || isReadOnly) return;
+        undoDebugRef.current.calls += 1;
+        const sameRef = historyRef === (window as any).__collabboardHistoryRef;
+        undoDebugRef.current.lastReason = sameRef ? '' : 'diff-ref';
 
+        if (!fabricRef.current) {
+            undoDebugRef.current.blocked += 1;
+            undoDebugRef.current.lastReason = 'no-fabric';
+            return;
+        }
+        if (historyRef.current.past.length === 0) {
+            undoDebugRef.current.blocked += 1;
+            undoDebugRef.current.lastReason = 'empty-past';
+            return;
+        }
+        if (isReadOnly) {
+            undoDebugRef.current.blocked += 1;
+            undoDebugRef.current.lastReason = 'readonly';
+            return;
+        }
+
+        undoDebugRef.current.lastReason = sameRef ? 'executed-same-ref' : 'executed-diff-ref';
+        undoDebugRef.current.pastBeforeUndo = historyRef.current.past.length;
         const previous = historyRef.current.past[historyRef.current.past.length - 1];
         const nextPast = historyRef.current.past.slice(0, -1);
         const current = presentStateRef.current;
@@ -1099,9 +1141,11 @@ const CanvasBoardInner: React.FC = () => {
             future: [current, ...historyRef.current.future],
         };
         presentStateRef.current = previous;
+        undoDebugRef.current.pastAfterUndo = historyRef.current.past.length;
+        undoDebugRef.current.futureAfterUndo = historyRef.current.future.length;
         setHistory({ ...historyRef.current });
 
-        await applyCanvasState(previous, { markDirty: true, sync: true });
+        await applyCanvasState(previous, { markDirty: true });
     }, [applyCanvasState, isReadOnly]);
 
     const redo = useCallback(async () => {
@@ -1146,6 +1190,7 @@ const CanvasBoardInner: React.FC = () => {
             message.success(isEn ? 'Copied' : '已复制');
         }
     }, [isEn]);
+    copyRef.current = copy;
 
     const paste = useCallback(async () => {
         const canvas = fabricRef.current;
@@ -1174,6 +1219,7 @@ const CanvasBoardInner: React.FC = () => {
         processLocalCanvasChange();
         message.success(isEn ? 'Pasted' : '已粘贴');
     }, [isEn, isReadOnly, processLocalCanvasChange]);
+    pasteRef.current = paste;
 
     const toggleLock = useCallback(() => {
         const canvas = fabricRef.current;
@@ -1269,6 +1315,48 @@ const CanvasBoardInner: React.FC = () => {
     }, [isEn, copy, paste, deleteSelected, toggleLock, bringToFront, sendToBack]);
 
     const hasSelection = selectedObjectCount > 0;
+
+    useEffect(() => {
+        const handleToolShortcuts = (e: KeyboardEvent) => {
+            const tagName = (e.target as HTMLElement)?.tagName;
+            if (tagName === 'INPUT' || tagName === 'TEXTAREA') return;
+            if (fabricRef.current?.getActiveObject()?.isEditing) return;
+
+            const key = e.key.toLowerCase();
+            const hasModifier = e.ctrlKey || e.metaKey;
+
+            if (hasModifier) {
+                switch (key) {
+                    case 'c':
+                        e.preventDefault();
+                        copyRef.current();
+                        return;
+                    case 'v':
+                        e.preventDefault();
+                        pasteRef.current();
+                        return;
+                    default:
+                        return;
+                }
+            }
+
+            if (isReadOnly) return;
+
+            switch (key) {
+                case 'v': setActiveTool('select'); break;
+                case 'r': setActiveTool('rect'); break;
+                case 'o': setActiveTool('circle'); break;
+                case 'l': setActiveTool('line'); break;
+                case 't': setActiveTool('text'); break;
+                case 's': setActiveTool('stickyNote'); break;
+                default:
+                    break;
+            }
+        };
+
+        window.addEventListener('keydown', handleToolShortcuts);
+        return () => window.removeEventListener('keydown', handleToolShortcuts);
+    }, [isReadOnly]);
 
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {

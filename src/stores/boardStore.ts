@@ -20,6 +20,17 @@ interface BoardState {
 }
 
 let latestLoadBoardsRequestId = 0;
+const DB_TIMEOUT_MS = 10000; // 10 seconds timeout for DB operations
+
+const withTimeout = <T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> => {
+    return Promise.race([
+        promise,
+        new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error(errorMessage)), timeoutMs)
+        ),
+    ]);
+};
+
 
 export const useBoardStore = create<BoardState>()((set, get) => ({
     boards: [],
@@ -27,20 +38,15 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
     currentBoard: null,
     isLoading: false,
     error: null,
-
     createBoard: async (name: string) => {
         set({ isLoading: true, error: null });
 
         try {
-            // Get the current authenticated user from Supabase
-            const { data: { user }, error: authError } = await supabase.auth.getUser();
+            console.log('[boardStore] Creating board:', name);
+            const user = (await import('./authStore')).useAuthStore.getState().user;
 
-            if (authError || !user) {
-                console.error('Auth error:', authError);
-                // Force logout on auth error
-                import('./authStore').then(({ useAuthStore }) => {
-                    useAuthStore.getState().logout();
-                });
+            if (!user) {
+                console.error('[boardStore] No user found in store');
                 set({ isLoading: false, error: '未登录或登录已过期，请重新登录' });
                 return null;
             }
@@ -51,17 +57,23 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
                 data: { objects: [], version: '1.0' },
             };
 
-            const { data, error } = await supabase
-                .from('boards')
-                .insert(newBoard)
-                .select()
-                .single();
+            const insertResult = await withTimeout(
+                supabase
+                    .from('boards')
+                    .insert(newBoard)
+                    .select()
+                    .single(),
+                DB_TIMEOUT_MS,
+                '创建数据超时'
+            );
+            const { data, error } = insertResult as any;
 
             if (error) {
-                console.error('Create board error:', error);
+                console.error('[boardStore] Create board error:', error);
                 set({ isLoading: false, error: error.message });
                 return null;
             }
+
 
             const board: Board = {
                 id: data.id,
@@ -210,13 +222,20 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
     loadBoards: async (userId: string) => {
         const requestId = ++latestLoadBoardsRequestId;
         set({ isLoading: true, error: null });
+        console.log('[boardStore] Loading boards for user:', userId);
 
         try {
-            const { data, error } = await supabase
-                .from('boards')
-                .select('id, name, owner_id, created_at, updated_at')
-                .eq('owner_id', userId)
-                .order('updated_at', { ascending: false });
+            const fetchResult = await withTimeout(
+                supabase
+                    .from('boards')
+                    .select('id, name, owner_id, created_at, updated_at')
+                    .eq('owner_id', userId)
+                    .order('updated_at', { ascending: false }),
+                DB_TIMEOUT_MS,
+                '获取白板列表超时'
+            );
+            const { data, error } = fetchResult as any;
+
 
             if (requestId !== latestLoadBoardsRequestId) {
                 return;

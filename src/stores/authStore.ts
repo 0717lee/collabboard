@@ -193,26 +193,21 @@ export const useAuthStore = create<AuthState>()(
 
             initializeAuth: async () => {
                 set({ isLoading: true });
+                console.log('[authStore] Initializing auth...');
 
                 try {
-                    const sessionResult = await Promise.race([
-                        supabase.auth.getSession()
-                            .then((result: { data: { session: { user: User } | null }; error: { message: string } | null }) => ({
-                                type: 'session' as const,
-                                result,
-                            }))
-                            .catch((error: unknown) => ({
-                                type: 'error' as const,
-                                error,
-                            })),
-                        new Promise<{ type: 'timeout' }>((resolve) => {
-                            setTimeout(() => resolve({ type: 'timeout' }), AUTH_INIT_TIMEOUT_MS);
-                        }),
-                    ]);
+                    // Try to get the session with a race condition for timeout
+                    const sessionPromise = supabase.auth.getSession();
+                    const timeoutPromise = new Promise<null>((resolve) => {
+                        setTimeout(() => resolve(null), AUTH_INIT_TIMEOUT_MS);
+                    });
 
-                    if (sessionResult.type === 'timeout') {
+                    const result = await Promise.race([sessionPromise, timeoutPromise]);
+
+                    if (result === null) {
+                        // Timeout case
                         const { isAuthenticated, user } = get();
-                        console.warn('Auth initialization timed out, falling back to cached auth state.');
+                        console.warn('[authStore] Auth initialization timed out, falling back to cached auth state.');
                         set({
                             user: isAuthenticated ? user : null,
                             isAuthenticated,
@@ -225,17 +220,18 @@ export const useAuthStore = create<AuthState>()(
                         return;
                     }
 
-                    if (sessionResult.type === 'error') {
-                        throw sessionResult.error;
+                    // Result cast for clarity, though it's already well-typed from supabase-js
+                    const { data: { session }, error } = result as any;
+
+                    if (error) {
+                        console.error('[authStore] Get session error:', error);
+                        throw error;
                     }
 
-                    // Restore the local session first so protected routes do not block on a network round-trip.
-                    const { data: { session }, error } = sessionResult.result;
-
-                    if (error || !session?.user) {
-                        // If no session found, or error occurred, make sure we clear local state
+                    if (!session?.user) {
+                        console.log('[authStore] No active session found.');
                         if (get().isAuthenticated) {
-                            console.warn('Session expired or missing, logging out');
+                            console.warn('[authStore] Local state was authenticated but no server session found, logging out.');
                             set({
                                 user: null,
                                 isAuthenticated: false,
@@ -249,6 +245,7 @@ export const useAuthStore = create<AuthState>()(
                         return;
                     }
 
+                    console.log('[authStore] Session restored for user:', session.user.id);
                     const authUser = session.user;
                     const fallbackUser = buildUserFromSessionUser(authUser);
 
@@ -314,6 +311,7 @@ supabase.auth.onAuthStateChange(async (
     session: { user: { id: string; email?: string; created_at: string; user_metadata?: { name?: string } } } | null
 ) => {
     if (event === 'SIGNED_OUT') {
+        console.log('[authStore] Auth event: SIGNED_OUT');
         useAuthStore.setState({
             user: null,
             isAuthenticated: false,
@@ -321,23 +319,39 @@ supabase.auth.onAuthStateChange(async (
             hasInitialized: true,
         });
     } else if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
-        let profileName: string | undefined;
-        try {
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', session.user.id)
-                .maybeSingle();
-            profileName = profile?.name;
-        } catch (err) {
-            console.warn('onAuthStateChange: profile lookup failed, continuing without profile name:', err);
-        }
-
+        console.log(`[authStore] Auth event: ${event}`, session.user.id);
+        
+        // Update basic info immediately so UI doesn't hang
         useAuthStore.setState({
-            user: buildUserFromSessionUser(session.user, profileName),
+            user: buildUserFromSessionUser(session.user),
             isAuthenticated: true,
             hasValidatedSession: true,
             hasInitialized: true,
         });
+
+        // Fetch profile name in the background
+        (async () => {
+            try {
+                const { data: profile, error } = await supabase
+                    .from('profiles')
+                    .select('name')
+                    .eq('id', session.user.id)
+                    .maybeSingle();
+                
+                if (error) {
+                    console.warn('[authStore] Profile lookup error:', error.message);
+                    return;
+                }
+
+                if (profile?.name) {
+                    console.log('[authStore] Profile name found:', profile.name);
+                    useAuthStore.setState({
+                        user: buildUserFromSessionUser(session.user, profile.name)
+                    });
+                }
+            } catch (err) {
+                console.warn('[authStore] Profile lookup background failure:', err);
+            }
+        })();
     }
 });

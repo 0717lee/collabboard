@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useBoardStore } from '@/stores/boardStore';
+import { useAuthStore } from '@/stores/authStore';
 
 const boardMocks = vi.hoisted(() => ({
     insertSingle: vi.fn(),
@@ -32,6 +33,7 @@ vi.mock('@/lib/supabaseClient', () => ({
         }),
         auth: {
             getUser: boardMocks.getUser,
+            onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
         },
     },
 }));
@@ -66,6 +68,19 @@ describe('boardStore', () => {
                 },
             },
             error: null,
+        });
+
+        // Set a valid mock user in authStore so board creation doesn't fail
+        useAuthStore.setState({
+            user: {
+                id: 'test-user-id-123',
+                email: 'test@example.com',
+                name: 'Test User',
+                createdAt: new Date().toISOString(),
+            },
+            isAuthenticated: true,
+            hasInitialized: true,
+            hasValidatedSession: true,
         });
 
         // Reset store state before each test

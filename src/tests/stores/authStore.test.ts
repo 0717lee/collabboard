@@ -231,7 +231,7 @@ describe('authStore', () => {
             });
 
             const initPromise = useAuthStore.getState().initializeAuth();
-            await vi.advanceTimersByTimeAsync(4000);
+            await vi.advanceTimersByTimeAsync(8000);
             await initPromise;
 
             const state = useAuthStore.getState();
@@ -258,7 +258,7 @@ describe('authStore', () => {
             });
 
             const initPromise = useAuthStore.getState().initializeAuth();
-            await vi.advanceTimersByTimeAsync(4000);
+            await vi.advanceTimersByTimeAsync(8000);
             await initPromise;
 
             const authChangeCallback = authMocks.onAuthStateChange.mock.calls[0]?.[0];

@@ -66,6 +66,7 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
                 DB_TIMEOUT_MS,
                 '创建数据超时'
             );
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const { data, error } = insertResult as any;
 
             if (error) {
@@ -234,6 +235,7 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
                 DB_TIMEOUT_MS,
                 '获取白板列表超时'
             );
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const { data, error } = fetchResult as any;
 
 

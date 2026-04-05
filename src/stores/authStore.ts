@@ -221,6 +221,7 @@ export const useAuthStore = create<AuthState>()(
                     }
 
                     // Result cast for clarity, though it's already well-typed from supabase-js
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const { data: { session }, error } = result as any;
 
                     if (error) {

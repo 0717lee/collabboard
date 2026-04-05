@@ -47,4 +47,7 @@ implementation_plan.md
 walkthrough.md
 progress.md
 findings.md
+.claude/
+fabric_test.html
+lint-results.json
 .gemini

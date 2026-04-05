@@ -17,12 +17,17 @@
 
 ### Core Features
 - 🎨 **Whiteboard Drawing** - Free draw, shapes (rect/circle/line), and text editing
+- 📝 **Sticky Notes** - Double-click to edit, with rounded background and auto-centering
 - 👥 **Real-time Collaboration** - Multi-user editing via Liveblocks with live cursors & presence
+- 💬 **Real-time Chat** - Built-in chat sidebar for instant communication within the whiteboard
 - 🔗 **Role-based Sharing** - Generate edit or view-only links so collaborators join with the right permission
 - 🕓 **Version Snapshots** - Manual snapshots plus automatic checkpoints for recovery and review
 - 📊 **Data Visualization** - Built-in ECharts (bar/line/pie), embeddable on canvas
 - 📁 **Export** - PNG/SVG export support
-- ⌨️ **Keyboard Shortcuts** - Ctrl+Z undo / Ctrl+Y redo / Delete remove
+- 🔒 **Object Locking** - Lock/unlock canvas objects to prevent accidental changes
+- 📐 **Alignment Guidelines** - 6-axis smart alignment guides with snap-on-drag
+- 🔗 **Connectors** - Object-to-object lines with anchor snapping and follow movement
+- ⌨️ **Keyboard Shortcuts** - Ctrl+Z undo / Ctrl+Y redo / Delete remove / Ctrl+C/V copy-paste
 
 ### User Experience
 - ✨ **Warm Minimalism & Claymorphism** - Brand new soft glass UI aesthetic with breathable shadows and organic shapes, eliminating high-contrast eye strain.
@@ -102,7 +107,7 @@ The Playwright suite now runs against local mock auth/collaboration services by 
 ```
 src/
 ├── components/          # Reusable components
-│   ├── Canvas/          # Canvas core (CanvasBoardInner, LiveblocksRoom)
+│   ├── Canvas/          # Canvas core (CanvasBoardInner, LiveblocksRoom, ChatSidebar)
 │   └── Charts/          # Chart components (ChartWidget)
 ├── features/            # Feature modules
 │   ├── auth/            # Authentication (Login/Register)
@@ -111,11 +116,14 @@ src/
 ├── stores/              # Zustand state management
 │   ├── authStore.ts     # Auth state
 │   ├── boardStore.ts    # Board data
+│   ├── boardHistoryStore.ts  # Version snapshots
+│   ├── boardLibraryStore.ts  # Favorites & recent visits
 │   ├── settingsStore.ts # User settings
 │   └── languageStore.ts # i18n
-├── lib/                 # Utilities (Supabase Client)
+├── lib/                 # Utilities (Supabase Client, boardUtils, runtimeConfig)
 ├── styles/              # Global styles
-└── types/               # TypeScript definitions
+├── types/               # TypeScript definitions
+└── tests/               # Unit tests
 e2e/                     # E2E tests
 ```
 
@@ -133,11 +141,13 @@ e2e/                     # E2E tests
 - **Data Compression** - LZString chunked storage (5×80KB)
 - **Unified Save Pipeline** - Fewer duplicate serializations, thumbnail updates, and persistence writes
 - **State Selectors** - Precise Zustand subscriptions
+- **Thumbnail Delay** - 600ms delayed thumbnail generation to avoid frequent captures
 
 ### Real-time Collaboration
-- **Liveblocks Storage** - Chunked canvas data sync
+- **Liveblocks Storage** - Chunked canvas data sync + chat messages
 - **Loop Prevention** - Remote update flag to prevent infinite cycles
 - **Optimistic UI** - Instant local updates + async sync
+- **Mock Fallback** - E2E tests use local mock mode, no real credentials needed
 
 ## 📄 License
 

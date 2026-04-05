@@ -17,12 +17,17 @@
 
 ### 核心功能
 - 🎨 **白板绘制** - 自由绘画、形状（矩形/圆形/直线）与文本编辑
+- 📝 **便签工具** - 支持双击编辑的便签，带圆角背景与自动居中
 - 👥 **实时协作** - 基于 Liveblocks 的多用户同时编辑，实时光标与在线状态
-- 🔗 **角色化分享** - 生成“可编辑 / 只读”两种分享链接，邀请好友按权限加入协作
+- 💬 **实时聊天** - 内置聊天侧边栏，协作者可在白板内即时沟通
+- 🔗 **角色化分享** - 生成"可编辑 / 只读"两种分享链接，邀请好友按权限加入协作
 - 🕓 **版本快照** - 支持手动保存快照与自动快照，便于回看与恢复关键节点
 - 📊 **数据可视化** - 内置 ECharts 图表（柱状图/折线图/饼图），可添加到画布
 - 📁 **文件导出** - 支持 PNG/SVG 格式导出
-- ⌨️ **键盘快捷键** - Ctrl+Z 撤销 / Ctrl+Y 重做 / Delete 删除
+- 🔒 **对象锁定** - 锁定/解锁画布对象，防止误操作
+- 📐 **对齐辅助线** - 6轴智能对齐辅助线，拖拽时自动吸附
+- 🔗 **连接器** - 对象间连接线，支持锚点吸附与跟随移动
+- ⌨️ **键盘快捷键** - Ctrl+Z 撤销 / Ctrl+Y 重做 / Delete 删除 / Ctrl+C/V 复制粘贴
 
 ### 用户体验
 - ✨ **Warm Minimalism & Claymorphism** - 全新温润极简态设计，呼吸感阴影与柔和玻璃拟态，打破高反差疲劳
@@ -102,7 +107,7 @@ npm run test:e2e     # 运行 E2E 测试
 ```
 src/
 ├── components/          # 可复用组件
-│   ├── Canvas/          # 画布核心组件 (CanvasBoardInner, LiveblocksRoom)
+│   ├── Canvas/          # 画布核心组件 (CanvasBoardInner, LiveblocksRoom, ChatSidebar)
 │   └── Charts/          # 图表组件 (ChartWidget)
 ├── features/            # 功能模块
 │   ├── auth/            # 用户认证 (登录/注册)
@@ -111,11 +116,14 @@ src/
 ├── stores/              # Zustand 状态管理
 │   ├── authStore.ts     # 认证状态
 │   ├── boardStore.ts    # 白板数据
+│   ├── boardHistoryStore.ts  # 版本快照
+│   ├── boardLibraryStore.ts  # 收藏与最近访问
 │   ├── settingsStore.ts # 用户设置
 │   └── languageStore.ts # 多语言
-├── lib/                 # 工具库 (Supabase Client)
+├── lib/                 # 工具库 (Supabase Client, boardUtils, runtimeConfig)
 ├── styles/              # 全局样式
-└── types/               # TypeScript 类型定义
+├── types/               # TypeScript 类型定义
+└── tests/               # 单元测试
 e2e/                     # E2E 测试
 ```
 
@@ -133,11 +141,13 @@ e2e/                     # E2E 测试
 - **数据压缩** - LZString 压缩画布数据，分块存储（5×80KB）
 - **统一保存链路** - 减少重复序列化、缩略图生成与持久化写入
 - **状态选择器** - Zustand 精确订阅
+- **缩略图延迟** - 600ms 延迟生成，避免频繁截图
 
 ### 实时协作架构
-- **Liveblocks Storage** - 画布数据分块同步
+- **Liveblocks Storage** - 画布数据分块同步 + 聊天消息
 - **Loop Prevention** - 远程更新标记防止无限循环
 - **Optimistic UI** - 本地即时响应 + 异步同步
+- **Mock Fallback** - E2E 测试使用本地 mock 模式，无需真实凭证
 
 ## 📄 License
 

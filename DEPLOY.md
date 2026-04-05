@@ -1,59 +1,113 @@
-# Vercel 部署指南
+# CollabBoard 部署指南
 
-本指南将指导你如何将 CollabBoard 部署到 Vercel 平台。由于 `.env` 文件通常不会被提交到代码仓库，你需要手动配置环境变量。
+## 方式一：Cloudflare Pages（推荐，当前生产环境）
 
-## 1. 安装与登录
+### 1. 连接 GitHub 仓库
 
-在项目根目录下打开终端（PowerShell 或 CMD），运行以下命令：
+1. 登录 [Cloudflare Dashboard](https://dash.cloudflare.com/)
+2. 进入 **Workers & Pages** → **Create Application** → **Pages**
+3. 选择 **Connect to Git**，选择 `collabboard` 仓库
+4. 构建设置：
+   - **Framework preset**: Vite
+   - **Build command**: `npm run build`
+   - **Build output directory**: `dist`
+   - **Node.js compatibility**: 启用
+
+### 2. 配置环境变量
+
+在 Cloudflare Pages 项目设置 → **Environment variables** 中添加：
+
+| Key | Value | 说明 |
+|-----|-------|------|
+| `VITE_SUPABASE_URL` | `https://xxx.supabase.co` | Supabase 项目 URL |
+| `VITE_SUPABASE_ANON_KEY` | `eyJ...` | Supabase 匿名 Key |
+| `VITE_LIVEBLOCKS_PUBLIC_KEY` | `pk_live_...` 或 `pk_dev_...` | Liveblocks 公钥 |
+
+### 3. 部署
+
+每次推送到 `main` 分支会自动触发构建部署。
+
+---
+
+## 方式二：Vercel
+
+### 1. 安装与登录
 
 ```bash
-# 1. 登录 Vercel CLI
 npx vercel login
 ```
 
-*系统会通过浏览器引导你完成登录（支持 GitHub/GitLab/Email）。*
-
-## 2. 初始化部署
-
-登录成功后，运行部署命令：
+### 2. 初始化部署
 
 ```bash
-# 2. 开始部署
 npx vercel
 ```
 
-CLI 会询问一系列问题，全选默认即可（按 Enter）：
-
+按提示操作（全部默认即可）：
 - `Set up and deploy?` **[Y]**
-- `Which scope do you want to deploy to?` **[你的用户名]**
+- `Which scope?` **[你的用户名]**
 - `Link to existing project?` **[N]**
-- `What’s your project’s name?` **[collabboard]**
-- `In which directory is your code located?` **[./]**
-- `Want to modify these settings?` **[N]**
+- `Project name?` **[collabboard]**
+- `Code location?` **[./]**
+- `Modify settings?` **[N]**
 
-等待构建完成，你将获得一个 `Production` 网址（如 `https://collabboard-xyz.vercel.app`）。
+### 3. ⚠️ 配置环境变量
 
-## 3. ⚠️ 关键步骤：配置环境变量
+在 Vercel 控制台 → 项目 → **Settings** → **Environment Variables** 添加：
 
-**这是最重要的一步。** 默认部署后，实时协作功能会失效，因为云端没有配置 API Key。
+| Key | Value | 说明 |
+|-----|-------|------|
+| `VITE_SUPABASE_URL` | `https://xxx.supabase.co` | Supabase 项目 URL |
+| `VITE_SUPABASE_ANON_KEY` | `eyJ...` | Supabase 匿名 Key |
+| `VITE_LIVEBLOCKS_PUBLIC_KEY` | `pk_live_...` 或 `pk_dev_...` | Liveblocks 公钥 |
 
-1. 访问 Vercel 控制台: https://vercel.com/dashboard
-2. 找到刚才创建的 **collabboard** 项目。
-3. 进入 **Settings** -> **Environment Variables**。
-4. 添加以下变量：
-   - **Key**: `VITE_LIVEBLOCKS_PUBLIC_KEY`
-   - **Value**: (复制你 `.env` 文件中的 `pk_live_...` 或 `pk_dev_...` 值)
-5. 点击 **Save**。
-
-## 4. 重新部署生效
-
-配置完环境变量后，需要重新部署才能生效：
+### 4. 重新部署
 
 ```bash
-# 触发生产环境重新部署
 npx vercel --prod
 ```
 
-## 5. 完成 ✅
+---
 
-现在访问你的 Vercel 网址，实时协作白板应该可以正常工作了！
+## 方式三：本地预览
+
+```bash
+npm run build
+npm run preview
+```
+
+## Supabase 数据库设置
+
+项目依赖 Supabase 的以下表结构：
+
+### `profiles` 表
+
+| Column | Type | 说明 |
+|--------|------|------|
+| `id` | UUID | 主键，关联 auth.users |
+| `username` | TEXT | 用户名 |
+| `avatar_url` | TEXT | 头像 URL |
+| `created_at` | TIMESTAMPTZ | 创建时间 |
+
+### `boards` 表
+
+| Column | Type | 说明 |
+|--------|------|------|
+| `id` | UUID | 主键 |
+| `name` | TEXT | 白板名称 |
+| `owner_id` | UUID | 所有者 ID |
+| `data` | TEXT | 画布数据（压缩后） |
+| `created_at` | TIMESTAMPTZ | 创建时间 |
+| `updated_at` | TIMESTAMPTZ | 更新时间 |
+
+### `shared_boards` 表
+
+| Column | Type | 说明 |
+|--------|------|------|
+| `id` | UUID | 主键 |
+| `board_id` | UUID | 关联 boards.id |
+| `user_id` | UUID | 共享用户 ID |
+| `role` | TEXT | `editor` 或 `viewer` |
+| `created_at` | TIMESTAMPTZ | 创建时间 |
+
+> 建议在 Supabase 中启用 RLS（Row Level Security）策略，确保用户只能访问自己的白板和被共享的白板。

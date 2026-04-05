@@ -51,6 +51,8 @@ import { createStickyNote, findNearestAnchor, getAnchorPoints, handleStickyNoteD
 import { CircularSlider } from './CircularSlider';
 import { LiveblocksCursors } from './LiveblocksCursors';
 import { VersionHistoryModal } from './VersionHistoryModal';
+import { ChatSidebar } from './ChatSidebar';
+import { ShortcutsPanel } from './ShortcutsPanel';
 import styles from './CanvasBoard.module.css';
 import type { Board, BoardRole, BoardSnapshot } from '@/types';
 
@@ -1942,6 +1944,9 @@ const CanvasBoardInner: React.FC = () => {
                 onDeleteSnapshot={handleDeleteSnapshot}
                 onRestoreSnapshot={handleRestoreSnapshot}
             />
+
+            <ChatSidebar />
+            <ShortcutsPanel />
         </Layout>
     );
 };

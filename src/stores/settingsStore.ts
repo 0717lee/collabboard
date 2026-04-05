@@ -1,11 +1,9 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { UserSettings, Theme } from '@/types';
+import type { UserSettings } from '@/types';
 
 interface SettingsState {
     settings: UserSettings;
-    updateTheme: (theme: Partial<Theme>) => void;
-    toggleTheme: () => void;
     updateSettings: (settings: Partial<UserSettings>) => void;
     resetSettings: () => void;
 }
@@ -25,27 +23,6 @@ export const useSettingsStore = create<SettingsState>()(
         (set) => ({
             settings: defaultSettings,
 
-            updateTheme: (theme: Partial<Theme>) => {
-                set((state) => ({
-                    settings: {
-                        ...state.settings,
-                        theme: { ...state.settings.theme, ...theme },
-                    },
-                }));
-            },
-
-            toggleTheme: () => {
-                set((state) => ({
-                    settings: {
-                        ...state.settings,
-                        theme: {
-                            ...state.settings.theme,
-                            mode: state.settings.theme.mode === 'light' ? 'dark' : 'light',
-                        },
-                    },
-                }));
-            },
-
             updateSettings: (newSettings: Partial<UserSettings>) => {
                 set((state) => ({
                     settings: { ...state.settings, ...newSettings },
@@ -60,7 +37,6 @@ export const useSettingsStore = create<SettingsState>()(
             name: 'settings-storage',
             version: 1,
             migrate: (persistedState: unknown, version: number) => {
-                // Future-proof migration for settings store
                 if (version === 0) {
                     return persistedState as SettingsState;
                 }

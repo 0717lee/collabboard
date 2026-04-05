@@ -23,6 +23,7 @@ test_log.txt
 tracked_files.tmp
 task_plan.md
 task.md
+update_colors_v9.mjs
 
 node_modules
 dist

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+    createStickyNote,
     handleStickyNoteDoubleClick,
     reassembleDetachedStickyNotes,
 } from '@/components/Canvas/canvasUtils';
@@ -100,6 +101,39 @@ const createCanvasMock = () => {
 };
 
 describe('canvasUtils sticky note reassembly', () => {
+    it('creates sticky notes centered on the pointer position', () => {
+        class RectMock {
+            constructor(config: Record<string, unknown>) {
+                Object.assign(this, config);
+            }
+        }
+
+        class ITextMock {
+            constructor(_text: string, config: Record<string, unknown>) {
+                Object.assign(this, config);
+            }
+        }
+
+        class GroupMock {
+            constructor(objects: unknown[], config: Record<string, unknown>) {
+                Object.assign(this, config);
+                (this as Record<string, unknown>)._objects = objects;
+            }
+        }
+
+        const stickyNote = createStickyNote(
+            { Rect: RectMock, IText: ITextMock, Group: GroupMock },
+            320,
+            240,
+            '#FFF3A3'
+        ) as Record<string, unknown>;
+
+        expect(stickyNote.left).toBe(320);
+        expect(stickyNote.top).toBe(240);
+        expect(stickyNote.originX).toBe('center');
+        expect(stickyNote.originY).toBe('center');
+    });
+
     it('restores sticky note text to non-selectable state after editing ends and refreshes selection', () => {
         const canvas = createCanvasMock();
         const selectionUpdated = vi.fn();
@@ -150,6 +184,49 @@ describe('canvasUtils sticky note reassembly', () => {
         expect(text.evented).toBe(false);
         expect(text.editable).toBe(true);
         expect(selectionUpdated).toHaveBeenCalledTimes(1);
+    });
+
+    it('skips the mouseup fallback when sticky note editing is opened programmatically', () => {
+        const canvas = createCanvasMock();
+
+        const rect = createFabricObject({ type: 'rect', setCoords: vi.fn() });
+        const text = createFabricObject({
+            type: 'i-text',
+            selectable: false,
+            evented: false,
+            editable: true,
+            data: { id: 'sticky-text-3' },
+            enterEditing: vi.fn(function (this: FabricLikeObject) {
+                this.isEditing = true;
+            }),
+            selectAll: vi.fn(),
+            getAbsoluteCenterPoint: () => ({ x: 180, y: 220 }),
+        });
+        const stickyNote = createFabricObject({
+            type: 'group',
+            left: 180,
+            top: 220,
+            originX: 'center',
+            originY: 'center',
+            data: { id: 'sticky-3', type: 'stickyNote' },
+            _objects: [rect, text],
+            setCoords: vi.fn(),
+            remove(object) {
+                this._objects = this._objects?.filter((candidate) => candidate !== object);
+            },
+            add(object) {
+                this._objects = [...(this._objects ?? []), object];
+            },
+        });
+
+        const canvasOnSpy = vi.spyOn(canvas, 'on');
+        canvas.add(stickyNote);
+
+        handleStickyNoteDoubleClick(canvas, { target: stickyNote }, undefined, {
+            skipMouseUpFallback: true,
+        });
+
+        expect(canvasOnSpy).not.toHaveBeenCalledWith('mouse:up', expect.any(Function));
     });
 
     it('restores detached sticky note text to non-selectable state during safety reassembly', () => {

@@ -1127,19 +1127,23 @@ const CanvasBoardInner: React.FC = () => {
             if (!object.data) object.data = {};
             if (!object.data.id) object.data.id = `obj-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
 
+            canvas.discardActiveObject();
             canvas.add(object);
             if (activeTool === 'stickyNote') {
                 // Switch to select first, then trigger editing via double-click handler
                 setActiveTool('select');
                 canvas.setActiveObject(object);
                 canvas.requestRenderAll();
+                syncSelectionState(canvas);
                 // Use a microtask to let the tool switch settle, then open editing
-                queueMicrotask(() => {
+                setTimeout(() => {
                     handleStickyNoteDoubleClick(canvas, { target: object }, () => {
                         isCommittingStickyTextRef.current = true;
                         processLocalCanvasChangeRef.current();
+                    }, {
+                        skipMouseUpFallback: true,
                     });
-                });
+                }, 0);
             } else if (activeTool !== 'line' || !isDrawingLineRef.current) {
                 canvas.setActiveObject(object);
                 setActiveTool('select');

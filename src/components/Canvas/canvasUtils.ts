@@ -59,6 +59,8 @@ export const createStickyNote = (f: any, x: number, y: number, color: string = '
     return new f.Group([rect, text], {
         left: x,
         top: y,
+        originX: 'center',
+        originY: 'center',
         data: { stickyNote: true, type: 'stickyNote' },
         subTargetCheck: true,
         interactive: true,
@@ -292,7 +294,12 @@ const restoreStickyNoteTextToGroup = (textObj: any, stickyNoteId: string) => {
     });
 };
 
-export const handleStickyNoteDoubleClick = (canvas: any, opt: any, onEditCommitted?: () => void) => {
+export const handleStickyNoteDoubleClick = (
+    canvas: any,
+    opt: any,
+    onEditCommitted?: () => void,
+    options?: { skipMouseUpFallback?: boolean }
+) => {
     const target = opt.target;
     if (target && target.data?.type === 'stickyNote') {
         const textObj = target._objects?.find((obj: any) => obj.type === 'i-text' || obj.type === 'text');
@@ -385,14 +392,16 @@ export const handleStickyNoteDoubleClick = (canvas: any, opt: any, onEditCommitt
 
         // Safety: also listen for mouse:up outside editing to catch cases
         // where editing is exited without the event firing properly
-        const onMouseUpHandler = () => {
-            if ((canvas as any).__stickyNoteEditingText && textObj && !textObj.isEditing) {
-                canvas.off('mouse:up', onMouseUpHandler);
-                textObj.off('editing:exited', onEditingExit);
-                reassembleStickyNote();
-            }
-        };
-        canvas.on('mouse:up', onMouseUpHandler);
+        if (!options?.skipMouseUpFallback) {
+            const onMouseUpHandler = () => {
+                if ((canvas as any).__stickyNoteEditingText && textObj && !textObj.isEditing) {
+                    canvas.off('mouse:up', onMouseUpHandler);
+                    textObj.off('editing:exited', onEditingExit);
+                    reassembleStickyNote();
+                }
+            };
+            canvas.on('mouse:up', onMouseUpHandler);
+        }
     }
 };
 

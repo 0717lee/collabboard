@@ -344,6 +344,7 @@ export const handleStickyNoteDoubleClick = (canvas: any, opt: any, onEditCommitt
         textObj.enterEditing();
         textObj.selectAll();
         canvas.requestRenderAll();
+        canvas.fire?.('selection:cleared');
 
         // When editing is done, put textObj back into the Group
         const reassembleStickyNote = () => {
@@ -369,6 +370,7 @@ export const handleStickyNoteDoubleClick = (canvas: any, opt: any, onEditCommitt
             target.setCoords();
             canvas.setActiveObject(target);
             canvas.requestRenderAll();
+            canvas.fire?.('selection:updated');
             (canvas as any).__stickyNoteEditingText = false;
 
             onEditCommitted?.();
@@ -439,5 +441,6 @@ export const reassembleDetachedStickyNotes = (canvas: any) => {
 
     if (detachedTexts.length > 0) {
         canvas.requestRenderAll();
+        canvas.fire?.('selection:updated');
     }
 };

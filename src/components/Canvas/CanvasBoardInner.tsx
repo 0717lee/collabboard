@@ -149,6 +149,11 @@ const CanvasBoardInner: React.FC = () => {
     const [shareRole, setShareRole] = useState<'editor' | 'viewer'>('editor');
     const [selectedObjectCount, setSelectedObjectCount] = useState(0);
 
+    const syncSelectionState = useCallback((canvas?: any) => {
+        const targetCanvas = canvas ?? fabricRef.current;
+        setSelectedObjectCount(targetCanvas ? targetCanvas.getActiveObjects().length : 0);
+    }, []);
+
     const historyRef = useRef<HistoryState>({ past: [], future: [] });
     const presentStateRef = useRef('');
     const latestSerializedRef = useRef('');
@@ -667,7 +672,7 @@ const CanvasBoardInner: React.FC = () => {
             processLocalCanvasChangeRef.current();
         };
         const updateSelectionState = () => {
-            setSelectedObjectCount(canvas.getActiveObjects().length);
+            syncSelectionState(canvas);
         };
 
         // Panning state
@@ -865,6 +870,7 @@ const CanvasBoardInner: React.FC = () => {
                         canvas.add(img);
                         canvas.setActiveObject(img);
                         canvas.requestRenderAll();
+                        syncSelectionState(canvas);
                         processLocalCanvasChangeRef.current();
                     };
                     reader.readAsDataURL(blob);
@@ -891,6 +897,7 @@ const CanvasBoardInner: React.FC = () => {
                         canvas.add(img);
                         canvas.setActiveObject(img);
                         canvas.requestRenderAll();
+                        syncSelectionState(canvas);
                         processLocalCanvasChangeRef.current();
                     };
                     reader.readAsDataURL(files[i]);
@@ -1136,10 +1143,11 @@ const CanvasBoardInner: React.FC = () => {
             } else if (activeTool !== 'line' || !isDrawingLineRef.current) {
                 canvas.setActiveObject(object);
                 setActiveTool('select');
+                syncSelectionState(canvas);
             }
             canvas.requestRenderAll();
         }
-    }, [activeTool, brushColor, isEn, isReadOnly, settings.snapToGrid, snapCoordinate]);
+    }, [activeTool, brushColor, isEn, isReadOnly, settings.snapToGrid, snapCoordinate, syncSelectionState]);
 
     useEffect(() => {
         const canvas = fabricRef.current;
@@ -1220,9 +1228,10 @@ const CanvasBoardInner: React.FC = () => {
             activeObjects.forEach((object: any) => canvas.remove(object));
             canvas.discardActiveObject();
             canvas.requestRenderAll();
+            syncSelectionState(canvas);
             message.success(isEn ? 'Deleted' : '已删除');
         }
-    }, [isEn, isReadOnly]);
+    }, [isEn, isReadOnly, syncSelectionState]);
 
     const copy = useCallback(async () => {
         const canvas = fabricRef.current;
@@ -1260,9 +1269,10 @@ const CanvasBoardInner: React.FC = () => {
         clipboardRef.current.left += 20;
         canvas.setActiveObject(cloned);
         canvas.requestRenderAll();
+        syncSelectionState(canvas);
         processLocalCanvasChange();
         message.success(isEn ? 'Pasted' : '已粘贴');
-    }, [isEn, isReadOnly, processLocalCanvasChange]);
+    }, [isEn, isReadOnly, processLocalCanvasChange, syncSelectionState]);
     pasteRef.current = paste;
 
     const toggleLock = useCallback(() => {
@@ -1290,9 +1300,10 @@ const CanvasBoardInner: React.FC = () => {
 
         canvas.discardActiveObject();
         canvas.requestRenderAll();
+        syncSelectionState(canvas);
         processLocalCanvasChange();
         message.success(isLocked ? (isEn ? 'Locked' : '已锁定') : (isEn ? 'Unlocked' : '已解锁'));
-    }, [isEn, isReadOnly, processLocalCanvasChange]);
+    }, [isEn, isReadOnly, processLocalCanvasChange, syncSelectionState]);
 
     const bringToFront = useCallback(() => {
         const canvas = fabricRef.current;
@@ -1326,9 +1337,11 @@ const CanvasBoardInner: React.FC = () => {
         if (target) {
             canvas.setActiveObject(target);
             canvas.requestRenderAll();
+            syncSelectionState(canvas);
         } else {
             canvas.discardActiveObject();
             canvas.requestRenderAll();
+            syncSelectionState(canvas);
         }
     };
 
@@ -1340,7 +1353,7 @@ const CanvasBoardInner: React.FC = () => {
             return [
                 { key: 'paste', label: (isEn ? 'Paste' : '粘贴'), icon: <CopyOutlined />, disabled: !clipboardRef.current, onClick: paste },
                 { type: 'divider' as const },
-                { key: 'select-all', label: (isEn ? 'Select All' : '全选'), onClick: () => { if (canvas && fabric) { canvas.setActiveObject(new fabric.ActiveSelection(canvas.getObjects(), { canvas })); canvas.requestRenderAll(); } } },
+                { key: 'select-all', label: (isEn ? 'Select All' : '全选'), onClick: () => { if (canvas && fabric) { canvas.setActiveObject(new fabric.ActiveSelection(canvas.getObjects(), { canvas })); canvas.requestRenderAll(); syncSelectionState(canvas); } } },
             ];
         }
 

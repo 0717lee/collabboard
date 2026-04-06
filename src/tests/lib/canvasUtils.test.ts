@@ -93,12 +93,17 @@ const createCanvasMock = () => {
         off(event: string, handler: () => void) {
             handlers.get(event)?.delete(handler);
         },
+        fire(event: string) {
+            handlers.get(event)?.forEach((handler) => handler());
+        },
     };
 };
 
 describe('canvasUtils sticky note reassembly', () => {
-    it('restores sticky note text to non-selectable state after editing ends', () => {
+    it('restores sticky note text to non-selectable state after editing ends and refreshes selection', () => {
         const canvas = createCanvasMock();
+        const selectionUpdated = vi.fn();
+        canvas.on('selection:updated', selectionUpdated);
         const rect = createFabricObject({ type: 'rect', setCoords: vi.fn() });
         const text = createFabricObject({
             type: 'i-text',
@@ -144,6 +149,7 @@ describe('canvasUtils sticky note reassembly', () => {
         expect(text.selectable).toBe(false);
         expect(text.evented).toBe(false);
         expect(text.editable).toBe(true);
+        expect(selectionUpdated).toHaveBeenCalledTimes(1);
     });
 
     it('restores detached sticky note text to non-selectable state during safety reassembly', () => {

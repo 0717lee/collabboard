@@ -463,6 +463,17 @@ const DashboardPage: React.FC = () => {
             </Header>
 
             <Content className={styles.content}>
+                <div className={styles.mobileSearch}>
+                    <Input
+                        placeholder={isEn ? 'Search boards...' : '搜索白板...'}
+                        prefix={<SearchOutlined />}
+                        value={searchQuery}
+                        onChange={(event) => setSearchQuery(event.target.value)}
+                        className={styles.searchInput}
+                        allowClear
+                    />
+                </div>
+
                 <div className={styles.contentHeader}>
                     <div>
                         <Title level={2} className={styles.pageTitle}>

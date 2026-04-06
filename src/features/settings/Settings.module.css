@@ -1,9 +1,9 @@
-.settingsLayout { min-height: 100vh; background: transparent; padding-bottom: 40px; }
+.settingsLayout { min-height: 100vh; min-height: 100dvh; background: transparent; padding-bottom: calc(40px + env(safe-area-inset-bottom)); }
 
 /* Floating Glass Header */
 .header {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 0 24px; margin: 16px 24px 32px 24px; height: 72px;
+    padding: 0 24px; margin: max(16px, env(safe-area-inset-top)) 24px 32px 24px; height: 72px;
     background: var(--glass-bg); backdrop-filter: var(--glass-backdrop); -webkit-backdrop-filter: var(--glass-backdrop);
     border: var(--glass-border); box-shadow: var(--glass-shadow); border-radius: 20px;
     position: sticky; top: 16px; z-index: 100; transition: all 0.3s ease;
@@ -136,18 +136,17 @@
     color: #94a3b8;
 }
 
-/* Mobile responsive */
-@media (max-width: 600px) {
+@media (max-width: 900px) {
     .header {
-        margin: 0;
-        border-radius: 0;
-        top: 0;
-        padding: 0 16px;
-        height: 60px;
+        margin-inline: 18px;
+        padding: 0 18px;
+        height: 68px;
+        border-radius: 18px;
     }
 
     .content {
-        padding: 16px;
+        padding: 0 18px;
+        max-width: 100%;
     }
 
     .settingItem {
@@ -158,6 +157,25 @@
 
     .settingSelect {
         width: 100%;
+    }
+
+    .settingCard :global(.ant-card-body) {
+        padding: 22px;
+    }
+}
+
+/* Mobile responsive */
+@media (max-width: 600px) {
+    .header {
+        margin: max(8px, env(safe-area-inset-top)) 12px 20px;
+        border-radius: 20px;
+        top: max(8px, env(safe-area-inset-top));
+        padding: 0 16px;
+        height: 60px;
+    }
+
+    .content {
+        padding: 0 12px;
     }
 
     .settingCard :global(.ant-card-body) {
@@ -172,12 +190,12 @@
 /* Phone portrait responsive */
 @media (max-width: 480px) {
     .header {
-        height: 52px;
+        min-height: 52px;
         padding: 0 12px;
     }
 
     .content {
-        padding: 12px;
+        padding: 0 8px;
     }
 
     .settingCard :global(.ant-card-body) {

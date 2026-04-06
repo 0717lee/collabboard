@@ -1,5 +1,6 @@
 .dashboardLayout {
     min-height: 100vh;
+    min-height: 100dvh;
     padding-bottom: calc(40px + env(safe-area-inset-bottom));
     background: transparent;
 }
@@ -11,7 +12,7 @@
     justify-content: space-between;
     padding: 0 32px;
     /* more breathing room */
-    margin: 24px 32px 40px 32px;
+    margin: max(20px, env(safe-area-inset-top)) 32px 40px 32px;
     height: 80px;
     /* Taller */
     background: var(--glass-bg);
@@ -58,6 +59,10 @@
     flex: 1;
     max-width: 540px;
     margin: 0 40px;
+}
+
+.mobileSearch {
+    display: none;
 }
 
 .searchInput {
@@ -427,17 +432,29 @@
     }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
     .header {
-        margin: 0;
-        border-radius: 0;
-        top: 0;
-        padding: 0 20px;
-        height: 64px;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 12px;
+        height: auto;
+        min-height: 72px;
+        padding: 14px 18px;
+        margin: max(14px, env(safe-area-inset-top)) 20px 28px 20px;
+        border-radius: 26px;
     }
 
     .headerCenter {
         display: none;
+    }
+
+    .mobileSearch {
+        display: block;
+        margin-bottom: 20px;
+    }
+
+    .headerRight {
+        gap: 10px;
     }
 
     .userName {
@@ -452,6 +469,7 @@
         flex-direction: column;
         gap: 16px;
         align-items: flex-start;
+        margin-bottom: 32px;
     }
 
     .sectionHeader {
@@ -462,6 +480,37 @@
 
     .createButton {
         width: 100%;
+    }
+
+    .boardGrid {
+        grid-template-columns: 1fr;
+        gap: 24px;
+    }
+}
+
+@media (max-width: 768px) {
+    .header {
+        top: max(8px, env(safe-area-inset-top));
+        margin: 0 12px 20px;
+        border-radius: 24px;
+        padding: 12px 14px;
+        min-height: 64px;
+    }
+
+    .content {
+        padding: 0 16px;
+    }
+
+    .contentHeader {
+        margin-bottom: 28px;
+    }
+
+    .pageTitle {
+        font-size: 24px !important;
+    }
+
+    .mobileSearch {
+        margin-bottom: 16px;
     }
 
     .createModal :global(.ant-modal) {
@@ -481,9 +530,10 @@
 
 @media (max-width: 480px) {
     .header {
-        padding: 0 16px;
-        height: 56px;
-        margin: 0;
+        top: max(8px, env(safe-area-inset-top));
+        margin: 0 8px 16px;
+        min-height: 56px;
+        padding: 10px 12px;
     }
 
     .logoText {
@@ -492,6 +542,10 @@
 
     .content {
         padding: 0 16px;
+    }
+
+    .mobileSearch {
+        margin-bottom: 14px;
     }
 
     .contentHeader {
@@ -510,6 +564,10 @@
 
     .boardGrid {
         gap: 20px;
+    }
+
+    .boardThumbnail {
+        height: 168px;
     }
 
     .boardCard :global(.ant-card-body) {

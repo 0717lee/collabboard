@@ -195,6 +195,12 @@
     padding: 4px 8px;
 }
 
+:global(#liveblocks-badge) {
+    right: 16px !important;
+    left: auto !important;
+    bottom: calc(18px + env(safe-area-inset-bottom)) !important;
+}
+
 .zoomText {
     min-width: 54px;
     text-align: center;
@@ -769,6 +775,177 @@
     box-shadow: 0 0 0 4px rgba(107, 128, 104, 0.15);
 }
 
+@media (max-width: 1100px) {
+    .header {
+        top: 14px;
+        left: 14px;
+        right: 14px;
+        padding: 10px 14px;
+        min-height: 60px;
+        height: auto;
+        gap: 12px;
+        border-radius: 28px;
+    }
+
+    .headerCenter {
+        display: none;
+    }
+
+    .mobileActionsToggle {
+        display: flex !important;
+    }
+
+    .headerRight {
+        margin-left: auto;
+        gap: 10px;
+    }
+
+    .collaborators,
+    .readOnlyBadge {
+        display: none;
+    }
+
+    .boardName {
+        max-width: min(42vw, 260px);
+        padding: 7px 12px;
+        font-size: 14px;
+    }
+
+    .inviteButton {
+        width: 42px;
+        min-width: 42px;
+        height: 42px;
+        padding: 0 !important;
+        justify-content: center;
+    }
+
+    .inviteButton :global(.ant-btn-icon + span) {
+        display: none;
+    }
+
+    .toolbar {
+        top: auto;
+        left: 50%;
+        bottom: calc(16px + env(safe-area-inset-bottom));
+        transform: translateX(-50%);
+        width: calc(100% - 28px) !important;
+        max-width: 720px !important;
+        min-width: 0 !important;
+        flex: none !important;
+        padding: 10px 14px;
+        gap: 0;
+        border-radius: 30px;
+    }
+
+    .toolbar :global(.ant-layout-sider-children) {
+        flex-direction: row;
+        justify-content: flex-start;
+        width: 100%;
+        overflow-x: auto;
+        gap: 10px;
+        padding-bottom: 2px;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+
+    .toolbar :global(.ant-layout-sider-children::-webkit-scrollbar) {
+        display: none;
+    }
+
+    .toolDivider {
+        width: 1px;
+        height: 24px;
+        margin: 0 2px;
+        flex-shrink: 0;
+    }
+
+    .colorControls {
+        margin-top: 0;
+        flex-direction: row;
+        gap: 10px;
+        flex-shrink: 0;
+    }
+
+    .brushWidth {
+        margin-top: 0;
+    }
+
+    .zoomControls {
+        position: fixed;
+        right: 16px;
+        bottom: calc(102px + env(safe-area-inset-bottom));
+        z-index: 110;
+        background: var(--glass-bg);
+        backdrop-filter: var(--glass-backdrop);
+        -webkit-backdrop-filter: var(--glass-backdrop);
+        border: var(--glass-border);
+        box-shadow: var(--glass-shadow);
+    }
+
+    :global(#liveblocks-badge) {
+        right: 16px !important;
+        left: auto !important;
+        bottom: calc(156px + env(safe-area-inset-bottom)) !important;
+    }
+
+    .canvasNotice {
+        top: 84px;
+        width: calc(100% - 28px);
+    }
+
+    .chartModal :global(.ant-modal),
+    .inviteModal :global(.ant-modal),
+    .versionModal :global(.ant-modal) {
+        width: calc(100vw - 28px) !important;
+        max-width: calc(100vw - 28px) !important;
+        margin: 0 auto;
+    }
+
+    .chartModal :global(.ant-modal-content),
+    .inviteModal :global(.ant-modal-content),
+    .versionModal :global(.ant-modal-content) {
+        padding: 20px 16px !important;
+        border-radius: 28px;
+    }
+
+    .shareSection,
+    .collaboratorsList {
+        padding: 18px;
+    }
+
+    .shareInputGroup {
+        flex-direction: column;
+    }
+
+    .shareInput,
+    .copyButton {
+        width: 100%;
+    }
+
+    .versionToolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .versionItem {
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .versionItem :global(.ant-list-item-action) {
+        margin-inline-start: 0;
+        width: 100%;
+        display: flex;
+        justify-content: flex-end;
+    }
+
+    .versionBody {
+        padding-left: 0;
+        min-width: 0;
+        flex: 1;
+    }
+}
+
 @media (max-width: 768px) {
     .header {
         top: 12px;
@@ -877,9 +1054,9 @@
     }
 
     :global(#liveblocks-badge) {
-        left: 12px !important;
-        right: auto !important;
-        bottom: calc(86px + env(safe-area-inset-bottom)) !important;
+        right: 16px !important;
+        left: auto !important;
+        bottom: calc(148px + env(safe-area-inset-bottom)) !important;
     }
 
     .canvasNotice {
@@ -1001,9 +1178,9 @@
     }
 
     :global(#liveblocks-badge) {
-        left: 10px !important;
-        right: auto !important;
-        bottom: calc(80px + env(safe-area-inset-bottom)) !important;
+        right: 12px !important;
+        left: auto !important;
+        bottom: calc(128px + env(safe-area-inset-bottom)) !important;
     }
 
     .canvasNotice {

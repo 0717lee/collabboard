@@ -11,7 +11,10 @@
    - **Framework preset**: Vite
    - **Build command**: `npm run build`
    - **Build output directory**: `dist`
-   - **Node.js compatibility**: 启用
+   - **Node.js version**: `22.16.0`
+
+> 仓库已通过 `.node-version` 固定 Cloudflare Pages 的构建 Node 版本。
+> Cloudflare Pages 在没有顶层 `404.html` 时会自动按 SPA 方式回退到根入口，因此不需要额外维护 `public/200.html`。
 
 ### 2. 配置环境变量
 
@@ -51,6 +54,8 @@ npx vercel
 - `Code location?` **[./]**
 - `Modify settings?` **[N]**
 
+然后在 **Settings → General → Node.js Version** 中确认项目使用 `22.x`。
+
 ### 3. ⚠️ 配置环境变量
 
 在 Vercel 控制台 → 项目 → **Settings** → **Environment Variables** 添加：
@@ -65,6 +70,12 @@ npx vercel
 
 ```bash
 npx vercel --prod
+```
+
+如果本地 `.vercel/project.json` 指向了旧项目，先运行：
+
+```bash
+npx vercel link
 ```
 
 ---

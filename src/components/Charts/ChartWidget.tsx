@@ -13,17 +13,17 @@ interface ChartWidgetProps {
 
 export const ChartWidget: React.FC<ChartWidgetProps> = ({ isEn, onAdd }) => {
     const [chartType, setChartType] = useState<'bar' | 'line' | 'pie'>('bar');
-    const [chartTitle, setChartTitle] = useState('示例图表');
-    const [themeColor, setThemeColor] = useState<string>('#6B8068'); // Default Sage Green
+    const [chartTitle, setChartTitle] = useState(isEn ? 'Sample Chart' : '示例图表');
+    const [themeColor, setThemeColor] = useState<string>('#6B8068');
     const [isChartReady, setIsChartReady] = useState(false);
     const [isAdding, setIsAdding] = useState(false);
     const chartInstanceRef = useRef<EChartsInstance | null>(null);
     const [dataPoints, setDataPoints] = useState([
-        { label: '一月', value: 120 },
-        { label: '二月', value: 200 },
-        { label: '三月', value: 150 },
-        { label: '四月', value: 80 },
-        { label: '五月', value: 170 },
+        { label: isEn ? 'Jan' : '一月', value: 120 },
+        { label: isEn ? 'Feb' : '二月', value: 200 },
+        { label: isEn ? 'Mar' : '三月', value: 150 },
+        { label: isEn ? 'Apr' : '四月', value: 80 },
+        { label: isEn ? 'May' : '五月', value: 170 },
     ]);
 
     const colors = [
@@ -120,7 +120,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({ isEn, onAdd }) => {
     };
 
     const addDataPoint = () => {
-        setDataPoints([...dataPoints, { label: `项目${dataPoints.length + 1}`, value: 100 }]);
+        setDataPoints([...dataPoints, { label: isEn ? `Item ${dataPoints.length + 1}` : `项目${dataPoints.length + 1}`, value: 100 }]);
     };
 
     const removeDataPoint = (index: number) => {
@@ -177,30 +177,30 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({ isEn, onAdd }) => {
 
             <div className={styles.editor}>
                 <div className={styles.formRow}>
-                    <label>图表类型</label>
+                    <label>{isEn ? 'Chart Type' : '图表类型'}</label>
                     <Segmented
                         value={chartType}
                         onChange={(val) => setChartType(val as 'bar' | 'line' | 'pie')}
                         options={[
-                            { label: '柱状图', value: 'bar' },
-                            { label: '折线图', value: 'line' },
-                            { label: '饼图', value: 'pie' },
+                            { label: isEn ? 'Bar' : '柱状图', value: 'bar' },
+                            { label: isEn ? 'Line' : '折线图', value: 'line' },
+                            { label: isEn ? 'Pie' : '饼图', value: 'pie' },
                         ]}
                         block
                     />
                 </div>
 
                 <div className={styles.formRow}>
-                    <label>标题</label>
+                    <label>{isEn ? 'Title' : '标题'}</label>
                     <Input
                         value={chartTitle}
                         onChange={(e) => setChartTitle(e.target.value)}
-                        placeholder="图表标题"
+                        placeholder={isEn ? 'Chart title' : '图表标题'}
                     />
                 </div>
 
                 <div className={styles.formRow}>
-                    <label>主题颜色</label>
+                    <label>{isEn ? 'Theme Color' : '主题颜色'}</label>
                     <div className={styles.colorPalette}>
                         {['#6B8068', '#8B795E', '#C2A38F', '#8EB4B1', '#B4A29A', '#D08C60'].map(c => (
                             <button
@@ -212,7 +212,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({ isEn, onAdd }) => {
                                     backgroundColor: c,
                                     borderColor: themeColor === c ? 'rgba(66, 62, 58, 0.75)' : 'transparent',
                                 }}
-                                aria-label={`选择颜色 ${c}`}
+                                aria-label={isEn ? `Select color ${c}` : `选择颜色 ${c}`}
                             />
                         ))}
                     </div>
@@ -220,14 +220,14 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({ isEn, onAdd }) => {
 
                 <div className={styles.dataSection}>
                     <div className={styles.dataHeader}>
-                        <span>数据</span>
+                        <span>{isEn ? 'Data' : '数据'}</span>
                         <Button
                             type="link"
                             icon={<PlusOutlined />}
                             onClick={addDataPoint}
                             size="small"
                         >
-                            添加
+                            {isEn ? 'Add' : '添加'}
                         </Button>
                     </div>
 
@@ -237,13 +237,13 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({ isEn, onAdd }) => {
                                 <Input
                                     value={point.label}
                                     onChange={(e) => updateDataPoint(index, 'label', e.target.value)}
-                                    placeholder="标签"
+                                    placeholder={isEn ? 'Label' : '标签'}
                                     className={styles.dataLabelInput}
                                 />
                                 <InputNumber
                                     value={point.value}
                                     onChange={(val) => updateDataPoint(index, 'value', val || 0)}
-                                    placeholder="数值"
+                                    placeholder={isEn ? 'Value' : '数值'}
                                     className={styles.dataValueInput}
                                 />
                                 {dataPoints.length > 2 && (

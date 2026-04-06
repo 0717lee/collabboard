@@ -1,9 +1,11 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useMemo } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Alert, ConfigProvider, Spin, theme } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
+import enUS from 'antd/locale/en_US';
 import { liveblocksConfigWarning, supabaseConfigError } from '@/lib/runtimeConfig';
 import { useAuthStore } from '@/stores/authStore';
+import { useLanguageStore } from '@/stores/languageStore';
 import './styles/global.css';
 
 // Lazy load pages for code splitting
@@ -51,6 +53,9 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 const App: React.FC = () => {
   const { initializeAuth } = useAuthStore();
+  const { language } = useLanguageStore();
+
+  const antdLocale = useMemo(() => language === 'en-US' ? enUS : zhCN, [language]);
 
   // Initialize auth on app startup
   React.useEffect(() => {
@@ -79,7 +84,7 @@ const App: React.FC = () => {
 
   return (
     <ConfigProvider
-      locale={zhCN}
+      locale={antdLocale}
       theme={{
         algorithm: theme.defaultAlgorithm,
         token: {

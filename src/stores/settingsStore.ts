@@ -36,12 +36,6 @@ export const useSettingsStore = create<SettingsState>()(
         {
             name: 'settings-storage',
             version: 1,
-            migrate: (persistedState: unknown, version: number) => {
-                if (version === 0) {
-                    return persistedState as SettingsState;
-                }
-                return persistedState as SettingsState;
-            }
         }
     )
 );

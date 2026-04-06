@@ -199,7 +199,7 @@ const CanvasBoardInner: React.FC = () => {
         if (currentBoard?.name) return currentBoard.name;
         if (!boardId) return '';
 
-        const boardSummary = [...boards, ...sharedBoards].find((item) => item.id === boardId);
+        const boardSummary = boards.find((item) => item.id === boardId) || sharedBoards.find((item) => item.id === boardId);
         return boardSummary?.name || '';
     }, [boardId, boards, currentBoard?.name, sharedBoards]);
     const cachedRole = boardId ? entries[boardId]?.role : undefined;
@@ -431,7 +431,7 @@ const CanvasBoardInner: React.FC = () => {
     const resolveBoard = useCallback(async () => {
         if (!boardId) return null;
 
-        let board = [...boards, ...sharedBoards].find((item) => item.id === boardId) || null;
+        let board = boards.find((item) => item.id === boardId) || sharedBoards.find((item) => item.id === boardId) || null;
 
         if (!board || !board.data) {
             const fetchedBoard = await fetchBoard(boardId);
@@ -1626,6 +1626,10 @@ const CanvasBoardInner: React.FC = () => {
         if (isReadOnly) return;
 
         const json = decompressSnapshotData(snapshot.compressedData);
+        if (!json) {
+            message.error(isEn ? 'Failed to restore snapshot: data is corrupted' : '恢复快照失败：数据已损坏');
+            return;
+        }
         historyRef.current = {
             past: [...historyRef.current.past.slice(-19), presentStateRef.current],
             future: [],

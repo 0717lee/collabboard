@@ -152,20 +152,3 @@ export const translations: Record<Language, Record<string, string>> = {
         'common.loading': 'Loading...',
     },
 };
-
-// Hook to get translation
-export function useTranslation() {
-    const { language } = useLanguageStore();
-
-    const t = (key: string, params?: Record<string, string | number>): string => {
-        let text = translations[language][key] || key;
-        if (params) {
-            Object.entries(params).forEach(([k, v]) => {
-                text = text.replace(`{${k}}`, String(v));
-            });
-        }
-        return text;
-    };
-
-    return { t, language };
-}

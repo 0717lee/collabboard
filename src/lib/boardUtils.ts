@@ -67,6 +67,8 @@ export const sortBoardsForDisplay = (
 export const compressSnapshotData = (data: string) => LZString.compressToBase64(data);
 
 export const decompressSnapshotData = (data: string) => {
+    if (!data) return null;
     const decompressed = LZString.decompressFromBase64(data);
-    return decompressed ?? data;
+    if (!decompressed) return null;
+    return decompressed;
 };

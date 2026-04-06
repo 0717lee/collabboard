@@ -281,8 +281,6 @@ const restoreStickyNoteTextToGroup = (textObj: any, stickyNoteId: string) => {
     textObj.set({
         originX: 'center',
         originY: 'center',
-        left: 0,
-        top: 0,
         selectable: false,
         evented: false,
         editable: true,
@@ -292,6 +290,28 @@ const restoreStickyNoteTextToGroup = (textObj: any, stickyNoteId: string) => {
             stickyNoteId,
         },
     });
+};
+
+const finalizeStickyNoteGroup = (target: any, textObj: any, stickyNoteId: string, groupLeft: number, groupTop: number) => {
+    target.add(textObj);
+
+    // After Fabric converts the canvas-plane coordinates into group space,
+    // pin the note text back to the center of the sticky note.
+    restoreStickyNoteTextToGroup(textObj, stickyNoteId);
+    textObj.set({
+        left: 0,
+        top: 0,
+    });
+
+    // Keep the background rectangle centered as the visual anchor.
+    const rectObj = target._objects?.find((obj: any) => obj.type === 'rect');
+    if (rectObj) {
+        rectObj.set({ left: 0, top: 0, originX: 'center', originY: 'center' });
+    }
+
+    target.set({ left: groupLeft, top: groupTop });
+    target.triggerLayout?.();
+    target.setCoords?.();
 };
 
 export const handleStickyNoteDoubleClick = (
@@ -361,20 +381,7 @@ export const handleStickyNoteDoubleClick = (
             if (!canvas.getObjects().includes(target) && target.canvas !== canvas) return;
 
             canvas.remove(textObj);
-
-            // Restore sticky note child text to its non-selectable in-group state.
-            restoreStickyNoteTextToGroup(textObj, stickyNoteId);
-
-            target.add(textObj);
-            
-            // Safety measure: Ensure the background rectangle remains strictly centered
-            const rectObj = target._objects?.find((obj: any) => obj.type === 'rect');
-            if (rectObj) {
-                rectObj.set({ left: 0, top: 0, originX: 'center', originY: 'center' });
-            }
-
-            target.set({ left: groupLeft, top: groupTop });
-            target.setCoords();
+            finalizeStickyNoteGroup(target, textObj, stickyNoteId, groupLeft, groupTop);
             canvas.setActiveObject(target);
             canvas.requestRenderAll();
             canvas.fire?.('selection:updated');
@@ -433,18 +440,7 @@ export const reassembleDetachedStickyNotes = (canvas: any) => {
         const groupTop = parentGroup.top;
 
         canvas.remove(textObj);
-
-        restoreStickyNoteTextToGroup(textObj, stickyNoteId);
-
-        parentGroup.add(textObj);
-
-        const rectObj = parentGroup._objects?.find((obj: any) => obj.type === 'rect');
-        if (rectObj) {
-            rectObj.set({ left: 0, top: 0, originX: 'center', originY: 'center' });
-        }
-
-        parentGroup.set({ left: groupLeft, top: groupTop });
-        parentGroup.setCoords();
+        finalizeStickyNoteGroup(parentGroup, textObj, stickyNoteId, groupLeft, groupTop);
         canvas.setActiveObject(parentGroup);
     }
 

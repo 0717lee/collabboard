@@ -20,6 +20,7 @@ type FabricLikeObject = {
     canvas?: ReturnType<typeof createCanvasMock>;
     set: (keyOrProps: string | Record<string, unknown>, value?: unknown) => FabricLikeObject;
     setCoords?: ReturnType<typeof vi.fn>;
+    triggerLayout?: ReturnType<typeof vi.fn>;
     getAbsoluteCenterPoint?: () => { x: number; y: number };
     remove?: (object: FabricLikeObject) => void;
     add?: (object: FabricLikeObject) => void;
@@ -268,6 +269,49 @@ describe('canvasUtils sticky note reassembly', () => {
         expect(text.evented).toBe(false);
         expect(text.editable).toBe(true);
         expect(text.data?.isEditingStickyNote).toBe(false);
+    });
+
+    it('re-centers sticky note text after reassembly instead of preserving detached offsets', () => {
+        const canvas = createCanvasMock();
+        const rect = createFabricObject({ type: 'rect', setCoords: vi.fn() });
+        const text = createFabricObject({
+            type: 'i-text',
+            left: 32,
+            top: -48,
+            selectable: true,
+            evented: true,
+            editable: true,
+            isEditing: false,
+            data: {
+                id: 'sticky-text-5',
+                stickyNoteId: 'sticky-5',
+                isEditingStickyNote: true,
+                _stickyGroupRef: 'sticky-5',
+            },
+        });
+        const triggerLayout = vi.fn();
+        const stickyNote = createFabricObject({
+            type: 'group',
+            left: 420,
+            top: 300,
+            data: { id: 'sticky-5', type: 'stickyNote' },
+            _objects: [rect],
+            setCoords: vi.fn(),
+            triggerLayout,
+            add(object) {
+                this._objects = [...(this._objects ?? []), object];
+            },
+        });
+
+        canvas.add(stickyNote);
+        canvas.add(text);
+
+        reassembleDetachedStickyNotes(canvas);
+
+        expect(stickyNote._objects).toContain(text);
+        expect(text.left).toBe(0);
+        expect(text.top).toBe(0);
+        expect(triggerLayout).toHaveBeenCalledTimes(1);
     });
 
     it('does not reassemble sticky note text while it is actively being edited', () => {

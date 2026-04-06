@@ -30,7 +30,9 @@ import {
     HistoryOutlined,
     LockOutlined,
     MenuOutlined,
+    MessageOutlined,
     MinusOutlined,
+    QuestionCircleOutlined,
     RedoOutlined,
     SelectOutlined,
     ShareAltOutlined,
@@ -143,11 +145,14 @@ const CanvasBoardInner: React.FC = () => {
     const [showChartModal, setShowChartModal] = useState(false);
     const [showInviteModal, setShowInviteModal] = useState(false);
     const [showVersionModal, setShowVersionModal] = useState(false);
+    const [showChatSidebar, setShowChatSidebar] = useState(false);
+    const [showShortcutsModal, setShowShortcutsModal] = useState(false);
     const [linkCopied, setLinkCopied] = useState(false);
     const [fabricLoaded, setFabricLoaded] = useState(false);
     const [canvasReady, setCanvasReady] = useState(false);
     const [shareRole, setShareRole] = useState<'editor' | 'viewer'>('editor');
     const [selectedObjectCount, setSelectedObjectCount] = useState(0);
+    const [isCompactViewport, setIsCompactViewport] = useState(false);
 
     const syncSelectionState = useCallback((canvas?: any) => {
         const targetCanvas = canvas ?? fabricRef.current;
@@ -1396,6 +1401,18 @@ const CanvasBoardInner: React.FC = () => {
     const hasSelection = selectedObjectCount > 0;
 
     useEffect(() => {
+        if (typeof window === 'undefined') return;
+
+        const updateViewportMode = () => {
+            setIsCompactViewport(window.innerWidth <= 1100);
+        };
+
+        updateViewportMode();
+        window.addEventListener('resize', updateViewportMode);
+        return () => window.removeEventListener('resize', updateViewportMode);
+    }, []);
+
+    useEffect(() => {
         const handleToolShortcuts = (e: KeyboardEvent) => {
             const tagName = (e.target as HTMLElement)?.tagName;
             if (tagName === 'INPUT' || tagName === 'TEXTAREA') return;
@@ -1549,6 +1566,19 @@ const CanvasBoardInner: React.FC = () => {
         { key: 'svg', label: isEn ? 'Export as SVG' : '导出为 SVG', onClick: exportSVG },
     ];
     const mobileActionItems = [
+        {
+            key: 'team-chat',
+            icon: <MessageOutlined />,
+            label: isEn ? 'Team chat' : '团队聊天',
+            onClick: () => setShowChatSidebar(true),
+        },
+        {
+            key: 'shortcuts',
+            icon: <QuestionCircleOutlined />,
+            label: isEn ? 'Shortcuts' : '快捷键',
+            onClick: () => setShowShortcutsModal(true),
+        },
+        { type: 'divider' as const },
         {
             key: 'undo',
             icon: <UndoOutlined />,
@@ -2028,8 +2058,20 @@ const CanvasBoardInner: React.FC = () => {
                 onRestoreSnapshot={handleRestoreSnapshot}
             />
 
-            <ChatSidebar />
-            <ShortcutsPanel />
+            <ChatSidebar
+                isOpen={showChatSidebar}
+                onOpen={() => setShowChatSidebar(true)}
+                onClose={() => setShowChatSidebar(false)}
+                showTrigger={!isCompactViewport}
+                isCompactViewport={isCompactViewport}
+            />
+            <ShortcutsPanel
+                isOpen={showShortcutsModal}
+                onOpen={() => setShowShortcutsModal(true)}
+                onClose={() => setShowShortcutsModal(false)}
+                showTrigger={!isCompactViewport}
+                isCompactViewport={isCompactViewport}
+            />
         </Layout>
     );
 };

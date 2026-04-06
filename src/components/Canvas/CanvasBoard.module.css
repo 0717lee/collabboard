@@ -201,6 +201,16 @@
     bottom: calc(18px + env(safe-area-inset-bottom)) !important;
 }
 
+:global(.collabboard-chat-trigger) {
+    right: 24px !important;
+    bottom: calc(88px + env(safe-area-inset-bottom)) !important;
+}
+
+:global(.collabboard-shortcuts-trigger) {
+    left: 24px !important;
+    bottom: calc(24px + env(safe-area-inset-bottom)) !important;
+}
+
 .zoomText {
     min-width: 54px;
     text-align: center;
@@ -888,6 +898,11 @@
         bottom: calc(156px + env(safe-area-inset-bottom)) !important;
     }
 
+    :global(.collabboard-chat-trigger),
+    :global(.collabboard-shortcuts-trigger) {
+        display: none !important;
+    }
+
     .canvasNotice {
         top: 84px;
         width: calc(100% - 28px);
@@ -1181,6 +1196,11 @@
         right: 12px !important;
         left: auto !important;
         bottom: calc(128px + env(safe-area-inset-bottom)) !important;
+    }
+
+    :global(.collabboard-chat-trigger),
+    :global(.collabboard-shortcuts-trigger) {
+        display: none !important;
     }
 
     .canvasNotice {

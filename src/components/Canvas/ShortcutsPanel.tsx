@@ -19,10 +19,35 @@ const Kbd: React.FC<{ children: React.ReactNode; style?: React.CSSProperties }> 
     </span>
 );
 
-export const ShortcutsPanel: React.FC = () => {
+interface ShortcutsPanelProps {
+    isOpen?: boolean;
+    onOpen?: () => void;
+    onClose?: () => void;
+    showTrigger?: boolean;
+    isCompactViewport?: boolean;
+}
+
+export const ShortcutsPanel: React.FC<ShortcutsPanelProps> = ({
+    isOpen: controlledOpen,
+    onOpen,
+    onClose,
+    showTrigger = true,
+    isCompactViewport = false,
+}) => {
     const { language } = useLanguageStore();
     const isEn = language === 'en-US';
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [internalOpen, setInternalOpen] = useState(false);
+
+    const isControlled = typeof controlledOpen === 'boolean';
+    const isModalOpen = isControlled ? controlledOpen : internalOpen;
+    const openModal = () => {
+        if (!isControlled) setInternalOpen(true);
+        onOpen?.();
+    };
+    const closeModal = () => {
+        if (!isControlled) setInternalOpen(false);
+        onClose?.();
+    };
 
     const shortcuts = [
         { key: 'V', desc: isEn ? 'Select Tool' : '选择工具' },
@@ -39,27 +64,30 @@ export const ShortcutsPanel: React.FC = () => {
 
     return (
         <>
-            <Button
-                type="text"
-                icon={<QuestionCircleOutlined />}
-                onClick={() => setIsModalOpen(true)}
-                style={{
-                    position: 'absolute',
-                    left: 24,
-                    bottom: 24,
-                    zIndex: 1000,
-                    color: '#8c8c8c'
-                }}
-            >
-                {isEn ? 'Shortcuts' : '快捷键'}
-            </Button>
+            {showTrigger && (
+                <Button
+                    type="text"
+                    icon={<QuestionCircleOutlined />}
+                    className={isCompactViewport ? 'collabboard-shortcuts-trigger compact' : 'collabboard-shortcuts-trigger'}
+                    onClick={openModal}
+                    style={{
+                        position: 'absolute',
+                        left: 24,
+                        bottom: 24,
+                        zIndex: 1000,
+                        color: '#8c8c8c'
+                    }}
+                >
+                    {isEn ? 'Shortcuts' : '快捷键'}
+                </Button>
+            )}
             <Modal
                 title={isEn ? 'Keyboard Shortcuts' : '快捷键说明'}
                 open={isModalOpen}
-                onOk={() => setIsModalOpen(false)}
-                onCancel={() => setIsModalOpen(false)}
+                onOk={closeModal}
+                onCancel={closeModal}
                 footer={null}
-                width={400}
+                width={isCompactViewport ? 'min(100vw - 16px, 420px)' : 400}
             >
                 <List
                     dataSource={shortcuts}

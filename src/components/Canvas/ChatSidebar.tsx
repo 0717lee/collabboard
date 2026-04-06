@@ -8,12 +8,37 @@ import { useAuthStore } from '@/stores/authStore';
 
 const { Text } = Typography;
 
-export const ChatSidebar: React.FC = () => {
+interface ChatSidebarProps {
+    isOpen?: boolean;
+    onOpen?: () => void;
+    onClose?: () => void;
+    showTrigger?: boolean;
+    isCompactViewport?: boolean;
+}
+
+export const ChatSidebar: React.FC<ChatSidebarProps> = ({
+    isOpen: controlledOpen,
+    onOpen,
+    onClose,
+    showTrigger = true,
+    isCompactViewport = false,
+}) => {
     const { language } = useLanguageStore();
     const isEn = language === 'en-US';
     const { user } = useAuthStore();
-    const [isOpen, setIsOpen] = useState(false);
+    const [internalOpen, setInternalOpen] = useState(false);
     const [inputValue, setInputValue] = useState('');
+
+    const isControlled = typeof controlledOpen === 'boolean';
+    const isOpen = isControlled ? controlledOpen : internalOpen;
+    const openDrawer = () => {
+        if (!isControlled) setInternalOpen(true);
+        onOpen?.();
+    };
+    const closeDrawer = () => {
+        if (!isControlled) setInternalOpen(false);
+        onClose?.();
+    };
     
     const messages = useStorage((root) => root.chatMessages);
 
@@ -44,27 +69,31 @@ export const ChatSidebar: React.FC = () => {
 
     return (
         <>
-            <Button
-                type="primary"
-                shape="circle"
-                icon={<MessageOutlined />}
-                size="large"
-                style={{
-                    position: 'absolute',
-                    right: 24,
-                    bottom: 24,
-                    zIndex: 1000,
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                }}
-                onClick={() => setIsOpen(true)}
-            />
+            {showTrigger && (
+                <Button
+                    type="primary"
+                    shape="circle"
+                    icon={<MessageOutlined />}
+                    size="large"
+                    className={isCompactViewport ? 'collabboard-chat-trigger compact' : 'collabboard-chat-trigger'}
+                    style={{
+                        position: 'absolute',
+                        right: 24,
+                        bottom: isCompactViewport ? 152 : 88,
+                        zIndex: 1000,
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                    }}
+                    onClick={openDrawer}
+                />
+            )}
             <Drawer
                 title={isEn ? 'Team Chat' : '团队聊天'}
                 placement="right"
-                onClose={() => setIsOpen(false)}
+                onClose={closeDrawer}
                 open={isOpen}
-                mask={false}
-                width={320}
+                mask={isCompactViewport}
+                width={isCompactViewport ? 'min(100vw - 16px, 360px)' : 320}
+                zIndex={1400}
                 styles={{
                     body: { padding: 0, display: 'flex', flexDirection: 'column' }
                 }}

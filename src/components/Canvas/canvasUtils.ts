@@ -50,6 +50,8 @@ export const createStickyNote = (f: any, x: number, y: number, color: string = '
         splitByGrapheme: true,
         editable: true,
         fill: '#2f2a24',
+        selectable: false,
+        evented: false,
     });
 
     return new f.Group([rect, text], {

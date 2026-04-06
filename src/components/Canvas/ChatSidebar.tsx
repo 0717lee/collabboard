@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { useMutation, useStorage, useSelf } from '@/liveblocks.config';
+import { useMutation, useStorage } from '@/liveblocks.config';
 import { Button, Input, List, Typography, Drawer } from 'antd';
 import { SendOutlined, MessageOutlined } from '@ant-design/icons';
 import { useLanguageStore } from '@/stores/languageStore';
+import { useAuthStore } from '@/stores/authStore';
 
 
 const { Text } = Typography;
@@ -10,15 +11,14 @@ const { Text } = Typography;
 export const ChatSidebar: React.FC = () => {
     const { language } = useLanguageStore();
     const isEn = language === 'en-US';
+    const { user } = useAuthStore();
     const [isOpen, setIsOpen] = useState(false);
     const [inputValue, setInputValue] = useState('');
     
-    // Fetch chat messages from Liveblocks storage
     const messages = useStorage((root) => root.chatMessages);
-    const currentUser = useSelf();
 
     const sendMessage = useMutation(({ storage }, text: string) => {
-        if (!text.trim() || !currentUser) return;
+        if (!text.trim() || !user) return;
         
         const chatMessagesList = storage.get('chatMessages');
         if (!chatMessagesList) return;
@@ -26,17 +26,16 @@ export const ChatSidebar: React.FC = () => {
         chatMessagesList.push({
             id: Date.now().toString(),
             text,
-            userId: currentUser.id,
-            userName: currentUser.info?.name || (isEn ? 'Anonymous' : '匿名用户'),
-            userColor: currentUser.info?.color || '#1890ff',
+            userId: user.id,
+            userName: user.name || (isEn ? 'Anonymous' : '匿名用户'),
+            userColor: '#1890ff',
             timestamp: Date.now(),
         });
 
-        // Ensure we only keep the last 200 messages as per requirement
         if (chatMessagesList.length > 200) {
             chatMessagesList.delete(0);
         }
-    }, [currentUser, isEn]);
+    }, [user, isEn]);
 
     const handleSend = () => {
         sendMessage(inputValue);
@@ -76,7 +75,7 @@ export const ChatSidebar: React.FC = () => {
                     <List
                         dataSource={messages ? Array.from(messages) : []}
                         renderItem={(item) => {
-                            const isMe = currentUser?.id === item.userId;
+                            const isMe = user?.id === item.userId;
                             return (
                                 <div
                                     style={{

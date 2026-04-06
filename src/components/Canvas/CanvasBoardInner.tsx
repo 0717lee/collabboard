@@ -412,6 +412,9 @@ const CanvasBoardInner: React.FC = () => {
 
     const createBoardSnapshot = useCallback((source: 'manual' | 'auto') => {
         if (!boardId || !fabricRef.current) return null;
+        if ((fabricRef.current as any).__stickyNoteEditingText || isAnyTextEditing(fabricRef.current)) {
+            return null;
+        }
 
         reassembleDetachedStickyNotes(fabricRef.current);
         const data = latestSerializedRef.current || JSON.stringify(fabricRef.current.toJSON());
@@ -469,7 +472,15 @@ const CanvasBoardInner: React.FC = () => {
     resolveBoardRef.current = resolveBoard;
 
     const processLocalCanvasChange = useCallback(() => {
-        if (!fabricRef.current || isRemoteUpdateRef.current || isRestoringRef.current || isReadOnly || isCommittingStickyTextRef.current) {
+        if (
+            !fabricRef.current ||
+            isRemoteUpdateRef.current ||
+            isRestoringRef.current ||
+            isReadOnly ||
+            isCommittingStickyTextRef.current ||
+            (fabricRef.current as any).__stickyNoteEditingText ||
+            isAnyTextEditing(fabricRef.current)
+        ) {
             return;
         }
 
@@ -478,7 +489,14 @@ const CanvasBoardInner: React.FC = () => {
         }
 
         syncTimeoutRef.current = setTimeout(() => {
-            if (!fabricRef.current || isRemoteUpdateRef.current || isRestoringRef.current || isCommittingStickyTextRef.current) return;
+            if (
+                !fabricRef.current ||
+                isRemoteUpdateRef.current ||
+                isRestoringRef.current ||
+                isCommittingStickyTextRef.current ||
+                (fabricRef.current as any).__stickyNoteEditingText ||
+                isAnyTextEditing(fabricRef.current)
+            ) return;
 
             reassembleDetachedStickyNotes(fabricRef.current);
             const json = JSON.stringify(fabricRef.current.toJSON());

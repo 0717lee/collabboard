@@ -269,4 +269,43 @@ describe('canvasUtils sticky note reassembly', () => {
         expect(text.editable).toBe(true);
         expect(text.data?.isEditingStickyNote).toBe(false);
     });
+
+    it('does not reassemble sticky note text while it is actively being edited', () => {
+        const canvas = createCanvasMock();
+        const rect = createFabricObject({ type: 'rect', setCoords: vi.fn() });
+        const text = createFabricObject({
+            type: 'i-text',
+            selectable: true,
+            evented: true,
+            editable: true,
+            isEditing: true,
+            data: {
+                id: 'sticky-text-4',
+                stickyNoteId: 'sticky-4',
+                isEditingStickyNote: true,
+                _stickyGroupRef: 'sticky-4',
+            },
+        });
+        const stickyNote = createFabricObject({
+            type: 'group',
+            left: 260,
+            top: 280,
+            data: { id: 'sticky-4', type: 'stickyNote' },
+            _objects: [rect],
+            setCoords: vi.fn(),
+            add(object) {
+                this._objects = [...(this._objects ?? []), object];
+            },
+        });
+
+        canvas.add(stickyNote);
+        canvas.add(text);
+
+        reassembleDetachedStickyNotes(canvas);
+
+        expect(canvas.getObjects()).toContain(text);
+        expect(stickyNote._objects).not.toContain(text);
+        expect(text.isEditing).toBe(true);
+        expect(text.data?.isEditingStickyNote).toBe(true);
+    });
 });

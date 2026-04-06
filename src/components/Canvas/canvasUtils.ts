@@ -414,8 +414,8 @@ export const reassembleDetachedStickyNotes = (canvas: any) => {
     if (!canvas) return;
 
     const detachedTexts = canvas.getObjects().filter((obj: any) =>
-        obj.data?.isEditingStickyNote === true ||
-        (obj.data?._stickyGroupRef && !obj.isEditing)
+        (obj.data?.isEditingStickyNote === true || obj.data?._stickyGroupRef) &&
+        !obj.isEditing
     );
 
     for (const textObj of detachedTexts) {

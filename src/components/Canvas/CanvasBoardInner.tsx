@@ -55,6 +55,7 @@ import { LiveblocksCursors } from './LiveblocksCursors';
 import { VersionHistoryModal } from './VersionHistoryModal';
 import { ChatSidebar } from './ChatSidebar';
 import { ShortcutsPanel } from './ShortcutsPanel';
+import { getVisibleCollaborators } from './collaboratorUtils';
 import styles from './CanvasBoard.module.css';
 import type { Board, BoardRole, BoardSnapshot } from '@/types';
 
@@ -218,6 +219,10 @@ const CanvasBoardInner: React.FC = () => {
         : sharedRoleFromUrl || cachedRole || currentBoard?.accessRole || 'editor';
     const isReadOnly = resolvedRole === 'viewer';
     const gridPixelSize = `${Math.max((GRID_SIZE * zoom) / 100, 12)}px`;
+    const visibleCollaborators = useMemo(
+        () => getVisibleCollaborators(others, { id: user?.id, name: user?.name }),
+        [others, user?.id, user?.name]
+    );
 
     activeToolRef.current = activeTool;
     isReadOnlyRef.current = isReadOnly;
@@ -1809,17 +1814,17 @@ const CanvasBoardInner: React.FC = () => {
                     )}
 
                     <div className={styles.collaborators}>
-                        {others.slice(0, 3).map(({ connectionId, info, presence }) => (
-                            <Tooltip key={connectionId} title={presence?.name || info?.name || 'Anonymous'}>
+                        {visibleCollaborators.slice(0, 3).map(({ connectionId, name, color }) => (
+                            <Tooltip key={connectionId} title={name}>
                                 <div
                                     className={styles.collaboratorAvatar}
-                                    style={{ backgroundColor: presence?.color || info?.color || '#ccc' }}
+                                    style={{ backgroundColor: color }}
                                 >
-                                    {(presence?.name || info?.name || 'A').charAt(0).toUpperCase()}
+                                    {(name || 'A').charAt(0).toUpperCase()}
                                 </div>
                             </Tooltip>
                         ))}
-                        {others.length > 3 && <div className={styles.collaboratorMore}>+{others.length - 3}</div>}
+                        {visibleCollaborators.length > 3 && <div className={styles.collaboratorMore}>+{visibleCollaborators.length - 3}</div>}
                     </div>
 
                     <Tooltip title={isReadOnly ? (isEn ? 'Viewer link cannot re-share access' : '只读模式下不能再次分享权限') : (isEn ? 'Invite collaborators' : '邀请协作者')}>
@@ -2022,7 +2027,7 @@ const CanvasBoardInner: React.FC = () => {
                     </div>
 
                     <div className={styles.collaboratorsList}>
-                        <label>{isEn ? `Online Now (${others.length + 1})` : `当前在线 (${others.length + 1} 人)`}</label>
+                        <label>{isEn ? `Online Now (${visibleCollaborators.length + 1})` : `当前在线 (${visibleCollaborators.length + 1} 人)`}</label>
                         <div className={styles.onlineUsers}>
                             <div className={styles.onlineUser}>
                                 <div className={styles.userAvatar} style={{ backgroundColor: '#667eea' }}>
@@ -2031,15 +2036,15 @@ const CanvasBoardInner: React.FC = () => {
                                 <span>{isEn ? 'Me (You)' : '我 (你)'}</span>
                                 <div className={styles.statusDot} />
                             </div>
-                            {others.map(({ connectionId, info, presence }) => (
+                            {visibleCollaborators.map(({ connectionId, name, color }) => (
                                 <div key={connectionId} className={styles.onlineUser}>
                                     <div
                                         className={styles.userAvatar}
-                                        style={{ backgroundColor: presence?.color || info?.color || '#ccc' }}
+                                        style={{ backgroundColor: color }}
                                     >
-                                        {(presence?.name || info?.name || 'A').charAt(0).toUpperCase()}
+                                        {(name || 'A').charAt(0).toUpperCase()}
                                     </div>
-                                    <span>{presence?.name || info?.name || 'Anonymous'}</span>
+                                    <span>{name}</span>
                                     <div className={styles.statusDot} />
                                 </div>
                             ))}

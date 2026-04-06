@@ -5,6 +5,7 @@ import { liveblocksConfigWarning, shouldUseMockLiveblocks } from './lib/runtimeC
 
 export type Presence = {
     cursor: { x: number; y: number } | null;
+    userId?: string;
     name: string;
     color: string;
 };
@@ -54,6 +55,7 @@ const mockStorage: Storage = {
 
 const mockPresence: Presence = {
     cursor: null,
+    userId: 'mock-user-id',
     name: 'Mock User',
     color: '#6B8068',
 };

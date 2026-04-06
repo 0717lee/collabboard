@@ -25,6 +25,7 @@ export const LiveblocksRoom: React.FC<LiveblocksRoomProps> = ({ roomId, children
             id={`collabboard-${roomId}`}
             initialPresence={{
                 cursor: null,
+                userId: user?.id,
                 name: user?.name || 'Anonymous',
                 color: userColor,
             }}

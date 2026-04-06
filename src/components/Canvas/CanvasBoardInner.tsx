@@ -555,7 +555,6 @@ const CanvasBoardInner: React.FC = () => {
                 this._renderOriginal(ctx);
                 if (this.data?.locked) {
                     ctx.save();
-                    // Draw in local coordinates. 0,0 is the object center in Fabric
                     const halfW = (this.width * this.scaleX) / 2;
                     const halfH = (this.height * this.scaleY) / 2;
                     ctx.font = '16px serif';
@@ -572,34 +571,39 @@ const CanvasBoardInner: React.FC = () => {
         canvas.freeDrawingBrush.decimate = 5;
 
         const loadBoardData = async () => {
-            const board = await resolveBoardRef.current();
-            if (!board) return;
+            try {
+                const board = await resolveBoardRef.current();
+                if (!board) return;
 
-            const liveblocksState = decodeCanvasData(initialCanvasData);
-            const boardState = decodeCanvasData(board.data || '');
+                const liveblocksState = decodeCanvasData(initialCanvasData);
+                const boardState = decodeCanvasData(board.data || '');
 
-            if (liveblocksState?.parsed?.objects) {
-                lastSyncedDataRef.current = initialCanvasData;
-                await applyCanvasStateRef.current(liveblocksState.json, {
-                    resetHistory: true,
-                    markPersisted: true,
-                    suppressEvents: true,
-                });
-                return;
+                if (liveblocksState?.parsed?.objects) {
+                    lastSyncedDataRef.current = initialCanvasData;
+                    await applyCanvasStateRef.current(liveblocksState.json, {
+                        resetHistory: true,
+                        markPersisted: true,
+                        suppressEvents: true,
+                    });
+                    return;
+                }
+
+                if (boardState?.parsed?.objects) {
+                    await applyCanvasStateRef.current(boardState.json, {
+                        resetHistory: true,
+                        markPersisted: true,
+                        suppressEvents: true,
+                    });
+
+                    syncCanvasStateRef.current(boardState.json);
+                    return;
+                }
+
+                scheduleThumbnailCaptureRef.current();
+            } catch (error) {
+                console.error('[CanvasBoard] Failed to load board data:', error);
+                message.error(isEn ? 'Failed to load board data' : '加载白板数据失败');
             }
-
-            if (boardState?.parsed?.objects) {
-                await applyCanvasStateRef.current(boardState.json, {
-                    resetHistory: true,
-                    markPersisted: true,
-                    suppressEvents: true,
-                });
-
-                syncCanvasStateRef.current(boardState.json);
-                return;
-            }
-
-            scheduleThumbnailCaptureRef.current();
         };
 
         const resizeCanvas = () => {
@@ -832,6 +836,8 @@ const CanvasBoardInner: React.FC = () => {
         canvas.on('mouse:dblclick', handleDblClick);
 
         // P1: Image Paste Support (Already added, making sure to remove in cleanup)
+        let isUnmounted = false;
+
         const handlePaste = async (e: ClipboardEvent) => {
             const items = e.clipboardData?.items;
             if (!items || isReadOnlyRef.current) return;
@@ -844,6 +850,7 @@ const CanvasBoardInner: React.FC = () => {
                     if (!blob) continue;
                     const reader = new FileReader();
                     reader.onload = async (event) => {
+                        if (isUnmounted || !fabricRef.current) return;
                         const dataUrl = event.target?.result as string;
                         const img = await fabric.FabricImage.fromURL(dataUrl);
                         img.scale(0.5);
@@ -858,7 +865,6 @@ const CanvasBoardInner: React.FC = () => {
             }
         };
 
-        // P1: Image Drag and Drop Support
         const handleDrop = async (e: DragEvent) => {
             e.preventDefault();
             if (isReadOnlyRef.current) return;
@@ -869,10 +875,10 @@ const CanvasBoardInner: React.FC = () => {
                 if (files[i].type.startsWith('image/')) {
                     const reader = new FileReader();
                     reader.onload = async (event) => {
+                        if (isUnmounted || !fabricRef.current) return;
                         const dataUrl = event.target?.result as string;
                         const img = await fabric.FabricImage.fromURL(dataUrl);
                         img.scale(0.5);
-                        // Get pointer position for drop location
                         const pointer = canvas.getPointer(e);
                         img.set({ left: pointer.x, top: pointer.y });
                         canvas.add(img);
@@ -887,8 +893,9 @@ const CanvasBoardInner: React.FC = () => {
 
         window.addEventListener('paste', handlePaste);
         const canvasElement = container.querySelector('canvas');
+        const preventDragOver = (e: DragEvent) => e.preventDefault();
         if (canvasElement) {
-            canvasElement.addEventListener('dragover', (e) => e.preventDefault());
+            canvasElement.addEventListener('dragover', preventDragOver);
             canvasElement.addEventListener('drop', handleDrop as any);
         }
 
@@ -904,6 +911,7 @@ const CanvasBoardInner: React.FC = () => {
         resizeObserver.observe(container);
 
         return () => {
+            isUnmounted = true;
             setCanvasReady(false);
             window.removeEventListener('resize', resizeCanvas);
             resizeObserver.disconnect();
@@ -924,6 +932,10 @@ const CanvasBoardInner: React.FC = () => {
             canvas.off('selection:updated', updateSelectionState);
             canvas.off('selection:cleared', updateSelectionState);
             window.removeEventListener('paste', handlePaste);
+            if (canvasElement) {
+                canvasElement.removeEventListener('dragover', preventDragOver);
+                canvasElement.removeEventListener('drop', handleDrop as any);
+            }
             canvas.dispose();
             fabricRef.current = null;
             delete (window as any).__collabboardCanvas;
@@ -1098,7 +1110,7 @@ const CanvasBoardInner: React.FC = () => {
 
         if (object) {
             if (!object.data) object.data = {};
-            if (!object.data.id) object.data.id = `obj-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            if (!object.data.id) object.data.id = `obj-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
 
             canvas.add(object);
             if (activeTool === 'stickyNote') {
@@ -1320,7 +1332,7 @@ const CanvasBoardInner: React.FC = () => {
             return [
                 { key: 'paste', label: (isEn ? 'Paste' : '粘贴'), icon: <CopyOutlined />, disabled: !clipboardRef.current, onClick: paste },
                 { type: 'divider' as const },
-                { key: 'select-all', label: (isEn ? 'Select All' : '全选'), onClick: () => { canvas?.setActiveObject(new fabric.ActiveSelection(canvas.getObjects(), { canvas })); canvas?.requestRenderAll(); } },
+                { key: 'select-all', label: (isEn ? 'Select All' : '全选'), onClick: () => { if (canvas && fabric) { canvas.setActiveObject(new fabric.ActiveSelection(canvas.getObjects(), { canvas })); canvas.requestRenderAll(); } } },
             ];
         }
 
@@ -1564,11 +1576,35 @@ const CanvasBoardInner: React.FC = () => {
     };
 
     const handleCopyLink = () => {
-        navigator.clipboard.writeText(shareLink).then(() => {
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(shareLink).then(() => {
+                setLinkCopied(true);
+                message.success(isEn ? 'Link copied to clipboard!' : '链接已复制到剪贴板！');
+                setTimeout(() => setLinkCopied(false), 2000);
+            }).catch(() => {
+                fallbackCopyToClipboard(shareLink);
+            });
+        } else {
+            fallbackCopyToClipboard(shareLink);
+        }
+    };
+
+    const fallbackCopyToClipboard = (text: string) => {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+            document.execCommand('copy');
             setLinkCopied(true);
             message.success(isEn ? 'Link copied to clipboard!' : '链接已复制到剪贴板！');
             setTimeout(() => setLinkCopied(false), 2000);
-        });
+        } catch {
+            message.error(isEn ? 'Failed to copy link' : '复制链接失败');
+        }
+        document.body.removeChild(textArea);
     };
 
     const handleCreateManualSnapshot = () => {

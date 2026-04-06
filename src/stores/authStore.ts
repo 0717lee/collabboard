@@ -307,7 +307,7 @@ export const useAuthStore = create<AuthState>()(
 );
 
 // Listen for auth state changes
-supabase.auth.onAuthStateChange(async (
+const { data: authSubscription } = supabase.auth.onAuthStateChange(async (
     event: string,
     session: { user: { id: string; email?: string; created_at: string; user_metadata?: { name?: string } } } | null
 ) => {
@@ -322,7 +322,6 @@ supabase.auth.onAuthStateChange(async (
     } else if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
         console.log(`[authStore] Auth event: ${event}`, session.user.id);
         
-        // Update basic info immediately so UI doesn't hang
         useAuthStore.setState({
             user: buildUserFromSessionUser(session.user),
             isAuthenticated: true,
@@ -330,7 +329,6 @@ supabase.auth.onAuthStateChange(async (
             hasInitialized: true,
         });
 
-        // Fetch profile name in the background
         (async () => {
             try {
                 const { data: profile, error } = await supabase
@@ -356,3 +354,7 @@ supabase.auth.onAuthStateChange(async (
         })();
     }
 });
+
+export const unsubscribeAuth = () => {
+    authSubscription?.subscription.unsubscribe();
+};

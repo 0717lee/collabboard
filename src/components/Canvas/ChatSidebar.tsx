@@ -74,6 +74,7 @@ export const ChatSidebar: React.FC = () => {
                 <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
                     <List
                         dataSource={messages ? Array.from(messages) : []}
+                        rowKey="id"
                         renderItem={(item) => {
                             const isMe = user?.id === item.userId;
                             return (

@@ -838,8 +838,8 @@
         left: 50%;
         bottom: calc(16px + env(safe-area-inset-bottom));
         transform: translateX(-50%);
-        width: calc(100% - 28px) !important;
-        max-width: 720px !important;
+        width: fit-content !important;
+        max-width: calc(100% - 28px) !important;
         min-width: 0 !important;
         flex: none !important;
         padding: 10px 14px;
@@ -849,8 +849,10 @@
 
     .toolbar :global(.ant-layout-sider-children) {
         flex-direction: row;
-        justify-content: flex-start;
-        width: 100%;
+        justify-content: center;
+        width: auto;
+        max-width: 100%;
+        min-width: max-content;
         overflow-x: auto;
         gap: 10px;
         padding-bottom: 2px;
@@ -1014,8 +1016,8 @@
         left: 50%;
         bottom: calc(16px + env(safe-area-inset-bottom));
         transform: translateX(-50%);
-        width: calc(100% - 24px) !important;
-        max-width: 460px !important;
+        width: fit-content !important;
+        max-width: calc(100% - 24px) !important;
         min-width: 0 !important;
         flex: none !important;
         padding: 10px 12px;
@@ -1025,8 +1027,10 @@
 
     .toolbar :global(.ant-layout-sider-children) {
         flex-direction: row;
-        justify-content: flex-start;
-        width: 100%;
+        justify-content: center;
+        width: auto;
+        max-width: 100%;
+        min-width: max-content;
         overflow-x: auto;
         gap: 10px;
         padding-bottom: 2px;

@@ -275,6 +275,23 @@ export const isAnyTextEditing = (canvas: any): boolean => {
     return false;
 };
 
+const restoreStickyNoteTextToGroup = (textObj: any, stickyNoteId: string) => {
+    textObj.set({
+        originX: 'center',
+        originY: 'center',
+        left: 0,
+        top: 0,
+        selectable: false,
+        evented: false,
+        editable: true,
+        data: {
+            ...(textObj.data || {}),
+            isEditingStickyNote: false,
+            stickyNoteId,
+        },
+    });
+};
+
 export const handleStickyNoteDoubleClick = (canvas: any, opt: any, onEditCommitted?: () => void) => {
     const target = opt.target;
     if (target && target.data?.type === 'stickyNote') {
@@ -336,19 +353,9 @@ export const handleStickyNoteDoubleClick = (canvas: any, opt: any, onEditCommitt
             if (!canvas.getObjects().includes(target) && target.canvas !== canvas) return;
 
             canvas.remove(textObj);
-            
-            // Set text strictly back to the center of the group
-            textObj.set({
-                originX: 'center',
-                originY: 'center',
-                left: 0,
-                top: 0,
-                data: {
-                    ...(textObj.data || {}),
-                    isEditingStickyNote: false,
-                    stickyNoteId,
-                },
-            });
+
+            // Restore sticky note child text to its non-selectable in-group state.
+            restoreStickyNoteTextToGroup(textObj, stickyNoteId);
 
             target.add(textObj);
             
@@ -416,16 +423,7 @@ export const reassembleDetachedStickyNotes = (canvas: any) => {
 
         canvas.remove(textObj);
 
-        textObj.set({
-            originX: 'center',
-            originY: 'center',
-            left: 0,
-            top: 0,
-            data: {
-                ...(textObj.data || {}),
-                isEditingStickyNote: false,
-            },
-        });
+        restoreStickyNoteTextToGroup(textObj, stickyNoteId);
 
         parentGroup.add(textObj);
 

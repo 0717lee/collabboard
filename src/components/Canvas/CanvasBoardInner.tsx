@@ -565,6 +565,13 @@ const CanvasBoardInner: React.FC = () => {
             };
         }
 
+        const restoreOriginalRender = () => {
+            if (fabric.Object.prototype._renderOriginal) {
+                fabric.Object.prototype.render = fabric.Object.prototype._renderOriginal;
+                delete fabric.Object.prototype._renderOriginal;
+            }
+        };
+
         canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
         canvas.freeDrawingBrush.color = brushColor;
         canvas.freeDrawingBrush.width = brushWidth;
@@ -939,6 +946,7 @@ const CanvasBoardInner: React.FC = () => {
             canvas.dispose();
             fabricRef.current = null;
             delete (window as any).__collabboardCanvas;
+            restoreOriginalRender();
 
             if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
             if (thumbnailTimeoutRef.current) clearTimeout(thumbnailTimeoutRef.current);

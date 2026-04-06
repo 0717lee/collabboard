@@ -38,6 +38,8 @@ export const createStickyNote = (f: any, x: number, y: number, color: string = '
         originY: 'center',
         rx: 12,
         ry: 12,
+        selectable: false,
+        evented: false,
     });
 
     const text = new f.IText('', {

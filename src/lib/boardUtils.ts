@@ -2,6 +2,9 @@ import LZString from 'lz-string';
 import type { Board, BoardLibraryEntry, BoardRole } from '@/types';
 
 const SHARED_ROLES = new Set<Extract<BoardRole, 'editor' | 'viewer'>>(['editor', 'viewer']);
+const CANVAS_DATA_UPDATED_AT_KEY = '__collabboardUpdatedAt';
+
+export type CanvasDataSource = 'liveblocks' | 'board' | 'empty';
 
 export const MAX_BOARD_LIBRARY_ENTRIES = 60;
 export const MAX_BOARD_SNAPSHOTS = 12;
@@ -10,6 +13,65 @@ const getTimestamp = (value?: string) => {
     if (!value) return 0;
     const timestamp = new Date(value).getTime();
     return Number.isNaN(timestamp) ? 0 : timestamp;
+};
+
+export const getCanvasDataUpdatedAt = (data?: string | null) => {
+    if (!data) return 0;
+
+    try {
+        const parsed = JSON.parse(data) as Record<string, unknown>;
+        const timestamp = parsed?.[CANVAS_DATA_UPDATED_AT_KEY];
+        return typeof timestamp === 'number' && Number.isFinite(timestamp) && timestamp > 0
+            ? timestamp
+            : 0;
+    } catch {
+        return 0;
+    }
+};
+
+export const stampCanvasData = (data: string, timestamp = Date.now()) => {
+    const parsed = JSON.parse(data) as Record<string, unknown>;
+
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new Error('Canvas data must be a JSON object');
+    }
+
+    const previousTimestamp = parsed[CANVAS_DATA_UPDATED_AT_KEY];
+    const nextTimestamp = Math.max(
+        Number.isFinite(timestamp) && timestamp > 0 ? timestamp : Date.now(),
+        typeof previousTimestamp === 'number' && Number.isFinite(previousTimestamp)
+            ? previousTimestamp + 1
+            : 0
+    );
+
+    return JSON.stringify({
+        ...parsed,
+        [CANVAS_DATA_UPDATED_AT_KEY]: nextTimestamp,
+    });
+};
+
+export const chooseCanvasDataSource = ({
+    hasLiveblocksData,
+    liveblocksUpdatedAt,
+    hasBoardData,
+    boardUpdatedAt,
+    boardExceedsSyncLimit = false,
+}: {
+    hasLiveblocksData: boolean;
+    liveblocksUpdatedAt: number;
+    hasBoardData: boolean;
+    boardUpdatedAt: number;
+    boardExceedsSyncLimit?: boolean;
+}): CanvasDataSource => {
+    if (!hasLiveblocksData) return hasBoardData ? 'board' : 'empty';
+    if (!hasBoardData) return 'liveblocks';
+    if (boardExceedsSyncLimit && boardUpdatedAt === 0 && liveblocksUpdatedAt === 0) {
+        return 'board';
+    }
+    if (liveblocksUpdatedAt > 0 || boardUpdatedAt > 0) {
+        return liveblocksUpdatedAt > boardUpdatedAt ? 'liveblocks' : 'board';
+    }
+    return 'liveblocks';
 };
 
 export const buildBoardShareLink = (

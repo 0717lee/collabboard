@@ -5,7 +5,15 @@ import { useAuthStore } from '@/stores/authStore';
 const boardMocks = vi.hoisted(() => ({
     insertSingle: vi.fn(),
     orderBoards: vi.fn(),
-    updateEq: vi.fn(),
+    // updateSpy 捕获 update(dbUpdates, opts) 的参数；updateResult 是 .maybeSingle() 的返回值
+    updateSpy: vi.fn(() => ({
+        eq: () => ({
+            select: () => ({
+                maybeSingle: boardMocks.updateResult,
+            }),
+        }),
+    })),
+    updateResult: vi.fn(),
     deleteEq: vi.fn(),
     getUser: vi.fn(),
 }));
@@ -24,9 +32,7 @@ vi.mock('@/lib/supabaseClient', () => ({
                     order: boardMocks.orderBoards,
                 }),
             }),
-            update: () => ({
-                eq: boardMocks.updateEq,
-            }),
+            update: boardMocks.updateSpy,
             delete: () => ({
                 eq: boardMocks.deleteEq,
             }),
@@ -57,7 +63,7 @@ describe('boardStore', () => {
             data: [],
             error: null,
         });
-        boardMocks.updateEq.mockResolvedValue({ error: null });
+        boardMocks.updateResult.mockResolvedValue({ data: { id: 'mock-board-id' }, error: null });
         boardMocks.deleteEq.mockResolvedValue({ error: null });
         boardMocks.getUser.mockResolvedValue({
             data: {
@@ -134,6 +140,27 @@ describe('boardStore', () => {
             expect(Array.isArray(state.boards)).toBe(true);
         });
 
+        it('should return true when load succeeds with empty list', async () => {
+            // 用户确实没有白板时也应返回 true，以便上层据此 reconcile 清理 stale 缓存
+            boardMocks.orderBoards.mockResolvedValueOnce({ data: [], error: null });
+
+            const result = await useBoardStore.getState().loadBoards(mockUserId);
+
+            expect(result).toBe(true);
+            expect(useBoardStore.getState().boards).toHaveLength(0);
+        });
+
+        it('should return false when load fails with error', async () => {
+            boardMocks.orderBoards.mockResolvedValueOnce({
+                data: null,
+                error: { message: 'permission denied' },
+            });
+
+            const result = await useBoardStore.getState().loadBoards(mockUserId);
+
+            expect(result).toBe(false);
+        });
+
         it('should ignore stale load results when a newer request finishes first', async () => {
             const now = new Date().toISOString();
             let resolveFirstLoad: ((value: {
@@ -182,6 +209,64 @@ describe('boardStore', () => {
             expect(state.boards).toHaveLength(1);
             expect(state.boards[0]?.name).toBe('Recovered Board');
             expect(state.isLoading).toBe(false);
+        });
+    });
+
+    describe('updateBoard', () => {
+        it('should return true when update succeeds', async () => {
+            const result = await useBoardStore.getState().updateBoard('board-1', { name: 'New Name' });
+
+            expect(result).toBe(true);
+        });
+
+        it('should return false when update fails with database error', async () => {
+            boardMocks.updateResult.mockResolvedValueOnce({
+                data: null,
+                error: { message: 'permission denied' },
+            });
+
+            const result = await useBoardStore.getState().updateBoard('board-1', { name: 'New Name' });
+
+            expect(result).toBe(false);
+        });
+
+        it('should persist publicRole to public_role column', async () => {
+            const result = await useBoardStore.getState().updateBoard('board-1', { publicRole: 'viewer' });
+
+            expect(result).toBe(true);
+            expect(boardMocks.updateSpy).toHaveBeenCalledWith(
+                expect.objectContaining({ public_role: 'viewer' }),
+                expect.anything(),
+            );
+        });
+
+        it('should allow clearing publicRole by passing null', async () => {
+            const result = await useBoardStore.getState().updateBoard('board-1', { publicRole: null });
+
+            expect(result).toBe(true);
+            expect(boardMocks.updateSpy).toHaveBeenCalledWith(
+                expect.objectContaining({ public_role: null }),
+                expect.anything(),
+            );
+        });
+    });
+
+    describe('saveCanvasData', () => {
+        it('should propagate updateBoard success result', async () => {
+            const result = await useBoardStore.getState().saveCanvasData('board-1', '{}');
+
+            expect(result).toBe(true);
+        });
+
+        it('should propagate updateBoard failure result', async () => {
+            boardMocks.updateResult.mockResolvedValueOnce({
+                data: null,
+                error: { message: 'permission denied' },
+            });
+
+            const result = await useBoardStore.getState().saveCanvasData('board-1', '{}');
+
+            expect(result).toBe(false);
         });
     });
 });

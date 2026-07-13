@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
     Alert,
     Button,
@@ -47,7 +47,14 @@ import { useBoardLibraryStore } from '@/stores/boardLibraryStore';
 import { useBoardStore } from '@/stores/boardStore';
 import { useLanguageStore } from '@/stores/languageStore';
 import { useSettingsStore } from '@/stores/settingsStore';
-import { buildBoardShareLink, decompressSnapshotData, extractBoardRoleFromUrl } from '@/lib/boardUtils';
+import {
+    buildBoardShareLink,
+    chooseCanvasDataSource,
+    decompressSnapshotData,
+    getCanvasDataUpdatedAt,
+    stampCanvasData,
+} from '@/lib/boardUtils';
+import { sanitizeSvgForDownload } from '@/lib/svgUtils';
 import { useMutation, useOthers, useStorage, useUpdateMyPresence } from '@/liveblocks.config';
 import { createStickyNote, findNearestAnchor, getAnchorPoints, handleStickyNoteDoubleClick, isAnyTextEditing, initAligningGuidelines, reassembleDetachedStickyNotes } from './canvasUtils';
 import { CircularSlider } from './CircularSlider';
@@ -110,7 +117,6 @@ const decodeCanvasData = (data: string | null) => {
 
 const CanvasBoardInner: React.FC = () => {
     const { boardId } = useParams<{ boardId: string }>();
-    const location = useLocation();
     const navigate = useNavigate();
 
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -126,6 +132,7 @@ const CanvasBoardInner: React.FC = () => {
         fetchBoard,
         saveCanvasData,
         setCurrentBoard,
+        updateBoard,
     } = useBoardStore();
     const { settings } = useSettingsStore();
     const { language } = useLanguageStore();
@@ -169,6 +176,7 @@ const CanvasBoardInner: React.FC = () => {
     const isRestoringRef = useRef(false);
     const isCommittingStickyTextRef = useRef(false);
     const dirtyRef = useRef(false);
+    const isPersistingRef = useRef(false);
     const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const thumbnailTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const lastAutoSnapshotAtRef = useRef(0);
@@ -198,10 +206,6 @@ const CanvasBoardInner: React.FC = () => {
     const scheduleThumbnailCaptureRef = useRef<() => void>(() => undefined);
 
 
-    const sharedRoleFromUrl = useMemo(
-        () => extractBoardRoleFromUrl(location.search),
-        [location.search]
-    );
     const snapshots = useMemo(
         () => (boardId ? snapshotMap[boardId] || EMPTY_SNAPSHOTS : EMPTY_SNAPSHOTS),
         [boardId, snapshotMap]
@@ -214,9 +218,12 @@ const CanvasBoardInner: React.FC = () => {
         return boardSummary?.name || '';
     }, [boardId, boards, currentBoard?.name, sharedBoards]);
     const cachedRole = boardId ? entries[boardId]?.role : undefined;
+    // resolvedRole 信任 DB publicRole（由 fetchBoard 从 boards.public_role 读取），
+    // 不再信任 URL ?role= 参数（可被伪造）。URL role 仅作 UI 提示。
+    // 默认 viewer（fail-closed）：未明确授权时只读。
     const resolvedRole: BoardRole = currentBoard?.ownerId === user?.id
         ? 'owner'
-        : sharedRoleFromUrl || cachedRole || currentBoard?.accessRole || 'editor';
+        : currentBoard?.publicRole ?? cachedRole ?? currentBoard?.accessRole ?? 'viewer';
     const isReadOnly = resolvedRole === 'viewer';
     const gridPixelSize = `${Math.max((GRID_SIZE * zoom) / 100, 12)}px`;
     const visibleCollaborators = useMemo(
@@ -257,6 +264,13 @@ const CanvasBoardInner: React.FC = () => {
             accent: styles.shareModeViewer,
         };
     }, [isEn, shareRole]);
+
+    // 打开邀请弹窗时，从 DB publicRole 同步 shareRole（仅 owner 会持久化，非 owner 仅展示）
+    useEffect(() => {
+        if (showInviteModal && currentBoard?.publicRole) {
+            setShareRole(currentBoard.publicRole);
+        }
+    }, [showInviteModal, currentBoard?.publicRole]);
 
     const chunk1 = useStorage((root) => root.canvasData);
     const chunk2 = useStorage((root) => root.canvasData_2);
@@ -379,6 +393,8 @@ const CanvasBoardInner: React.FC = () => {
     ) => {
         if (!fabricRef.current) return;
 
+        const nextJson = options?.markDirty ? stampCanvasData(json) : json;
+
         // Cancel any pending processLocalCanvasChange timer to prevent
         // stale commits from overwriting the state we're about to apply.
         if (syncTimeoutRef.current) {
@@ -390,26 +406,27 @@ const CanvasBoardInner: React.FC = () => {
         isRemoteUpdateRef.current = options?.suppressEvents ?? false;
 
         try {
-            await fabricRef.current.loadFromJSON(JSON.parse(json));
+            await fabricRef.current.loadFromJSON(JSON.parse(nextJson));
             fabricRef.current.requestRenderAll();
 
-            latestSerializedRef.current = json;
+            latestSerializedRef.current = nextJson;
 
             if (options?.resetHistory) {
-                resetHistory(json);
+                resetHistory(nextJson);
             }
 
             if (options?.markPersisted) {
-                lastPersistedStateRef.current = json;
+                lastPersistedStateRef.current = nextJson;
                 dirtyRef.current = false;
             }
 
             if (options?.markDirty) {
                 dirtyRef.current = true;
+                presentStateRef.current = nextJson;
             }
 
             if (options?.sync) {
-                syncCanvasState(json);
+                syncCanvasState(nextJson);
             }
 
             scheduleThumbnailCapture();
@@ -462,7 +479,7 @@ const CanvasBoardInner: React.FC = () => {
 
         const accessRole: BoardRole = board.ownerId === user?.id
             ? 'owner'
-            : sharedRoleFromUrl || cachedRole || board.accessRole || 'editor';
+            : board.publicRole ?? cachedRole ?? board.accessRole ?? 'viewer';
 
         const normalizedBoard: Board = {
             ...board,
@@ -478,7 +495,7 @@ const CanvasBoardInner: React.FC = () => {
         }
 
         return normalizedBoard;
-    }, [boardId, boards, cachedRole, fetchBoard, setCurrentBoard, setRole, sharedBoards, sharedRoleFromUrl, touchBoard, user?.id]);
+    }, [boardId, boards, cachedRole, fetchBoard, setCurrentBoard, setRole, sharedBoards, touchBoard, user?.id]);
     resolveBoardRef.current = resolveBoard;
 
     const processLocalCanvasChange = useCallback(() => {
@@ -509,7 +526,7 @@ const CanvasBoardInner: React.FC = () => {
             ) return;
 
             reassembleDetachedStickyNotes(fabricRef.current);
-            const json = JSON.stringify(fabricRef.current.toJSON());
+            const json = stampCanvasData(JSON.stringify(fabricRef.current.toJSON()));
             latestSerializedRef.current = json;
             dirtyRef.current = true;
             commitHistory(json);
@@ -539,14 +556,34 @@ const CanvasBoardInner: React.FC = () => {
     const persistCurrentCanvas = useCallback(async () => {
         if (!boardId || !currentBoard || !latestSerializedRef.current) return;
 
+        // 串行化：已有保存在进行中时跳过本次，dirtyRef 保持 true 由下个定时器重试。
+        // 这避免了"保存 A 期间又触发保存 B"造成的乱序与覆盖。
+        if (isPersistingRef.current) return;
+
         if (latestSerializedRef.current === lastPersistedStateRef.current) {
             dirtyRef.current = false;
             return;
         }
 
-        await saveCanvasData(boardId, latestSerializedRef.current);
-        lastPersistedStateRef.current = latestSerializedRef.current;
-        dirtyRef.current = false;
+        // 捕获本次保存的快照。保存期间用户可能继续编辑成 B，
+        // 请求返回后必须用 snapshot（而非此时已变为 B 的 latestSerializedRef）更新 lastPersistedStateRef，
+        // 否则会把未保存的 B 误判为已持久化，B 不再触发保存。
+        const snapshot = latestSerializedRef.current;
+        isPersistingRef.current = true;
+        try {
+            const success = await saveCanvasData(boardId, snapshot);
+            if (success) {
+                lastPersistedStateRef.current = snapshot;
+                // 仅当当前值仍是 snapshot 时才清 dirty；
+                // 保存期间又编辑成 B 时保留 dirty=true，下个定时器会保存 B。
+                if (latestSerializedRef.current === snapshot) {
+                    dirtyRef.current = false;
+                }
+            }
+            // 失败时保留 dirtyRef=true 与旧 lastPersistedStateRef，下次仍会重试保存
+        } finally {
+            isPersistingRef.current = false;
+        }
     }, [boardId, currentBoard, saveCanvasData]);
 
     useEffect(() => {
@@ -617,8 +654,21 @@ const CanvasBoardInner: React.FC = () => {
 
                 const liveblocksState = decodeCanvasData(initialCanvasData);
                 const boardState = decodeCanvasData(board.data || '');
+                const hasLiveblocksData = Boolean(liveblocksState?.parsed?.objects);
+                const hasBoardData = Boolean(boardState?.parsed?.objects);
+                const boardExceedsSyncLimit = Boolean(
+                    boardState?.json &&
+                    LZString.compressToBase64(boardState.json).length > MAX_SYNC_SIZE
+                );
+                const source = chooseCanvasDataSource({
+                    hasLiveblocksData,
+                    liveblocksUpdatedAt: getCanvasDataUpdatedAt(liveblocksState?.json),
+                    hasBoardData,
+                    boardUpdatedAt: getCanvasDataUpdatedAt(boardState?.json),
+                    boardExceedsSyncLimit,
+                });
 
-                if (liveblocksState?.parsed?.objects) {
+                if (source === 'liveblocks' && liveblocksState) {
                     lastSyncedDataRef.current = initialCanvasData;
                     await applyCanvasStateRef.current(liveblocksState.json, {
                         resetHistory: true,
@@ -628,7 +678,8 @@ const CanvasBoardInner: React.FC = () => {
                     return;
                 }
 
-                if (boardState?.parsed?.objects) {
+                if (source === 'board' && boardState) {
+                    lastSyncedDataRef.current = initialCanvasData || null;
                     await applyCanvasStateRef.current(boardState.json, {
                         resetHistory: true,
                         markPersisted: true,
@@ -710,6 +761,7 @@ const CanvasBoardInner: React.FC = () => {
 
          
         const handleMouseMove = (options: any) => {
+            const scenePoint = options.scenePoint ?? options.pointer;
             if (isDragging) {
                 const e = options.e;
                 const vpt = canvas.viewportTransform;
@@ -719,18 +771,18 @@ const CanvasBoardInner: React.FC = () => {
                 canvas.requestRenderAll();
                 lastPosX = e.clientX;
                 lastPosY = e.clientY;
-            } else if (options.pointer) {
+            } else if (scenePoint) {
                 const vpt = canvas.viewportTransform;
                 if (vpt) {
-                    const screenX = options.pointer.x * vpt[0] + vpt[4];
-                    const screenY = options.pointer.y * vpt[3] + vpt[5];
+                    const screenX = scenePoint.x * vpt[0] + vpt[4];
+                    const screenY = scenePoint.y * vpt[3] + vpt[5];
                     updateMyPresenceRef.current({ cursor: { x: screenX, y: screenY } });
                 }
                 lastMouseEventRef.current = options;
 
                 if (activeToolRef.current === 'line' && fabricRef.current) {
                     const canvas = fabricRef.current;
-                    const pointer = options.pointer;
+                    const pointer = scenePoint;
                     
                     if (isDrawingLineRef.current && activeLineRef.current) {
                         // Update line end position
@@ -995,6 +1047,22 @@ const CanvasBoardInner: React.FC = () => {
         if (!decoded?.json) return;
         if (canvasData === lastSyncedDataRef.current || decoded.json === latestSerializedRef.current) return;
 
+        const current = decodeCanvasData(latestSerializedRef.current);
+        const source = chooseCanvasDataSource({
+            hasLiveblocksData: Boolean(decoded.parsed?.objects),
+            liveblocksUpdatedAt: getCanvasDataUpdatedAt(decoded.json),
+            hasBoardData: Boolean(current?.parsed?.objects),
+            boardUpdatedAt: getCanvasDataUpdatedAt(current?.json),
+            boardExceedsSyncLimit: Boolean(
+                current?.json &&
+                LZString.compressToBase64(current.json).length > MAX_SYNC_SIZE
+            ),
+        });
+        if (source !== 'liveblocks') {
+            lastSyncedDataRef.current = canvasData;
+            return;
+        }
+
         lastSyncedDataRef.current = canvasData;
         applyCanvasState(decoded.json, {
             resetHistory: true,
@@ -1026,7 +1094,7 @@ const CanvasBoardInner: React.FC = () => {
                     canvas.requestRenderAll();
                 }
 
-                const json = JSON.stringify(canvas.toJSON());
+                const json = stampCanvasData(JSON.stringify(canvas.toJSON()));
                 latestSerializedRef.current = json;
                 dirtyRef.current = true;
                 commitHistory(json);
@@ -1077,14 +1145,18 @@ const CanvasBoardInner: React.FC = () => {
         };
     }, [activeTool, brushColor, brushWidth, canvasReady, commitHistory, isReadOnly, scheduleThumbnailCapture, syncCanvasState]);
 
-    const handleCanvasMouseDown = useCallback((opt: { pointer?: { x: number; y: number } }) => {
+    const handleCanvasMouseDown = useCallback((opt: {
+        scenePoint?: { x: number; y: number };
+        pointer?: { x: number; y: number };
+    }) => {
         if (isReadOnly || activeTool === 'select' || activeTool === 'draw' || activeTool === 'eraser' || !fabric) return;
 
         const canvas = fabricRef.current;
-        if (!canvas || !opt.pointer) return;
+        const pointer = opt.scenePoint ?? opt.pointer;
+        if (!canvas || !pointer) return;
 
-        const x = settings.snapToGrid ? snapCoordinate(opt.pointer.x) : opt.pointer.x;
-        const y = settings.snapToGrid ? snapCoordinate(opt.pointer.y) : opt.pointer.y;
+        const x = settings.snapToGrid ? snapCoordinate(pointer.x) : pointer.x;
+        const y = settings.snapToGrid ? snapCoordinate(pointer.y) : pointer.y;
 
         let object: any = null;
 
@@ -1555,8 +1627,11 @@ const CanvasBoardInner: React.FC = () => {
     const exportSVG = () => {
         if (!fabricRef.current) return;
 
-        const svg = fabricRef.current.toSVG();
-        const blob = new Blob([svg], { type: 'image/svg+xml' });
+        const rawSvg = fabricRef.current.toSVG();
+        // 消毒 SVG 输出：移除 <script> 元素、on* 事件属性、javascript: URL
+        // 防御 Fabric.js CVE-2026-27013 / CVE-2026-44311（toSVG 未转义用户可控值导致 XSS）
+        const sanitized = sanitizeSvgForDownload(rawSvg);
+        const blob = new Blob([sanitized], { type: 'image/svg+xml' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.download = `${currentBoard?.name || 'canvas'}.svg`;
@@ -1653,7 +1728,15 @@ const CanvasBoardInner: React.FC = () => {
         }
     };
 
-    const handleCopyLink = () => {
+    const handleCopyLink = async () => {
+        // owner 复制链接前先持久化分享角色到 DB，确保协作者进入时 resolvedRole 从 DB 取值
+        if (boardId && currentBoard?.ownerId === user?.id) {
+            const success = await updateBoard(boardId, { publicRole: shareRole });
+            if (!success) {
+                message.error(isEn ? 'Failed to update share settings' : '更新分享设置失败');
+                return;
+            }
+        }
         if (navigator.clipboard) {
             navigator.clipboard.writeText(shareLink).then(() => {
                 setLinkCopied(true);

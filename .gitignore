@@ -51,6 +51,17 @@ test-results
 
 # Cloud providers
 .vercel
+.wrangler
+
+# Playwright 临时产物
+.playwright-cli/
+.playwright-mcp/
+/playwright-report/
+/test-results/
+# 根目录调试截图（非 src 资源）
+/focus-test.png
+/login.png
+/register.png
 
 # Development Plans & Artifacts
 task.md

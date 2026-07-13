@@ -219,9 +219,14 @@ body {
     box-shadow: 0 8px 24px rgba(107, 128, 104, 0.25) !important;
 }
 
-*:focus,
-*:focus-visible {
-    outline: none !important;
+:where(a, button, input, textarea, select, summary, [tabindex]:not([tabindex="-1"])):focus-visible {
+    outline: 2px solid rgba(85, 104, 82, 0.85) !important;
+    outline-offset: 2px !important;
+}
+
+.ant-input-affix-wrapper:focus-within {
+    border-color: rgba(85, 104, 82, 0.45) !important;
+    box-shadow: 0 0 0 3px rgba(107, 128, 104, 0.18) !important;
 }
 
 /* Soft, pill-shaped inputs */
@@ -239,7 +244,6 @@ body {
 
 .ant-input-affix-wrapper-focused,
 .ant-input-affix-wrapper:focus {
-    outline: none !important;
     border: 1px solid rgba(139, 121, 94, 0.2) !important;
     box-shadow: 0 0 0 3px rgba(107, 128, 104, 0.08) !important;
     background: rgba(255, 255, 255, 0.95) !important;
@@ -247,7 +251,6 @@ body {
 
 .ant-input:focus,
 .ant-input-focused {
-    outline: none !important;
     border: 1px solid rgba(139, 121, 94, 0.2) !important;
     box-shadow: 0 0 0 3px rgba(107, 128, 104, 0.08) !important;
     background: rgba(255, 255, 255, 0.95) !important;

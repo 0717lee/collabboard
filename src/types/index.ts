@@ -16,6 +16,9 @@ export interface Board {
     updatedAt: string;
     data?: string; // JSON string of canvas data
     accessRole?: BoardRole;
+    // 链接共享角色：'editor'/'viewer' = 已开启公开访问，null/undefined = 未开启
+    // 由 DB boards.public_role 映射，resolvedRole 应优先信任此字段而非 URL 参数
+    publicRole?: Extract<BoardRole, 'editor' | 'viewer'> | null;
     source?: BoardSource;
 }
 

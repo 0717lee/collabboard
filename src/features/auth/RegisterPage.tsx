@@ -18,7 +18,7 @@ interface RegisterFormValues {
 const RegisterPage: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { register, isLoading, error, clearError } = useAuthStore();
+    const { register, isLoading, error, notice, clearError } = useAuthStore();
     const [form] = Form.useForm();
 
     // Get the redirect target from location state (set by ProtectedRoute)
@@ -125,6 +125,12 @@ const RegisterPage: React.FC = () => {
                     {error && (
                         <div className={styles.errorMessage}>
                             {error}
+                        </div>
+                    )}
+
+                    {notice && (
+                        <div className={styles.successMessage} role="status">
+                            {notice}
                         </div>
                     )}
 

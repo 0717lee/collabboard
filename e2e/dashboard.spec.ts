@@ -66,7 +66,7 @@ test.describe('Dashboard', () => {
         await page.goto('/dashboard');
 
         // Search for the board
-        await page.getByPlaceholder('搜索白板...').fill('搜索测试');
+        await page.locator('input[placeholder="搜索白板..."]:visible').fill('搜索测试');
 
         await expect(page.locator('text=搜索测试白板')).toBeVisible();
     });

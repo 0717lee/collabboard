@@ -75,4 +75,34 @@ test.describe('Authentication', () => {
         // Should redirect to login
         await expect(page).toHaveURL(/.*login/);
     });
+    test('should preserve the shared board role query after login', async ({ page }) => {
+        await page.goto('/board/shared-board?role=viewer');
+        await expect(page).toHaveURL(/\/login$/);
+
+        await page.locator('input[autocomplete="email"]').fill('demo@collabboard.com');
+        await page.locator('input[autocomplete="current-password"]').fill('demo123');
+        await page.locator('button[type="submit"]').click();
+
+        await expect(page).toHaveURL(/\/board\/shared-board\?role=viewer$/);
+    });
+
+    test('should show a visible keyboard focus ring', async ({ page }) => {
+        await page.goto('/login');
+        const emailInput = page.locator('input[autocomplete="email"]');
+
+        for (let index = 0; index < 6; index += 1) {
+            await page.keyboard.press('Tab');
+            const isFocused = await emailInput.evaluate((element) => document.activeElement === element);
+            if (isFocused) break;
+        }
+        await expect(emailInput).toBeFocused();
+
+        const hasVisibleFocusIndicator = await emailInput.evaluate((element) => {
+            const outlineWidth = Number.parseFloat(window.getComputedStyle(element).outlineWidth);
+            const wrapper = element.closest('.ant-input-affix-wrapper');
+            const wrapperShadow = wrapper ? window.getComputedStyle(wrapper).boxShadow : 'none';
+            return outlineWidth > 0 || wrapperShadow !== 'none';
+        });
+        expect(hasVisibleFocusIndicator).toBe(true);
+    });
 });

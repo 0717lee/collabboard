@@ -11,15 +11,17 @@ interface BoardState {
     error: string | null;
 
     createBoard: (name: string) => Promise<Board | null>;
-    updateBoard: (id: string, updates: Partial<Board>) => Promise<void>;
+    updateBoard: (id: string, updates: Partial<Board>) => Promise<boolean>;
     deleteBoard: (id: string) => Promise<{ success: boolean; error?: string }>;
     setCurrentBoard: (board: Board | null) => void;
     fetchBoard: (boardId: string) => Promise<Board | null>;
-    saveCanvasData: (boardId: string, data: string) => Promise<void>;
-    loadBoards: (userId: string) => Promise<void>;
+    saveCanvasData: (boardId: string, data: string) => Promise<boolean>;
+    loadBoards: (userId: string) => Promise<boolean>;
+    reset: () => void;
 }
 
 let latestLoadBoardsRequestId = 0;
+let boardStateGeneration = 0;
 const DB_TIMEOUT_MS = 10000; // 10 seconds timeout for DB operations
 
 const withTimeout = <T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> => {
@@ -39,14 +41,16 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
     isLoading: false,
     error: null,
     createBoard: async (name: string) => {
+        const generation = boardStateGeneration;
         set({ isLoading: true, error: null });
 
         try {
             console.log('[boardStore] Creating board:', name);
-            const user = (await import('./authStore')).useAuthStore.getState().user;
+            const { data: { user } } = await supabase.auth.getUser();
+            if (generation !== boardStateGeneration) return null;
 
             if (!user) {
-                console.error('[boardStore] No user found in store');
+                console.error('[boardStore] No authenticated Supabase user found');
                 set({ isLoading: false, error: '未登录或登录已过期，请重新登录' });
                 return null;
             }
@@ -68,6 +72,7 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
             );
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const { data, error } = insertResult as any;
+            if (generation !== boardStateGeneration) return null;
 
             if (error) {
                 console.error('[boardStore] Create board error:', error);
@@ -84,6 +89,7 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
                 updatedAt: data.updated_at,
                 data: JSON.stringify(data.data),
                 accessRole: 'owner',
+                publicRole: data.public_role ?? null,
                 source: 'owned',
             };
 
@@ -95,12 +101,14 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
 
             return board;
         } catch {
+            if (generation !== boardStateGeneration) return null;
             set({ isLoading: false, error: '创建白板失败' });
             return null;
         }
     },
 
     updateBoard: async (id: string, updates: Partial<Board>) => {
+        const generation = boardStateGeneration;
         try {
             const dbUpdates: Record<string, unknown> = {
                 updated_at: new Date().toISOString(),
@@ -108,16 +116,22 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
 
             if (updates.name !== undefined) dbUpdates.name = updates.name;
             if (updates.data !== undefined) dbUpdates.data = updates.data ? JSON.parse(updates.data) : null;
+            if (updates.publicRole !== undefined) dbUpdates.public_role = updates.publicRole;
 
-            const { error } = await supabase
+            const { data, error } = await supabase
                 .from('boards')
-                .update(dbUpdates)
-                .eq('id', id);
+                .update(dbUpdates, { count: 'exact' })
+                .eq('id', id)
+                .select('id')
+                .maybeSingle();
 
-            if (error) {
+            if (error || !data) {
                 console.error('Update board error:', error);
-                return;
+                set({ error: error?.message || null });
+                return false;
             }
+
+            if (generation !== boardStateGeneration) return false;
 
             set((state) => ({
                 boards: state.boards.map((board) =>
@@ -134,13 +148,18 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
                     state.currentBoard?.id === id
                         ? { ...state.currentBoard, ...updates, updatedAt: new Date().toISOString() }
                         : state.currentBoard,
+                error: null,
             }));
+            return true;
         } catch (err) {
             console.error('Update board failed:', err);
+            set({ error: err instanceof Error ? err.message : null });
+            return false;
         }
     },
 
     deleteBoard: async (id: string) => {
+        const generation = boardStateGeneration;
         try {
             // Use count: 'exact' to check how many rows were deleted
             // This avoids RLS issues with 'select()' if you can delete but not read
@@ -149,6 +168,9 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
                 .delete()
                 .eq('id', id);
 
+            if (generation !== boardStateGeneration) {
+                return { success: false, error: 'Session changed' };
+            }
             if (error) {
                 console.error('Delete board error:', error);
                 const msg = '删除出错: ' + error.message;
@@ -166,6 +188,7 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
             useBoardLibraryStore.getState().removeBoard(id);
             return { success: true };
         } catch (err) {
+            if (generation !== boardStateGeneration) return { success: false, error: 'Session changed' };
             console.error('Delete board failed:', err);
             const msg = '删除失败，发生意外错误';
             set({ isLoading: false, error: msg });
@@ -178,6 +201,7 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
     },
 
     fetchBoard: async (boardId: string) => {
+        const generation = boardStateGeneration;
         set({ isLoading: true, error: null });
         try {
             const { data, error } = await supabase
@@ -186,6 +210,7 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
                 .eq('id', boardId)
                 .single();
 
+            if (generation !== boardStateGeneration) return null;
             if (error) {
                 console.error('Fetch board error:', error);
                 set({ isLoading: false, error: '无法加载白板，可能已被删除或无权访问' });
@@ -199,6 +224,7 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
                 createdAt: data.created_at,
                 updatedAt: data.updated_at,
                 data: JSON.stringify(data.data),
+                publicRole: data.public_role ?? null,
                 source: 'owned',
             };
 
@@ -209,6 +235,7 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
             set({ currentBoard: board, isLoading: false });
             return board;
         } catch (err) {
+            if (generation !== boardStateGeneration) return null;
             console.error('Fetch board failed:', err);
             set({ isLoading: false, error: '加载白板失败' });
             return null;
@@ -217,7 +244,7 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
 
     saveCanvasData: async (boardId: string, data: string) => {
         const { updateBoard } = get();
-        await updateBoard(boardId, { data });
+        return updateBoard(boardId, { data });
     },
 
     loadBoards: async (userId: string) => {
@@ -229,7 +256,7 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
             const fetchResult = await withTimeout(
                 supabase
                     .from('boards')
-                    .select('id, name, owner_id, created_at, updated_at')
+                    .select('id, name, owner_id, created_at, updated_at, public_role')
                     .eq('owner_id', userId)
                     .order('updated_at', { ascending: false }),
                 DB_TIMEOUT_MS,
@@ -240,12 +267,12 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
 
 
             if (requestId !== latestLoadBoardsRequestId) {
-                return;
+                return false;
             }
 
             if (error) {
                 set({ isLoading: false, error: error.message });
-                return;
+                return false;
             }
 
             const boards: Board[] = (data || []).map((item: {
@@ -254,6 +281,7 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
                 owner_id: string;
                 created_at: string;
                 updated_at: string;
+                public_role: 'editor' | 'viewer' | null;
             }) => ({
                 id: item.id,
                 name: item.name,
@@ -261,6 +289,7 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
                 createdAt: item.created_at,
                 updatedAt: item.updated_at,
                 accessRole: 'owner',
+                publicRole: item.public_role ?? null,
                 source: 'owned',
             }));
 
@@ -278,12 +307,25 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
                 }));
 
             set({ boards, sharedBoards, isLoading: false });
+            return true;
         } catch {
             if (requestId !== latestLoadBoardsRequestId) {
-                return;
+                return false;
             }
 
             set({ isLoading: false, error: '加载白板失败' });
+            return false;
         }
+    },
+    reset: () => {
+        boardStateGeneration += 1;
+        latestLoadBoardsRequestId += 1;
+        set({
+            boards: [],
+            sharedBoards: [],
+            currentBoard: null,
+            isLoading: false,
+            error: null,
+        });
     },
 }));

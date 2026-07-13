@@ -1,6 +1,7 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { createJSONStorage, persist } from 'zustand/middleware';
 import { MAX_BOARD_LIBRARY_ENTRIES } from '@/lib/boardUtils';
+import { largeStateStorage } from '@/lib/indexedDbStorage';
 import type { Board, BoardLibraryEntry, BoardRole, BoardSource } from '@/types';
 
 interface BoardLibraryState {
@@ -12,6 +13,7 @@ interface BoardLibraryState {
     toggleFavorite: (boardId: string) => void;
     setRole: (boardId: string, role: Extract<BoardRole, 'editor' | 'viewer'>) => void;
     removeBoard: (boardId: string) => void;
+    clear: () => void;
 }
 
 const limitEntries = (entries: Record<string, BoardLibraryEntry>) => {
@@ -195,10 +197,15 @@ export const useBoardLibraryStore = create<BoardLibraryState>()(
                     return { entries: nextEntries };
                 });
             },
+
+            clear: () => {
+                set({ entries: {} });
+            },
         }),
         {
             name: 'board-library-storage',
             version: 2,
+            storage: createJSONStorage(() => largeStateStorage),
             partialize: (state) => ({
                 entries: state.entries,
             }),

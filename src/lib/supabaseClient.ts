@@ -74,7 +74,11 @@ const createMissingConfigClient = (message: string) => ({
             },
             update() {
                 return {
-                    eq: async () => ({ error: { message } }),
+                    eq: () => ({
+                        select: () => ({
+                            maybeSingle: async () => ({ data: null, error: { message } }),
+                        }),
+                    }),
                 };
             },
             delete() {

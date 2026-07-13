@@ -134,6 +134,17 @@
   font-size: 14px;
 }
 
+.successMessage {
+  background: rgba(107, 128, 104, 0.08);
+  color: #465b44;
+  border: 1px solid rgba(107, 128, 104, 0.2);
+  padding: 14px;
+  border-radius: 16px;
+  margin-bottom: 24px;
+  text-align: center;
+  font-size: 14px;
+}
+
 /* Tablet responsive */
 @media (max-width: 900px) {
   .authContainer {

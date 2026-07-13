@@ -1,10 +1,14 @@
 import React, { useRef, useState } from 'react';
 import type { EChartsInstance } from 'echarts-for-react';
-import ReactEChartsCore from 'echarts-for-react/lib/core';
+import ReactEChartsCoreImport from 'echarts-for-react/lib/core';
 import { Input, Button, Segmented, InputNumber, message } from 'antd';
 import { PlusOutlined, MinusCircleOutlined } from '@ant-design/icons';
 import { echarts } from '@/lib/echarts';
 import styles from './ChartWidget.module.css';
+
+const ReactEChartsCore = (
+    ReactEChartsCoreImport as unknown as { default?: typeof ReactEChartsCoreImport }
+).default ?? ReactEChartsCoreImport;
 
 interface ChartWidgetProps {
     isEn: boolean;

@@ -1,6 +1,9 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase } from '@/lib/supabaseClient';
+import { useBoardStore } from '@/stores/boardStore';
+import { useBoardLibraryStore } from '@/stores/boardLibraryStore';
+import { useBoardHistoryStore } from '@/stores/boardHistoryStore';
 import type { User } from '@/types';
 
 interface AuthState {
@@ -10,6 +13,7 @@ interface AuthState {
     isLoading: boolean;
     hasInitialized: boolean;
     error: string | null;
+    notice: string | null;
 
     login: (email: string, password: string) => Promise<boolean>;
     register: (email: string, password: string, name: string) => Promise<boolean>;
@@ -19,6 +23,7 @@ interface AuthState {
 }
 
 const AUTH_INIT_TIMEOUT_MS = 4000;
+let latestAuthInitializationId = 0;
 
 const buildUserFromSessionUser = (sessionUser: {
     id: string;
@@ -32,6 +37,12 @@ const buildUserFromSessionUser = (sessionUser: {
     createdAt: sessionUser.created_at,
 });
 
+const clearUserScopedState = () => {
+    useBoardStore.getState().reset();
+    useBoardLibraryStore.getState().clear();
+    useBoardHistoryStore.getState().clear();
+};
+
 export const useAuthStore = create<AuthState>()(
     persist(
         (set, get) => ({
@@ -41,9 +52,10 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false,
             hasInitialized: false,
             error: null,
+            notice: null,
 
             login: async (email: string, password: string) => {
-                set({ isLoading: true, error: null });
+                set({ isLoading: true, error: null, notice: null });
 
                 try {
                     const { data, error } = await supabase.auth.signInWithPassword({
@@ -57,6 +69,16 @@ export const useAuthStore = create<AuthState>()(
                     }
 
                     if (data.user) {
+                        const authUser = data.user;
+                        set({
+                            user: buildUserFromSessionUser(authUser),
+                            isAuthenticated: true,
+                            hasValidatedSession: true,
+                            isLoading: true,
+                            hasInitialized: true,
+                            error: null,
+                        });
+
                         // Fetch or create user profile in profiles table
                         let { data: profile } = await supabase
                             .from('profiles')
@@ -87,6 +109,11 @@ export const useAuthStore = create<AuthState>()(
                             }
                         }
 
+                        const currentAuth = get();
+                        if (!currentAuth.isAuthenticated || currentAuth.user?.id !== authUser.id) {
+                            return false;
+                        }
+
                         const user: User = {
                             id: data.user.id,
                             email: data.user.email || email,
@@ -115,7 +142,7 @@ export const useAuthStore = create<AuthState>()(
             },
 
             register: async (email: string, password: string, name: string) => {
-                set({ isLoading: true, error: null });
+                set({ isLoading: true, error: null, notice: null });
 
                 try {
                     const { data, error } = await supabase.auth.signUp({
@@ -134,20 +161,50 @@ export const useAuthStore = create<AuthState>()(
                     }
 
                     if (data.user) {
-                        // Create profile in profiles table
-                        await supabase.from('profiles').insert({
-                            id: data.user.id,
-                            email,
-                            name,
-                        });
+                        // 必须同时拥有 session 才能视为已登录并写 profile。
+                        // 当 Supabase 开启邮箱确认（autoconfirm 关闭）时，signUp 只返回 user 不返回 session，
+                        // 此时未认证用户写 profiles 会被 RLS 拒绝，且错误被吞掉；
+                        // 因此保持未认证、不写 profile，并通过 notice 提示用户完成邮箱验证。
+                        if (!data.session) {
+                            clearUserScopedState();
+                            set({
+                                user: null,
+                                isAuthenticated: false,
+                                hasValidatedSession: false,
+                                isLoading: false,
+                                hasInitialized: true,
+                                error: null,
+                                notice: '注册成功，请前往邮箱完成验证后再登录。',
+                            });
+                            return false;
+                        }
 
+                        // 有 session 才写 profile（已认证，RLS 允许写入）
                         const user: User = {
                             id: data.user.id,
                             email,
                             name,
                             createdAt: data.user.created_at,
                         };
+                        set({
+                            user,
+                            isAuthenticated: true,
+                            hasValidatedSession: true,
+                            isLoading: true,
+                            hasInitialized: true,
+                            error: null,
+                        });
 
+                        await supabase.from('profiles').insert({
+                            id: data.user.id,
+                            email,
+                            name,
+                        });
+
+                        const currentAuth = get();
+                        if (!currentAuth.isAuthenticated || currentAuth.user?.id !== user.id) {
+                            return false;
+                        }
                         set({
                             user,
                             isAuthenticated: true,
@@ -169,6 +226,7 @@ export const useAuthStore = create<AuthState>()(
             },
 
             logout: async () => {
+                latestAuthInitializationId += 1;
                 try {
                     await supabase.auth.signOut();
                 } catch (error) {
@@ -180,74 +238,76 @@ export const useAuthStore = create<AuthState>()(
                         isAuthenticated: false,
                         hasValidatedSession: false,
                         hasInitialized: true,
+                        isLoading: false,
                         error: null,
+                        notice: null,
                     });
                     // Clear any local storage manually if needed
+                    clearUserScopedState();
                     localStorage.removeItem('auth-storage');
                 }
             },
 
             clearError: () => {
-                set({ error: null });
+                set({ error: null, notice: null });
             },
 
             initializeAuth: async () => {
+                const initializationId = ++latestAuthInitializationId;
                 set({ isLoading: true });
                 console.log('[authStore] Initializing auth...');
 
                 try {
-                    // Try to get the session with a race condition for timeout
-                    const sessionPromise = supabase.auth.getSession();
+                    // getUser verifies the JWT with Supabase Auth; getSession only reads local state.
+                    const userPromise = supabase.auth.getUser();
                     const timeoutPromise = new Promise<null>((resolve) => {
                         setTimeout(() => resolve(null), AUTH_INIT_TIMEOUT_MS);
                     });
 
-                    const result = await Promise.race([sessionPromise, timeoutPromise]);
+                    const result = await Promise.race([userPromise, timeoutPromise]);
+                    if (initializationId !== latestAuthInitializationId) return;
 
                     if (result === null) {
-                        // Timeout case
-                        const { isAuthenticated, user } = get();
-                        console.warn('[authStore] Auth initialization timed out, falling back to cached auth state.');
+                        // Timeout case - fail closed for security.
+                        // 不再信任本地缓存：过期/无网络情况下应强制重新登录，
+                        // 避免过期会话长期滞留受保护页面与未鉴权 Liveblocks 房间。
+                        console.warn('[authStore] Auth initialization timed out, requiring re-login.');
                         set({
-                            user: isAuthenticated ? user : null,
-                            isAuthenticated,
-                            // Trust cached auth on timeout so the app remains usable.
-                            // onAuthStateChange will correct state if session is actually invalid.
-                            hasValidatedSession: isAuthenticated,
+                            user: null,
+                            isAuthenticated: false,
+                            hasValidatedSession: false,
                             isLoading: false,
                             hasInitialized: true,
                         });
+                        clearUserScopedState();
                         return;
                     }
 
-                    // Result cast for clarity, though it's already well-typed from supabase-js
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const { data: { session }, error } = result as any;
+                    const { data: { user: authUser }, error } = result as any;
 
                     if (error) {
                         console.error('[authStore] Get session error:', error);
                         throw error;
                     }
 
-                    if (!session?.user) {
+                    if (!authUser) {
                         console.log('[authStore] No active session found.');
                         if (get().isAuthenticated) {
                             console.warn('[authStore] Local state was authenticated but no server session found, logging out.');
-                            set({
-                                user: null,
-                                isAuthenticated: false,
-                                hasValidatedSession: false,
-                                isLoading: false,
-                                hasInitialized: true,
-                            });
-                        } else {
-                            set({ isLoading: false, hasInitialized: true, hasValidatedSession: false });
                         }
+                        clearUserScopedState();
+                        set({
+                            user: null,
+                            isAuthenticated: false,
+                            hasValidatedSession: false,
+                            isLoading: false,
+                            hasInitialized: true,
+                        });
                         return;
                     }
 
-                    console.log('[authStore] Session restored for user:', session.user.id);
-                    const authUser = session.user;
+                    console.log('[authStore] Session restored for user:', authUser.id);
                     const fallbackUser = buildUserFromSessionUser(authUser);
 
                     set({
@@ -267,16 +327,21 @@ export const useAuthStore = create<AuthState>()(
                             .maybeSingle();
 
                         if (profile?.name) {
-                            set((state) => ({
-                                user: state.user
-                                    ? { ...state.user, name: profile.name }
-                                    : state.user,
-                            }));
+                            set((state) => {
+                                const currentUser = state.user;
+                                if (!currentUser || !state.isAuthenticated || currentUser.id !== authUser.id) {
+                                    return {};
+                                }
+                                return {
+                                    user: { ...currentUser, name: profile.name },
+                                };
+                            });
                         }
                     } catch (profileError) {
                         console.warn('Initialize profile lookup failed:', profileError);
                     }
                 } catch (e) {
+                    if (initializationId !== latestAuthInitializationId) return;
                     console.error('Initialize auth error:', e);
                     set({
                         user: null,
@@ -285,6 +350,7 @@ export const useAuthStore = create<AuthState>()(
                         isLoading: false,
                         hasInitialized: true,
                     });
+                    clearUserScopedState();
                 }
             },
         }),
@@ -307,19 +373,40 @@ export const useAuthStore = create<AuthState>()(
 );
 
 // Listen for auth state changes
-const { data: authSubscription } = supabase.auth.onAuthStateChange(async (
+const { data: authSubscription } = supabase.auth.onAuthStateChange((
     event: string,
     session: { user: { id: string; email?: string; created_at: string; user_metadata?: { name?: string } } } | null
 ) => {
     if (event === 'SIGNED_OUT') {
+        latestAuthInitializationId += 1;
         console.log('[authStore] Auth event: SIGNED_OUT');
         useAuthStore.setState({
             user: null,
             isAuthenticated: false,
             hasValidatedSession: false,
             hasInitialized: true,
+            isLoading: false,
+            notice: null,
         });
-    } else if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
+        clearUserScopedState();
+    } else if (event === 'INITIAL_SESSION' && !session?.user) {
+        latestAuthInitializationId += 1;
+        // 初始会话无用户：清理可能滞留的本地认证状态（例如 token 已过期但缓存仍标记为已认证）
+        console.warn('[authStore] Initial session has no user, clearing stale auth state.');
+        clearUserScopedState();
+        useAuthStore.setState({
+            user: null,
+            isAuthenticated: false,
+            hasValidatedSession: false,
+            hasInitialized: true,
+            isLoading: false,
+        });
+    } else if (event === 'INITIAL_SESSION' && session?.user) {
+        // INITIAL_SESSION is reconstructed from local storage. initializeAuth owns
+        // restoration and only authenticates after getUser verifies the token.
+        console.log('[authStore] Ignoring unverified INITIAL_SESSION event.');
+    } else if (event === 'SIGNED_IN' && session?.user) {
+        latestAuthInitializationId += 1;
         console.log(`[authStore] Auth event: ${event}`, session.user.id);
         
         useAuthStore.setState({
@@ -327,6 +414,9 @@ const { data: authSubscription } = supabase.auth.onAuthStateChange(async (
             isAuthenticated: true,
             hasValidatedSession: true,
             hasInitialized: true,
+            isLoading: false,
+            error: null,
+            notice: null,
         });
 
         (async () => {
@@ -343,10 +433,13 @@ const { data: authSubscription } = supabase.auth.onAuthStateChange(async (
                 }
 
                 if (profile?.name) {
-                    console.log('[authStore] Profile name found:', profile.name);
-                    useAuthStore.setState({
-                        user: buildUserFromSessionUser(session.user, profile.name)
-                    });
+                    const currentAuth = useAuthStore.getState();
+                    if (currentAuth.isAuthenticated && currentAuth.user?.id === session.user.id) {
+                        console.log('[authStore] Profile name found:', profile.name);
+                        useAuthStore.setState({
+                            user: buildUserFromSessionUser(session.user, profile.name),
+                        });
+                    }
                 }
             } catch (err) {
                 console.warn('[authStore] Profile lookup background failure:', err);

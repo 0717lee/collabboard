@@ -68,7 +68,7 @@ button:hover {
   transform: translateY(-1px);
 }
 
-button:focus,
 button:focus-visible {
-  outline: none;
+  outline: 2px solid rgba(85, 104, 82, 0.85);
+  outline-offset: 2px;
 }

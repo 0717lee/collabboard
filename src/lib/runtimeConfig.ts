@@ -14,5 +14,5 @@ export const supabaseConfigError = !shouldUseMockSupabase && !hasSupabaseConfig
     : null;
 
 export const liveblocksConfigWarning = !shouldUseMockLiveblocks && !hasLiveblocksConfig
-    ? '缺少 Liveblocks 环境变量：实时协作将降级为单人模式，需配置 VITE_LIVEBLOCKS_PUBLIC_KEY 后恢复。'
+    ? '缺少 Liveblocks 环境变量：实时协作将降级为单人模式，需配置 VITE_LIVEBLOCKS_PUBLIC_KEY 后恢复（该变量现仅作为启用开关，房间鉴权由 /api/liveblocks-auth 服务端处理）。'
     : null;

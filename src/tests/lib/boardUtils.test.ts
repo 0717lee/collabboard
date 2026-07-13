@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
     buildBoardShareLink,
+    chooseCanvasDataSource,
     compressSnapshotData,
     decompressSnapshotData,
     extractBoardRoleFromUrl,
+    getCanvasDataUpdatedAt,
     sortBoardsForDisplay,
+    stampCanvasData,
 } from '@/lib/boardUtils';
 import type { Board, BoardLibraryEntry } from '@/types';
 
@@ -19,6 +22,66 @@ describe('boardUtils', () => {
         expect(extractBoardRoleFromUrl('?role=editor')).toBe('editor');
         expect(extractBoardRoleFromUrl('?role=owner')).toBeNull();
         expect(extractBoardRoleFromUrl('?role=unknown')).toBeNull();
+    });
+
+    it('stamps canvas data without changing its objects', () => {
+        const raw = JSON.stringify({ objects: [{ type: 'rect' }] });
+        const stamped = stampCanvasData(raw, 12345);
+
+        expect(getCanvasDataUpdatedAt(stamped)).toBe(12345);
+        expect(JSON.parse(stamped).objects).toEqual([{ type: 'rect' }]);
+    });
+
+    it('keeps canvas timestamps monotonic when the clock does not advance', () => {
+        const first = stampCanvasData(JSON.stringify({ objects: [] }), 12345);
+        const second = stampCanvasData(first, 12345);
+
+        expect(getCanvasDataUpdatedAt(second)).toBe(12346);
+    });
+
+    it('prefers the newer explicitly versioned canvas source', () => {
+        expect(chooseCanvasDataSource({
+            hasLiveblocksData: true,
+            liveblocksUpdatedAt: 200,
+            hasBoardData: true,
+            boardUpdatedAt: 100,
+        })).toBe('liveblocks');
+
+        expect(chooseCanvasDataSource({
+            hasLiveblocksData: true,
+            liveblocksUpdatedAt: 100,
+            hasBoardData: true,
+            boardUpdatedAt: 200,
+        })).toBe('board');
+    });
+
+    it('keeps the current canvas when both sources have the same version', () => {
+        expect(chooseCanvasDataSource({
+            hasLiveblocksData: true,
+            liveblocksUpdatedAt: 200,
+            hasBoardData: true,
+            boardUpdatedAt: 200,
+        })).toBe('board');
+    });
+
+    it('prefers an oversized legacy database canvas over unversioned Liveblocks data', () => {
+        expect(chooseCanvasDataSource({
+            hasLiveblocksData: true,
+            liveblocksUpdatedAt: 0,
+            hasBoardData: true,
+            boardUpdatedAt: 0,
+            boardExceedsSyncLimit: true,
+        })).toBe('board');
+    });
+
+    it('allows versioned Liveblocks data to supersede an oversized legacy board', () => {
+        expect(chooseCanvasDataSource({
+            hasLiveblocksData: true,
+            liveblocksUpdatedAt: 200,
+            hasBoardData: true,
+            boardUpdatedAt: 0,
+            boardExceedsSyncLimit: true,
+        })).toBe('liveblocks');
     });
 
     it('sorts boards with favorites first and recent boards ahead of stale ones', () => {

@@ -1,7 +1,8 @@
 import { v4 as uuidv4 } from 'uuid';
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { createJSONStorage, persist } from 'zustand/middleware';
 import { compressSnapshotData, MAX_BOARD_SNAPSHOTS } from '@/lib/boardUtils';
+import { largeStateStorage } from '@/lib/indexedDbStorage';
 import type { BoardSnapshot } from '@/types';
 
 interface CreateSnapshotInput {
@@ -20,6 +21,7 @@ interface BoardHistoryState {
     getSnapshots: (boardId: string) => BoardSnapshot[];
     setSnapshots: (boardId: string, snapshots: BoardSnapshot[]) => void;
     removeSnapshot: (boardId: string, snapshotId: string) => void;
+    clear: () => void;
 }
 
 export const useBoardHistoryStore = create<BoardHistoryState>()(
@@ -79,10 +81,15 @@ export const useBoardHistoryStore = create<BoardHistoryState>()(
                     },
                 }));
             },
+
+            clear: () => {
+                set({ snapshots: {} });
+            },
         }),
         {
             name: 'board-history-storage',
             version: 1,
+            storage: createJSONStorage(() => largeStateStorage),
             partialize: (state) => ({
                 snapshots: state.snapshots,
             }),

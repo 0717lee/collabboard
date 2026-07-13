@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
     Avatar,
     Button,
@@ -99,6 +99,8 @@ const DashboardPage: React.FC = () => {
     const [form] = Form.useForm();
     const [messageApi, messageContextHolder] = message.useMessage();
     const [modal, modalContextHolder] = Modal.useModal();
+    // 跟踪 owned boards 是否已成功加载，用于区分"首次空数组（未加载）"与"加载后空数组（真无）"
+    const hasLoadedOwnedBoardsRef = useRef(false);
 
     const isEn = language === 'en-US';
     const cachedEntries = useMemo(() => Object.values(entries), [entries]);
@@ -130,14 +132,29 @@ const DashboardPage: React.FC = () => {
 
     useEffect(() => {
         if (hasInitialized && hasValidatedSession && isAuthenticated && user?.id) {
-            loadBoards(user.id);
+            // 切换用户或重新加载时重置标志，直到本次 loadBoards 成功完成
+            hasLoadedOwnedBoardsRef.current = false;
+            loadBoards(user.id).then((success) => {
+                if (success) {
+                    hasLoadedOwnedBoardsRef.current = true;
+                    // 加载成功后立即 reconcile 一次，处理"用户确实没有白板"的空列表场景
+                    reconcileBoards(useBoardStore.getState().boards, 'owned');
+                }
+            });
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [hasInitialized, hasValidatedSession, isAuthenticated, user?.id, loadBoards]);
 
     useEffect(() => {
-        reconcileBoards(boards, 'owned');
-        reconcileBoards(sharedBoards, 'shared');
-    }, [boards, sharedBoards, reconcileBoards]);
+        // 仅在 owned boards 已成功加载后才 reconcile：
+        // - 首次空数组（未加载）不 reconcile，避免误删缓存
+        // - 加载后空数组（真无）会 reconcile，清理 stale 缓存
+        // - shared 数据来自 boardLibraryStore.entries 反推，不应通过此处的 reconcile 清理，
+        //   其生命周期由 touchBoard/removeBoard 管理
+        if (hasLoadedOwnedBoardsRef.current) {
+            reconcileBoards(boards, 'owned');
+        }
+    }, [boards, reconcileBoards]);
 
     const filteredOwnedBoards = useMemo(() => {
         const sorted = sortBoardsForDisplay(ownedBoardsForDisplay, entries);
@@ -188,7 +205,11 @@ const DashboardPage: React.FC = () => {
         if (!editingBoard) return;
 
         const { updateBoard } = useBoardStore.getState();
-        await updateBoard(editingBoard.id, { name: values.name });
+        const success = await updateBoard(editingBoard.id, { name: values.name });
+        if (!success) {
+            messageApi.error(useBoardStore.getState().error || (isEn ? 'Update failed' : '更新失败'));
+            return;
+        }
         syncBoards([
             {
                 ...(boards.find((board) => board.id === editingBoard.id)

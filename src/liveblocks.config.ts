@@ -2,6 +2,7 @@ import React from 'react';
 import { createClient, LiveList } from '@liveblocks/client';
 import { createRoomContext } from '@liveblocks/react';
 import { liveblocksConfigWarning, shouldUseMockLiveblocks } from './lib/runtimeConfig';
+import { requestLiveblocksAuthorization } from './lib/liveblocksAuth';
 
 export type Presence = {
     cursor: { x: number; y: number } | null;
@@ -38,8 +39,11 @@ export type UserMeta = {
     };
 };
 
+// 安全修复：从 publicApiKey 改为 authEndpoint，由服务端（Cloudflare Pages Function）
+// 验证 Supabase JWT 并查 shared_boards 决定房间角色。
+// 房间级鉴权真源在 /api/liveblocks-auth + shared_boards 表 + RLS，客户端不再决定角色。
 const realContext = createRoomContext<Presence, Storage, UserMeta>(createClient({
-    publicApiKey: import.meta.env.VITE_LIVEBLOCKS_PUBLIC_KEY || 'pk_dev_placeholder',
+    authEndpoint: requestLiveblocksAuthorization,
     throttle: 100,
 }));
 

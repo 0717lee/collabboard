@@ -394,18 +394,22 @@ export const createMockSupabaseClient = () => {
                 },
                 update(updates: Record<string, unknown>) {
                     return {
-                        eq: async (field: string, value: unknown) => {
-                            const boards = getBoards();
-                            const target = boards.find((board) => board[field as keyof MockBoardRecord] === value);
+                        eq: (field: string, value: unknown) => ({
+                            select: () => ({
+                                maybeSingle: async () => {
+                                    const boards = getBoards();
+                                    const target = boards.find((board) => board[field as keyof MockBoardRecord] === value);
 
-                            if (!target) {
-                                return { error: { message: 'Board not found' } };
-                            }
+                                    if (!target) {
+                                        return { data: null, error: { message: 'Board not found' } };
+                                    }
 
-                            Object.assign(target, updates);
-                            setBoards(boards);
-                            return { error: null };
-                        },
+                                    Object.assign(target, updates);
+                                    setBoards(boards);
+                                    return { data: { id: target.id }, error: null };
+                                },
+                            }),
+                        }),
                     };
                 },
                 delete() {
